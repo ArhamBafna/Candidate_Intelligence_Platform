@@ -26,10 +26,12 @@ app.add_middleware(
 )
 
 from api.routes.candidates import router as candidates_router
+from api.routes.search import router as search_router
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 app.include_router(candidates_router)
+app.include_router(search_router)
 
