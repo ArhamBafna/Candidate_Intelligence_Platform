@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     vector_db_path: str = "storage/lancedb"
     backup_dir: str = "backups_data"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    llm_model: str = "llama3.2"
     entity_resolution_auto_merge_threshold: float = 0.92
     
     model_config = {"env_prefix": "CIP_"}

@@ -1,11 +1,13 @@
 import json
 import ollama
+from config.settings import Settings
 
-def extract_inferences(text: str) -> list[dict]:
+def extract_inferences(text: str, model_name: str | None = None) -> list[dict]:
     """
     Extract AI inferences from text using a local LLM via Ollama.
-    Expects Ollama to be running locally with the llama3 (or configured) model.
+    Defaults to configured Settings model (llama3.2).
     """
+    selected_model = model_name or Settings().llm_model
     prompt = f"""
     You are a precise fact-extraction engine for resumes. 
     Extract the candidate's skills, job titles, and educational degrees from the following text.
@@ -20,7 +22,7 @@ def extract_inferences(text: str) -> list[dict]:
     """
     
     try:
-        response = ollama.chat(model='llama3', messages=[
+        response = ollama.chat(model=selected_model, messages=[
             {
                 'role': 'user',
                 'content': prompt
