@@ -42,6 +42,8 @@ Candidate_Intelligence_Platform/
 ├── storage/                 # ORM, CAS, LanceDB (db_models.py, cas.py, vector_store.py)
 ├── ingestion/               # Parsers, chunker, entity resolution (parsers/, chunker.py, entity_resolution.py)
 ├── src/                     # Package root (candidate_intelligence_platform/)
+├── api/                     # FastAPI application, dependencies, schemas & routes
+├── ui/                      # Vite + React + Tailwind CSS Recruiter UI
 ├── docs/                    # Architecture docs & task.md
 └── tests/                   # Test suite matching modules
 ```

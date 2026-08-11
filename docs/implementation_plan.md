@@ -94,6 +94,28 @@ SQLite live `sqlite3_backup` runner, CAS incremental sync, and Cryptographic Man
 
 ---
 
+### Stage 5: API & Recruiter Interface Layer
+
+#### [NEW] `api/main.py`
+FastAPI application setup, CORS configuration (fully open), centralized exception handlers, and API router inclusion. No authentication will be implemented.
+
+#### [NEW] `api/dependencies.py`
+Dependency Injection (DI) functions for yielding SQLite DB sessions, LanceDB connections, and CAS storage managers.
+
+#### [NEW] `api/schemas/`
+Pydantic v2 models for API request/response contracts (e.g., `CandidateResponse`, `SearchQuery`, `TimelineEventCreate`).
+
+#### [NEW] `api/routes/candidates.py`
+Endpoints for retrieving candidates, updating states, and adding CRM timeline events. Implements standard offset/limit pagination.
+
+#### [NEW] `api/routes/search.py`
+Hybrid search and reranking endpoints returning matched candidates along with rationale explainers (returned as a single JSON block).
+
+#### [NEW] `ui/`
+Frontend Recruiter Interface utilizing plain HTML, Vanilla JS, and Vanilla CSS. Implements `@frontend-design` aesthetics (vibrant colors, glassmorphism, micro-animations) without external frameworks.
+
+---
+
 ## Verification Plan
 
 ### Automated Tests
@@ -102,7 +124,10 @@ SQLite live `sqlite3_backup` runner, CAS incremental sync, and Cryptographic Man
 - Tier 1 & Tier 2 Entity Resolution scoring test suite (`tests/test_entity_resolution.py`).
 - Vector indexing & LanceDB query performance tests (`tests/test_vector_store.py`).
 - AST Parser & Hybrid Search RRF ranking tests (`tests/test_hybrid_search.py`).
+- API endpoint integration tests using FastAPI `TestClient` (`tests/test_api_*.py`), following the `/tdd` red-green-refactor workflow.
 
 ### Manual Verification
 - End-to-end ingest of sample PDF/DOCX resumes to verify CAS storage, plain text extraction, layout JSON, fact/inference claims split, and LanceDB section vector generation.
 - Execute hybrid search query (strict boolean + semantic intent) and verify the generated **Match Rationale Scorecard** and precise line attribution highlights.
+- Serve the FastAPI application locally and manually verify endpoints via the auto-generated Swagger UI (`/docs`).
+- Launch the UI frontend and verify responsive layout, search functionality, and candidate timeline rendering.

@@ -7,7 +7,9 @@ requires-python = ">=3.14"
 dependencies = [
     "click>=8.4.2",
     "extract-msg>=0.56.0",
+    "fastapi[standard]>=0.141.1",
     "fastembed>=0.8.0",
+    "httpx>=0.28.1",
     "lancedb>=0.36.0",
     "ollama>=0.6.2",
     "pdfplumber>=0.11.10",

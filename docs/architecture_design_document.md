@@ -431,6 +431,16 @@ candidate_intelligence_platform/
 ├── crm/
 │   ├── timeline_ledger.py       # Event-sourced timeline logger
 │   └── state_machine.py         # Candidate stage & status state machine
+├── api/
+│   ├── main.py                  # FastAPI application setup
+│   ├── dependencies.py          # DI for DB, LanceDB, CAS
+│   ├── routes/                  # API endpoints for candidates & search
+│   └── schemas/                 # Pydantic v2 models
+├── ui/
+│   ├── src/                     # React application components & pages
+│   ├── index.html               # Vite entry point HTML
+│   ├── vite.config.js           # Vite dev server & API proxy config
+│   └── package.json             # Frontend dependencies (React, Tailwind CSS, Lucide)
 └── backups/
     └── backup_manager.py        # Live sqlite3_backup + manifest checker
 ```
@@ -445,3 +455,4 @@ candidate_intelligence_platform/
 4. Build `entity_resolution.py` with Tier 1 deterministic and Tier 2 fuzzy graph match scoring.
 5. Setup `fastembed` ONNX embedding generation and LanceDB vector table.
 6. Build hybrid search pipeline (`hybrid_searcher.py`) with RRF ranking and match rationale explainer.
+7. Build FastAPI REST endpoints (`api/`) and Vite + React + Tailwind CSS Recruiter Interface (`ui/`).
