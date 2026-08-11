@@ -11,12 +11,12 @@
   - `[x]` `storage/db_models.py` (SQLite DDL schema)
   - `[x]` `storage/vector_store.py` (LanceDB embedded vector table manager)
 
-- `[/]` **Ingestion & Processing Pipeline**
+- `[x]` **Ingestion & Processing Pipeline**
   - `[x]` `ingestion/parsers/pdf_parser.py` (PyMuPDF, pdfplumber, OCR)
   - `[x]` `ingestion/parsers/docx_parser.py` (python-docx)
   - `[x]` `ingestion/parsers/email_parser.py` (email parser)
   - `[x]` `ingestion/chunker.py` (Section-aware chunker)
-  - `[ ]` `ingestion/entity_resolution.py` (Tier 1 & Tier 2 matching)
+  - `[x]` `ingestion/entity_resolution.py` (Tier 1 & Tier 2 matching)
 
 - `[ ]` **Intelligence, Fact Extraction & Search Components**
   - `[ ]` `extraction/deterministic_ner.py` (SpaCy NER, Regex)
