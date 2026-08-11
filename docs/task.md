@@ -18,15 +18,15 @@
   - `[x]` `ingestion/chunker.py` (Section-aware chunker)
   - `[x]` `ingestion/entity_resolution.py` (Tier 1 & Tier 2 matching)
 
-- `[ ]` **Intelligence, Fact Extraction & Search Components**
-  - `[ ]` `extraction/deterministic_ner.py` (SpaCy NER, Regex)
-  - `[ ]` `extraction/local_llm_fallback.py` (Ollama fallback)
-  - `[ ]` `intelligence/embeddings.py` (fastembed ONNX pipeline)
-  - `[ ]` `search/ast_parser.py` (Strict search AST to SQL)
-  - `[ ]` `search/hybrid_searcher.py` (Filter-then-rank engine)
-  - `[ ]` `search/rank_fusion.py` (Reciprocal Rank Fusion)
-  - `[ ]` `search/reranker.py` (ONNX Cross-Encoder re-ranker)
-  - `[ ]` `intelligence/explainer.py` (Match Rationale scorecard)
+- `[x]` **Intelligence, Fact Extraction & Search Components**
+  - `[x]` `extraction/deterministic_ner.py` (SpaCy NER, Regex)
+  - `[x]` `extraction/local_llm_fallback.py` (Ollama fallback)
+  - `[x]` `intelligence/embeddings.py` (fastembed ONNX pipeline)
+  - `[x]` `search/ast_parser.py` (Strict search AST to SQL)
+  - `[x]` `search/hybrid_searcher.py` (Filter-then-rank engine)
+  - `[x]` `search/rank_fusion.py` (Reciprocal Rank Fusion)
+  - `[x]` `search/reranker.py` (ONNX Cross-Encoder re-ranker)
+  - `[x]` `intelligence/explainer.py` (Match Rationale scorecard)
 
 - `[ ]` **CRM Timeline & Operational Core**
   - `[ ]` `crm/timeline_ledger.py` (Event-sourced logger)
