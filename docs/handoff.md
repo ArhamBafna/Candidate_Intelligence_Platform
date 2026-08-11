@@ -22,17 +22,19 @@
   - `search/reranker.py` (ONNX Cross-Encoder re-ranker)
   - `intelligence/explainer.py` (Match Rationale scorecard generator)
   - `search/hybrid_searcher.py` (Hybrid search orchestrator)
-- **Tests Created & Passed**: All unit tests for Stage 1, Stage 2, and Stage 3 pass cleanly.
+- **CRM Timeline & Operational Core** (Stage 4) completed:
+  - `crm/timeline_ledger.py` (Event-sourced logger)
+  - `crm/state_machine.py` (Candidate stage machine)
+  - `backups/backup_manager.py` (SQLite backup, CAS sync)
+- **Tests Created & Passed**: All unit tests for Stages 1-4 pass cleanly.
 
 ## What to Work on Next
-1. **CRM Timeline & Operational Core** (Stage 4):
-   - `crm/timeline_ledger.py` (Event-sourced logger)
-   - `crm/state_machine.py` (Candidate stage machine)
-   - `backups/backup_manager.py` (SQLite backup, CAS sync)
-2. **Update `task.md`** as work progresses.
+1. **Frontend / API Integration** (Stage 5):
+   - Build FastAPI endpoints to expose the platform capabilities.
+   - Build UI for recruiters to ingest, search, and manage candidates.
+2. **Review System Performance** under load.
 
 ## Suggested Skills
-- `tdd` – drive red-green-refactor cycles for CRM ledger and state machine.
 - `python-performance-optimization` – profile heavy processing when scaling.
 
 ---

@@ -28,7 +28,7 @@
   - `[x]` `search/reranker.py` (ONNX Cross-Encoder re-ranker)
   - `[x]` `intelligence/explainer.py` (Match Rationale scorecard)
 
-- `[ ]` **CRM Timeline & Operational Core**
-  - `[ ]` `crm/timeline_ledger.py` (Event-sourced logger)
-  - `[ ]` `crm/state_machine.py` (Candidate stage machine)
-  - `[ ]` `backups/backup_manager.py` (SQLite backup, CAS sync)
+- `[x]` **CRM Timeline & Operational Core**
+  - `[x]` `crm/timeline_ledger.py` (Event-sourced logger)
+  - `[x]` `crm/state_machine.py` (Candidate stage machine)
+  - `[x]` `backups/backup_manager.py` (SQLite backup, CAS sync)
