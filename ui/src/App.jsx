@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, X, Clock, Award } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, User, X, Clock, Award, Upload } from 'lucide-react';
 
 function App() {
   const [candidates, setCandidates] = useState([]);
@@ -7,6 +7,7 @@ function App() {
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchCandidates = () => {
     fetch('/api/candidates')
@@ -22,6 +23,31 @@ function App() {
   useEffect(() => {
     fetchCandidates();
   }, []);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/candidates/upload', {
+      method: 'POST',
+      body: formData
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setIsUploading(false);
+        if (data.status === 'success') {
+          fetchCandidates();
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setIsUploading(false);
+      });
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -82,6 +108,13 @@ function App() {
         <div>
           <h1 className="text-3xl font-bold gradient-text tracking-tight">Candidate Intelligence Platform</h1>
           <p className="text-slate-400 mt-1">Local-first, zero-cloud candidate retrieval & CRM platform.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2 text-sm">
+            <Upload size={18} />
+            <span>{isUploading ? 'Ingesting...' : 'Upload Resume'}</span>
+            <input type="file" accept=".pdf,.docx,.doc,.txt" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+          </label>
         </div>
       </header>
 
