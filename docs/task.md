@@ -39,5 +39,5 @@
   - `[x]` `api/schemas/` (Pydantic request/response models)
   - `[x]` `api/routes/candidates.py` (CRUD for candidates, timeline events)
   - `[x]` `api/routes/search.py` (Hybrid search and reranking endpoints)
-  - `[ ]` `ui/` (Frontend UI foundation using Vite + React + Tailwind CSS)
-  - `[ ]` `tests/test_api_*.py` (TDD tests with FastAPI TestClient)
+  - `[x]` `ui/` (Frontend UI foundation using Vite + React + Tailwind CSS)
+  - `[x]` `tests/test_api_*.py` (TDD tests with FastAPI TestClient)
