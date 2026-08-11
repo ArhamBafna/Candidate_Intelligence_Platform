@@ -1,36 +1,52 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from api.dependencies import get_db
 from api.schemas.search import SearchQueryRequest, SearchResponse, SearchResultItem
 from candidate_intelligence_platform.search.hybrid_searcher import search_candidates
+from storage.db_models import Candidate
 
 router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("", response_model=SearchResponse)
-def perform_search(request: SearchQueryRequest):
-    # Construct the full query string from filters and query text
-    # In a real implementation, we'd pass filters securely to the AST parser,
-    # but for now we follow the simple search_candidates interface.
-    
-    query = request.query_text
+def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
+    query_parts = []
+    if request.query_text and request.query_text.strip():
+        query_parts.append(request.query_text.strip())
     if request.city:
-        query += f" AND location:'{request.city}'"
+        query_parts.append(f"location:'{request.city}'")
     if request.min_yoe:
-        query += f" AND yoe >= {request.min_yoe}"
+        query_parts.append(f"yoe >= {request.min_yoe}")
     if request.title:
-        query += f" AND title:'{request.title}'"
+        query_parts.append(f"title:'{request.title}'")
 
-    raw_results = search_candidates(query)
+    full_query = " AND ".join(query_parts) if query_parts else ""
+
+    raw_results = search_candidates(full_query) if full_query else []
     
-    # We slice to top_k
     top_results = raw_results[:request.top_k]
     
     items = []
     for raw in top_results:
-        # Assuming the match rationale dict matches the SearchResultItem roughly
+        cid = raw.get("candidate_id", "")
+        c_info = None
+        if cid:
+            candidate_obj = db.query(Candidate).filter(Candidate.id == cid).first()
+            if candidate_obj:
+                c_info = {
+                    "first_name": candidate_obj.first_name,
+                    "last_name": candidate_obj.last_name,
+                    "current_title": candidate_obj.current_title,
+                    "current_company": candidate_obj.current_company,
+                    "current_city": candidate_obj.current_city,
+                    "availability_status": candidate_obj.availability_status,
+                }
+        
         item = SearchResultItem(
-            candidate_id=raw.get("candidate_id", ""),
+            candidate_id=cid,
             rank=raw.get("rank", 1),
             rrf_score=raw.get("rrf_score", 0.0),
-            match_scorecard=raw.get("match_scorecard", {})
+            match_scorecard=raw.get("match_scorecard", {}),
+            candidate_info=c_info
         )
         items.append(item)
         
