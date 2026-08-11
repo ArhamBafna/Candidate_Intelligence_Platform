@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function CandidateList() {
@@ -220,18 +220,26 @@ function CandidateList() {
                   </button>
                   
                   {openMenuId === candidate.id && (
-                    <div className="absolute right-0 top-8 w-40 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-10" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute right-0 top-8 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-10" onClick={(e) => e.stopPropagation()}>
                       <button 
                         onClick={(e) => { e.stopPropagation(); navigate(`/candidate/${candidate.id}`); }}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors flex items-center gap-2"
                       >
-                        View Details
+                        <User size={14} /> View Details
                       </button>
+                      <a
+                        href={`/api/candidates/${candidate.id}/file`}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors flex items-center gap-2"
+                      >
+                        <Download size={14} /> Download Resume
+                      </a>
                       <button 
                         onClick={(e) => handleReprocess(e, candidate.id)}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors flex items-center gap-2"
                       >
-                        Re-process Data
+                        <RefreshCw size={14} /> Re-process Data
                       </button>
                     </div>
                   )}

@@ -55,8 +55,11 @@ Candidate_Intelligence_Platform/
 - **Deduplication**: Check hash with `storage/cas.py` before parsing.
 - **Testing**: Every module in `ingestion/`, `storage/`, `config/` requires test in `tests/test_<module>.py`. Run `pytest` before declare complete.
 - **Task Tracking**: Update `docs/task.md` `[ ]` -> `[x]`.
+- **Commit, Push**: after minor change to move towards a greater big change, commit. after big changes, push.
+
 
 ## Security & Ops
 - **Privacy**: Local-first. No remote API call or cloud dep without approval.
 - **DB**: SQLite WAL pragmas mandatory.
 - **CAS**: SHA-256 files immutable once written.
+
