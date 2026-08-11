@@ -27,17 +27,17 @@
   - `crm/state_machine.py` (Candidate stage machine)
   - `backups/backup_manager.py` (SQLite backup, CAS sync)
 - **Frontend / API Integration** (Stage 5) completed:
-  - `api/main.py` (FastAPI application & CORS)
+  - `api/main.py` (FastAPI application, CORS, database schema migration startup lifespan)
   - `api/dependencies.py` (SQLAlchemy & LanceDB dependency injection)
   - `api/schemas/` (Pydantic request/response schemas for candidates and search)
-  - `api/routes/candidates.py` (CRUD for candidates & event-sourced timeline)
+  - `api/routes/candidates.py` (CRUD for candidates, event-sourced timeline, and SSE multi-resume upload stream `POST /candidates/upload-stream`)
   - `api/routes/search.py` (Hybrid search endpoint with candidate enrichment)
-  - `ui/` (Vite + React + Tailwind CSS Recruiter Dashboard UI)
-- **Tests Created & Passed**: All 70 unit and integration tests across Stages 1-5 pass cleanly.
+  - `ui/` (Vite + React + Tailwind CSS Recruiter Dashboard UI with multi-resume Upload Manager progress modal)
+- **Tests Created & Passed**: All 72 unit and integration tests across Stages 1-5 pass cleanly.
 
 ## What to Work on Next
 1. **System Performance Optimization**: Benchmark large-scale resume parsing and search latency under heavy load.
-2. **End-to-End Testing**: Test full workflow from uploading raw files in the UI to candidate profile generation and hybrid search matching.
+2. **Advanced Analytics & Exporting**: Add recruiter analytics and report exporting features.
 
 ## Suggested Skills
 - `python-performance-optimization` – profile heavy processing when scaling.

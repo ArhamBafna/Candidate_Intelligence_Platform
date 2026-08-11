@@ -46,5 +46,7 @@ def extract_inferences(text: str) -> list[dict]:
             
         return facts
     except Exception as e:
-        print(f"Ollama inference failed: {e}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Ollama inference failed. AI extraction will be skipped. Error: {e}")
         return []

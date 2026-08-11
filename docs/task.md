@@ -33,11 +33,11 @@
   - `[x]` `crm/state_machine.py` (Candidate stage machine)
   - `[x]` `backups/backup_manager.py` (SQLite backup, CAS sync)
 
-- `[ ]` **API & Recruiter Interface Layer**
-  - `[x]` `api/main.py` (FastAPI application setup, CORS, error handling)
+- `[x]` **API & Recruiter Interface Layer**
+  - `[x]` `api/main.py` (FastAPI application setup, CORS, error handling, database lifespan migration)
   - `[x]` `api/dependencies.py` (Dependency Injection for DB, LanceDB, CAS)
   - `[x]` `api/schemas/` (Pydantic request/response models)
-  - `[x]` `api/routes/candidates.py` (CRUD for candidates, timeline events)
+  - `[x]` `api/routes/candidates.py` (CRUD for candidates, timeline events, multi-resume upload stream)
   - `[x]` `api/routes/search.py` (Hybrid search and reranking endpoints)
-  - `[x]` `ui/` (Frontend UI foundation using Vite + React + Tailwind CSS)
+  - `[x]` `ui/` (Frontend UI with Vite + React + Tailwind CSS & Upload Manager modal)
   - `[x]` `tests/test_api_*.py` (TDD tests with FastAPI TestClient)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, X, Clock, Award, Upload } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, User, X, Clock, Award, Upload, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 function App() {
   const [candidates, setCandidates] = useState([]);
@@ -7,7 +7,10 @@ function App() {
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  
+  // Upload Manager State
+  const [showUploadManager, setShowUploadManager] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState([]);
 
   const fetchCandidates = () => {
     fetch('/api/candidates')
@@ -24,29 +27,68 @@ function App() {
     fetchCandidates();
   }, []);
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-    setIsUploading(true);
+    setShowUploadManager(true);
+    setUploadQueue(files.map(f => ({
+      file_name: f.name,
+      stage: 'QUEUED',
+      status: 'PENDING',
+      progress: 0,
+      message: ''
+    })));
+
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(f => formData.append('files', f));
 
-    fetch('/api/candidates/upload', {
-      method: 'POST',
-      body: formData
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setIsUploading(false);
-        if (data.status === 'success') {
-          fetchCandidates();
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        setIsUploading(false);
+    try {
+      const response = await fetch('/api/candidates/upload-stream', {
+        method: 'POST',
+        body: formData
       });
+
+      if (!response.body) throw new Error('ReadableStream not supported.');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        
+        // Keep the last incomplete chunk in the buffer
+        buffer = lines.pop() || '';
+        
+        for (const block of lines) {
+          const linesInBlock = block.split('\n');
+          for (const line of linesInBlock) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.substring(6));
+                setUploadQueue(prev => {
+                  const newQ = [...prev];
+                  const idx = newQ.findIndex(item => item.file_name === event.file_name);
+                  if (idx !== -1) {
+                    newQ[idx] = { ...newQ[idx], ...event };
+                  }
+                  return newQ;
+                });
+              } catch (err) {
+                console.error('Error parsing SSE event:', err);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Upload stream failed:', err);
+    }
   };
 
   const handleSearch = (e) => {
@@ -112,8 +154,8 @@ function App() {
         <div className="flex items-center gap-3">
           <label className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2 text-sm">
             <Upload size={18} />
-            <span>{isUploading ? 'Ingesting...' : 'Upload Resume'}</span>
-            <input type="file" accept=".pdf,.docx,.doc,.txt" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+            <span>Upload Resume(s)</span>
+            <input type="file" accept=".pdf,.docx,.doc,.txt" multiple className="hidden" onChange={handleFileUpload} />
           </label>
         </div>
       </header>
@@ -266,6 +308,72 @@ function App() {
                   No timeline events logged yet for this candidate.
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Upload Manager Modal */}
+      {showUploadManager && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="glass-panel border-slate-700 max-w-3xl w-full rounded-2xl p-6 relative max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                  <Upload size={22} className="text-indigo-400" /> Upload Manager
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">Processing and ingesting candidates...</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowUploadManager(false);
+                  fetchCandidates();
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Done
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              {uploadQueue.map((item, idx) => (
+                <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <div className="font-medium text-slate-200 text-sm truncate max-w-[200px]" title={item.file_name}>
+                      {item.file_name}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-medium">
+                      {item.status === 'SUCCESS' && <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20"><CheckCircle2 size={14}/> Completed</span>}
+                      {item.status === 'FAILED' && <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-1 rounded border border-red-500/20"><AlertCircle size={14}/> Failed</span>}
+                      {item.status === 'SKIPPED_DUPLICATE' && <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20"><RefreshCw size={14}/> Duplicate</span>}
+                      {item.status === 'IN_PROGRESS' && <span className="text-indigo-400 animate-pulse">{item.stage}...</span>}
+                      {item.status === 'PENDING' && <span className="text-slate-500">Queued</span>}
+                    </div>
+                  </div>
+                  
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        item.status === 'FAILED' ? 'bg-red-500' : 
+                        item.status === 'SKIPPED_DUPLICATE' ? 'bg-amber-500' : 
+                        'bg-indigo-500'
+                      }`} 
+                      style={{ width: `${item.progress}%` }}
+                    ></div>
+                  </div>
+                  
+                  {item.message && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      {item.message}
+                    </div>
+                  )}
+                  {item.candidate_name && item.status === 'SUCCESS' && (
+                    <div className="text-xs text-emerald-500/70 mt-1">
+                      Candidate created: {item.candidate_name}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
