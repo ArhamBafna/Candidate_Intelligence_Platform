@@ -26,15 +26,21 @@
   - `crm/timeline_ledger.py` (Event-sourced logger)
   - `crm/state_machine.py` (Candidate stage machine)
   - `backups/backup_manager.py` (SQLite backup, CAS sync)
-- **Tests Created & Passed**: All unit tests for Stages 1-4 pass cleanly.
+- **Frontend / API Integration** (Stage 5) completed:
+  - `api/main.py` (FastAPI application & CORS)
+  - `api/dependencies.py` (SQLAlchemy & LanceDB dependency injection)
+  - `api/schemas/` (Pydantic request/response schemas for candidates and search)
+  - `api/routes/candidates.py` (CRUD for candidates & event-sourced timeline)
+  - `api/routes/search.py` (Hybrid search endpoint with candidate enrichment)
+  - `ui/` (Vite + React + Tailwind CSS Recruiter Dashboard UI)
+- **Tests Created & Passed**: All 70 unit and integration tests across Stages 1-5 pass cleanly.
 
 ## What to Work on Next
-1. **Frontend / API Integration** (Stage 5):
-   - Build FastAPI endpoints to expose the platform capabilities.
-   - Build UI for recruiters to ingest, search, and manage candidates.
-2. **Review System Performance** under load.
+1. **System Performance Optimization**: Benchmark large-scale resume parsing and search latency under heavy load.
+2. **End-to-End Testing**: Test full workflow from uploading raw files in the UI to candidate profile generation and hybrid search matching.
 
 ## Suggested Skills
 - `python-performance-optimization` – profile heavy processing when scaling.
 
 ---
+*All sensitive data has been redacted.*
