@@ -37,7 +37,7 @@
   - `[x]` `api/main.py` (FastAPI application setup, CORS, error handling)
   - `[x]` `api/dependencies.py` (Dependency Injection for DB, LanceDB, CAS)
   - `[x]` `api/schemas/` (Pydantic request/response models)
-  - `[ ]` `api/routes/candidates.py` (CRUD for candidates, timeline events)
+  - `[x]` `api/routes/candidates.py` (CRUD for candidates, timeline events)
   - `[ ]` `api/routes/search.py` (Hybrid search and reranking endpoints)
   - `[ ]` `ui/` (Frontend UI foundation using @frontend-design principles)
   - `[ ]` `tests/test_api_*.py` (TDD tests with FastAPI TestClient)

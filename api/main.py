@@ -25,6 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from api.routes.candidates import router as candidates_router
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+app.include_router(candidates_router)
+
