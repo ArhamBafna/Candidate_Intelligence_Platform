@@ -34,7 +34,7 @@
   - `[x]` `backups/backup_manager.py` (SQLite backup, CAS sync)
 
 - `[ ]` **API & Recruiter Interface Layer**
-  - `[ ]` `api/main.py` (FastAPI application setup, CORS, error handling)
+  - `[x]` `api/main.py` (FastAPI application setup, CORS, error handling)
   - `[ ]` `api/dependencies.py` (Dependency Injection for DB, LanceDB, CAS)
   - `[ ]` `api/schemas/` (Pydantic request/response models)
   - `[ ]` `api/routes/candidates.py` (CRUD for candidates, timeline events)
