@@ -129,6 +129,32 @@ function App() {
       .catch((err) => console.error(err));
   };
 
+  const handleStatusChange = async (newStatus) => {
+    if (!selectedCandidate) return;
+    try {
+      const res = await fetch(`/api/candidates/${selectedCandidate.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          new_status: newStatus,
+          recruiter_name: 'Recruiter',
+          reason: `Status changed to ${newStatus} via Recruiter UI`
+        })
+      });
+      if (res.ok) {
+        setSelectedCandidate(prev => ({ ...prev, availability_status: newStatus }));
+        fetchCandidates();
+        const timelineRes = await fetch(`/api/candidates/${selectedCandidate.id}/timeline`);
+        const timelineData = await timelineRes.json();
+        if (Array.isArray(timelineData)) {
+          setTimeline(timelineData);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  };
+
   const handleSelectCandidate = (candidate) => {
     setSelectedCandidate(candidate);
     fetch(`/api/candidates/${candidate.id}/timeline`)
@@ -267,10 +293,18 @@ function App() {
                 <p className="text-slate-400 text-sm mt-0.5">
                   {selectedCandidate.current_title || 'Candidate'} {selectedCandidate.current_company ? `at ${selectedCandidate.current_company}` : ''}
                 </p>
-                <div className="flex gap-2 mt-2">
-                  <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    {selectedCandidate.availability_status}
-                  </span>
+                <div className="flex gap-2 mt-2 items-center">
+                  <label className="text-xs text-slate-400 font-medium">Status:</label>
+                  <select 
+                    value={selectedCandidate.availability_status}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-900 text-emerald-400 border border-emerald-500/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="ACTIVE" className="bg-slate-900 text-emerald-400">ACTIVE</option>
+                    <option value="PLACED" className="bg-slate-900 text-indigo-400">PLACED</option>
+                    <option value="INACTIVE" className="bg-slate-900 text-slate-400">INACTIVE</option>
+                    <option value="DNC" className="bg-slate-900 text-red-400">DNC (Do Not Contact)</option>
+                  </select>
                   {selectedCandidate.current_city && (
                     <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1">
                       <MapPin size={12} /> {selectedCandidate.current_city}
