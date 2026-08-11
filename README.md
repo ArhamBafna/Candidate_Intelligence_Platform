@@ -20,6 +20,7 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
   - **Tier 1 (Deterministic)**: Exact match on email, phone, social.
   - **Tier 2 (Probabilistic)**: Jaro-Winkler name similarity matching.
 - ⚡ **Hybrid Search**: **LanceDB** vector store + **SQLite WAL FTS5** full-text search.
+- 🌐 **FastAPI & Recruiter UI**: REST endpoints for candidate retrieval, CRM status management, and a Vite + React + Tailwind CSS dashboard.
 - 🛡️ **100% Local & Private**: 100% offline, zero cloud dep.
 
 ---
@@ -56,7 +57,19 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
 ┌───────────────────────────┐                               ┌───────────────────────────┐
 │   SQLite Database (WAL)   │                               │      LanceDB Vector       │
 │ (Profiles, Records, FTS5) │                               │      Embedded Table       │
-└───────────────────────────┘                               └───────────────────────────┘
+└─────────────┬─────────────┘                               └─────────────┬─────────────┘
+              │                                                           │
+              └───────────────────────────┬───────────────────────────────┘
+                                          │
+                                          ▼
+                             ┌─────────────────────────┐
+                             │   FastAPI REST Backend  │ (API & Hybrid Search Ranks)
+                             └────────────┬────────────┘
+                                          │
+                                          ▼
+                             ┌─────────────────────────┐
+                             │  React + Tailwind UI    │ (Recruiter Dashboard)
+                             └─────────────────────────┘
 ```
 
 ---
@@ -69,6 +82,8 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
 | **Package Manager** | `uv` / `uv_build` | Dependency management & project build |
 | **Relational Database** | SQLite (WAL Mode) + SQLAlchemy 2.0 | Transactional storage & metadata |
 | **Vector Database** | LanceDB `^0.36` | Embedded vector storage & ANN search |
+| **API Framework** | FastAPI `^0.141` | REST services & API endpoints |
+| **Frontend Framework** | Vite + React + Tailwind CSS | Recruiter Web Dashboard |
 | **PDF Extraction** | PyMuPDF + pdfplumber | Document parse & OCR text extract |
 | **DOCX Extraction** | `python-docx` | Word doc parse |
 | **Email Extraction** | `extract-msg` | Outlook `.msg` parse |
@@ -82,7 +97,7 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
 ### Prerequisites
 
 - **Python**: `>=3.14` installed.
-- **uv**: Optional package manager.
+- **Node.js**: `>=18` installed.
 
 ### Installation
 
@@ -103,8 +118,17 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
    pip install -e .
    ```
 
-3. **Verify Config**:
-   Settings managed in `config/settings.py`.
+3. **Run Backend API**:
+   ```bash
+   uv run uvicorn api.main:app --reload
+   ```
+
+4. **Run Recruiter Dashboard UI**:
+   ```bash
+   cd ui
+   npm install
+   npm run dev
+   ```
 
 ---
 
@@ -114,12 +138,13 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
 Candidate_Intelligence_Platform/
 ├── AGENTS.md                  # Compressed guidelines for AI agents
 ├── README.md                  # Project overview & documentation
-├── README.original.md         # Full human-readable backup README
 ├── pyproject.toml             # Project configuration & dependencies
-├── config/                    # Global settings & SQLite setup (database.py, settings.py)
+├── config/                    # Global settings & SQLite setup
 ├── storage/                   # Storage layer (cas.py, db_models.py, vector_store.py)
 ├── ingestion/                 # Processing pipeline (parsers/, chunker.py, entity_resolution.py)
-├── docs/                      # Arch specs & task roadmap (architecture_design_document.md, handoff.md, task.md)
+├── api/                       # FastAPI routes, dependencies, schemas
+├── ui/                        # Vite + React + Tailwind CSS Recruiter UI
+├── docs/                      # Arch specs & task roadmap
 └── tests/                     # Unit test suite
 ```
 
@@ -131,10 +156,6 @@ Run test suite via `pytest`:
 
 ```bash
 pytest
-pytest -v
-pytest tests/test_entity_resolution.py
-pytest tests/test_chunker.py
-pytest tests/test_pdf_parser.py
 ```
 
 ---
@@ -146,8 +167,9 @@ Tracked in [`docs/task.md`](file:///c:/Users/Kamlesh/Desktop/arham-projects/Cand
 - [x] **Setup & Virtualenv** (`pyproject.toml`)
 - [x] **Storage & Data Layer** (`SQLite WAL`, `CAS SHA-256`, `LanceDB`)
 - [x] **Ingestion & Parsers** (`PDF`, `DOCX`, `MSG`, `Chunker`, `Entity Resolution`)
-- [ ] **Extraction & Search** (NER, fastembed embeddings, hybrid rank, RRF)
-- [ ] **CRM Timeline & Ops** (Stage state machine, backup sync)
+- [x] **Extraction & Search** (NER, fastembed embeddings, hybrid rank, RRF)
+- [x] **CRM Timeline & Ops** (Stage state machine, backup sync)
+- [x] **API & Recruiter Interface** (FastAPI, React + Tailwind UI)
 
 ---
 
