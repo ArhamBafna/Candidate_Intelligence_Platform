@@ -5,7 +5,8 @@ from api.dependencies import get_db
 from api.schemas.candidates import (
     CandidateResponse, 
     CandidateStatusUpdate, 
-    TimelineEventResponse
+    TimelineEventResponse,
+    CandidateUpdate
 )
 from storage.db_models import Candidate
 from crm.state_machine import CandidateStateMachine
@@ -52,6 +53,81 @@ def get_candidate_timeline(candidate_id: str, db: Session = Depends(get_db)):
     ledger = TimelineLedger()
     events = ledger.get_events(session=db, candidate_id=candidate_id)
     return events
+
+@router.put("/{candidate_id}", response_model=CandidateResponse)
+def update_candidate(candidate_id: str, update_data: CandidateUpdate, db: Session = Depends(get_db)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    update_dict = update_data.model_dump(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(candidate, key, value)
+        
+    ledger = TimelineLedger()
+    ledger.log_event(
+        session=db,
+        candidate_id=candidate_id,
+        event_type="PROFILE_UPDATED",
+        title="Profile Updated",
+        description="Recruiter manually updated candidate profile",
+        metadata={},
+        created_by="Recruiter"
+    )
+    
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+@router.get("/{candidate_id}/file")
+def get_candidate_file(candidate_id: str, db: Session = Depends(get_db)):
+    from fastapi.responses import FileResponse
+    from storage.cas import CASManager
+    from config.settings import Settings
+    from pathlib import Path
+    
+    rv = db.query(ResumeVersion).filter(
+        ResumeVersion.candidate_id == candidate_id, 
+        ResumeVersion.is_primary == True
+    ).first()
+    
+    if not rv:
+        raise HTTPException(status_code=404, detail="Primary resume not found")
+        
+    cas_mgr = CASManager(Settings().cas_root_dir)
+    ext = f".{rv.file_type.lower()}"
+    shard1 = rv.cas_file_hash[:2]
+    shard2 = rv.cas_file_hash[2:4]
+    filename = f"{rv.cas_file_hash}{ext}"
+    
+    target_path = cas_mgr.root_dir / shard1 / shard2 / filename
+    if not target_path.exists():
+        raise HTTPException(status_code=404, detail="File content missing from CAS")
+        
+    return FileResponse(
+        path=target_path, 
+        filename=rv.original_filename, 
+        media_type="application/pdf" if rv.file_type.upper() == "PDF" else "application/octet-stream"
+    )
+
+@router.post("/{candidate_id}/reprocess")
+def reprocess_candidate(candidate_id: str, db: Session = Depends(get_db)):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    ledger = TimelineLedger()
+    ledger.log_event(
+        session=db,
+        candidate_id=candidate_id,
+        event_type="REPROCESS_TRIGGERED",
+        title="Reprocessing Triggered",
+        description="Recruiter triggered a manual re-processing of candidate data",
+        metadata={},
+        created_by="Recruiter"
+    )
+    db.commit()
+    return {"status": "success", "message": "Reprocessing triggered"}
 
 from fastapi import UploadFile, File
 from fastapi.responses import StreamingResponse

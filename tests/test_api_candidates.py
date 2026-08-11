@@ -106,3 +106,83 @@ def test_get_candidate_timeline(client, db_session: Session):
     assert len(data) == 1
     assert data[0]["event_type"] == "STAGE_CHANGED"
     assert data[0]["created_by"] == "Bob"
+
+def test_update_candidate(client, db_session: Session):
+    c_id = str(uuid.uuid4())
+    c = Candidate(id=c_id, first_name="OldName", last_name="OldLast", availability_status="ACTIVE")
+    db_session.add(c)
+    db_session.commit()
+    
+    response = client.put(
+        f"/candidates/{c_id}",
+        json={"first_name": "NewName", "primary_email": "new@example.com"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["first_name"] == "NewName"
+    assert data["primary_email"] == "new@example.com"
+    assert data["last_name"] == "OldLast"
+    
+    # Check if a timeline event was logged
+    response_timeline = client.get(f"/candidates/{c_id}/timeline")
+    assert response_timeline.status_code == 200
+    timeline_data = response_timeline.json()
+    assert len(timeline_data) == 1
+    assert timeline_data[0]["event_type"] == "PROFILE_UPDATED"
+
+def test_get_candidate_file(client, db_session: Session, tmp_path, monkeypatch):
+    from storage.db_models import ResumeVersion
+    from storage.cas import CASManager
+    from config import settings
+    
+    original_settings = settings.Settings
+    def mock_settings(*args, **kwargs):
+        s = original_settings(*args, **kwargs)
+        s.cas_root_dir = str(tmp_path)
+        return s
+    monkeypatch.setattr(settings, "Settings", mock_settings)
+    
+    c_id = str(uuid.uuid4())
+    c = Candidate(id=c_id, first_name="Jane", last_name="Doe", availability_status="ACTIVE")
+    db_session.add(c)
+    db_session.commit()
+    
+    content = b"PDF dummy content"
+    cas_mgr = CASManager(tmp_path)
+    file_hash, cas_path = cas_mgr.store(content, extension=".pdf")
+    
+    rv = ResumeVersion(
+        id=str(uuid.uuid4()),
+        candidate_id=c_id,
+        cas_file_hash=file_hash,
+        original_filename="jane_resume.pdf",
+        file_type="PDF",
+        raw_text="Jane Resume Content",
+        layout_metadata={},
+        is_primary=True
+    )
+    db_session.add(rv)
+    db_session.commit()
+    
+    response = client.get(f"/candidates/{c_id}/file")
+    assert response.status_code == 200
+    assert response.content == content
+    assert response.headers["content-type"] == "application/pdf"
+
+def test_reprocess_candidate(client, db_session: Session):
+    c_id = str(uuid.uuid4())
+    c = Candidate(id=c_id, first_name="Reprocess", last_name="Test", availability_status="ACTIVE")
+    db_session.add(c)
+    db_session.commit()
+    
+    response = client.post(f"/candidates/{c_id}/reprocess")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    
+    # Check if timeline event was logged
+    response_timeline = client.get(f"/candidates/{c_id}/timeline")
+    assert response_timeline.status_code == 200
+    timeline_data = response_timeline.json()
+    assert len(timeline_data) == 1
+    assert timeline_data[0]["event_type"] == "REPROCESS_TRIGGERED"

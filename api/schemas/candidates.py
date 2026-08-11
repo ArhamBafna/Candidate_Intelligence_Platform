@@ -22,6 +22,23 @@ class CandidateBase(BaseModel):
 class CandidateCreate(CandidateBase):
     pass
 
+class CandidateUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    primary_email: Optional[str] = None
+    primary_phone: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    current_city: Optional[str] = None
+    current_country: Optional[str] = None
+    current_title: Optional[str] = None
+    current_company: Optional[str] = None
+    total_yoe: Optional[float] = None
+    desired_salary_min: Optional[int] = None
+    desired_salary_max: Optional[int] = None
+    currency: Optional[str] = None
+    availability_status: Optional[str] = None
+    custom_attributes: Optional[Dict[str, Any]] = None
+
 class CandidateResponse(CandidateBase):
     id: str
     created_at: Optional[datetime] = None
