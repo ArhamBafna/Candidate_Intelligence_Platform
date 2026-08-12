@@ -262,8 +262,25 @@ async def reprocess_candidate_stream(
 
             raw_text = rv.raw_text if (rv and rv.raw_text) else ""
 
-            # 2. Refresh Full-Text Search (FTS)
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 40, 'message': 'Refreshing FTS search index', 'warnings': []})}\n\n"
+            # 2. Entity Resolution
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities', 'warnings': reprocess_warnings})}\n\n"
+            await asyncio.sleep(0.05)
+            if raw_text:
+                extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                if extracted.get("warnings"):
+                    reprocess_warnings.extend(extracted["warnings"])
+                
+                candidate.first_name = extracted.get("first_name", candidate.first_name)
+                candidate.last_name = extracted.get("last_name", candidate.last_name)
+                if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
+                if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
+                if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
+                
+                candidate_name = f"{candidate.first_name} {candidate.last_name}".strip()
+                db.commit()
+
+            # 3. Refresh Full-Text Search (FTS)
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings})}\n\n"
             await asyncio.sleep(0.05)
             if raw_text:
                 try:
@@ -283,8 +300,8 @@ async def reprocess_candidate_stream(
                     db.rollback()
                     reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
-            # 3. Refresh Vector Embeddings
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings', 'warnings': []})}\n\n"
+            # 4. Refresh Vector Embeddings
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings', 'warnings': reprocess_warnings})}\n\n"
             await asyncio.sleep(0.05)
             if raw_text:
                 try:
@@ -322,7 +339,7 @@ async def reprocess_candidate_stream(
                 except Exception:
                     reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
 
-            # 4. Log Timeline Event
+            # 5. Log Timeline Event
             yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
             await asyncio.sleep(0.05)
             ledger = TimelineLedger()
@@ -337,7 +354,7 @@ async def reprocess_candidate_stream(
             )
             db.commit()
 
-            # 5. Completed
+            # 6. Completed
             yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully', 'warnings': reprocess_warnings})}\n\n"
         except Exception as e:
             db.rollback()
