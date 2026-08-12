@@ -41,3 +41,5 @@
   - `[x]` `api/routes/search.py` (Hybrid search and reranking endpoints)
   - `[x]` `ui/` (Frontend UI with Vite + React + Tailwind CSS & Upload Manager modal)
   - `[x]` `tests/test_api_*.py` (TDD tests with FastAPI TestClient)
+  - `[x]` `tests/` (Refactored and compressed test suite with centralized `conftest.py` fixtures & deep subsystem test modules)
+
