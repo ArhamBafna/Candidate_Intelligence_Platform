@@ -41,19 +41,19 @@ def test_extract_candidate_profile_hybrid_deterministic():
     San Francisco, CA
     Skills: Python, SQL, Docker
     """
-    res = extract_candidate_profile_hybrid(text, confidence_threshold=0.40)
+    res = extract_candidate_profile_hybrid(text, confidence_threshold=0.70)
     assert res["first_name"] == "John"
     assert res["last_name"] == "Doe"
     assert res["primary_email"] == "john.doe@example.com"
     assert res["used_ai_fallback"] is False
-    assert res["confidence_score"] >= 0.40
+    assert res["confidence_score"] >= 0.70
 
 def test_extract_candidate_profile_hybrid_ai_fallback(monkeypatch):
-    # Text with missing email/phone and poor formatting to trigger low Tier 1 confidence
-    text = "obscure resume text without clear contact information"
+    # Missing email triggers AI fallback even if name is present
+    text = "John Doe\nSenior Software Engineer\nSkills: Python"
     
     class MockMessage:
-        content = '{"claims": [{"claim_category": "PERSON", "claim_key": "name", "claim_value": "Jane Smith"}, {"claim_category": "CONTACT", "claim_key": "email", "claim_value": "jane.smith@test.com"}]}'
+        content = '{"claims": [{"claim_category": "PERSON", "claim_key": "name", "claim_value": "John Doe"}, {"claim_category": "CONTACT", "claim_key": "email", "claim_value": "john.doe@inferred.com"}]}'
         
     class MockResponse:
         message = MockMessage()
@@ -64,6 +64,6 @@ def test_extract_candidate_profile_hybrid_ai_fallback(monkeypatch):
     import ollama
     monkeypatch.setattr(ollama, "chat", mock_chat)
     
-    res = extract_candidate_profile_hybrid(text, confidence_threshold=0.50)
+    res = extract_candidate_profile_hybrid(text)
     assert res["used_ai_fallback"] is True
-    assert res["primary_email"] == "jane.smith@test.com"
+    assert res["primary_email"] == "john.doe@inferred.com"

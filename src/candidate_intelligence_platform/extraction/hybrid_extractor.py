@@ -55,12 +55,13 @@ def calculate_tier1_confidence(facts: List[Dict[str, Any]], parsed_profile: Dict
 
 def extract_candidate_profile_hybrid(
     text: str, 
-    confidence_threshold: float = 0.40, 
+    confidence_threshold: float = 0.75, 
     model_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Extract candidate profile using Tier 1 deterministic parsing first.
-    If Tier 1 confidence is below confidence_threshold (VERY LOW), trigger Tier 2 local AI LLM extraction.
+    If Tier 1 confidence is below confidence_threshold (0.75) or missing key fields (Email, Job Title, or Name),
+    trigger Tier 2 local AI LLM extraction.
     """
     facts = extract_facts(text)
     
@@ -117,8 +118,14 @@ def extract_candidate_profile_hybrid(
     tier1_confidence = calculate_tier1_confidence(facts, profile)
     used_ai = False
 
-    # Check if Tier 1 confidence is VERY LOW (< threshold)
-    if tier1_confidence < confidence_threshold:
+    # Check if key fields are missing or if Tier 1 confidence is below 0.75 threshold
+    missing_key_fields = (
+        profile["first_name"] == "Uploaded" 
+        or not profile["primary_email"] 
+        or profile["current_title"] == "Candidate"
+    )
+
+    if tier1_confidence < confidence_threshold or missing_key_fields:
         ai_claims = extract_inferences(text, model_name=model_name)
         if ai_claims:
             used_ai = True
