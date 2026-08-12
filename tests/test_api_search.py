@@ -5,8 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from api.main import app
-from api.dependencies import get_db
-from storage.db_models import Base, Candidate
+from api.dependencies import get_db, get_vector_db
+from storage.db_models import Base, Candidate, init_db
+from storage.vector_store import get_lancedb_connection
 import uuid
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def db_engine():
         connect_args={"check_same_thread": False}, 
         poolclass=StaticPool
     )
-    Base.metadata.create_all(bind=engine)
+    init_db(engine)
     yield engine
 
 @pytest.fixture
@@ -78,3 +79,42 @@ def test_search_candidates(mock_search, client, db_session):
     assert data["results"][0]["candidate_id"] == cid
     assert data["results"][0]["rrf_score"] == 0.0328
     assert data["results"][0]["candidate_info"]["first_name"] == "Search"
+
+def test_upload_and_search_exact_keyword_integration(client, tmp_path, monkeypatch):
+    from config.settings import Settings
+    def mock_settings():
+        return Settings(
+            cas_root_dir=str(tmp_path / "cas"), 
+            db_path=":memory:", 
+            vector_db_path=str(tmp_path / "vector")
+        )
+    monkeypatch.setattr("api.routes.candidates.Settings", mock_settings)
+    
+    vec_path = str(tmp_path / "vector")
+    monkeypatch.setattr("api.dependencies._settings", mock_settings())
+    monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: get_lancedb_connection(vec_path))
+    monkeypatch.setattr("api.routes.search.get_vector_db", lambda: get_lancedb_connection(vec_path))
+
+    # 1. Upload Java resume
+    resume_bytes = b"Java Developer\nSenior Software Engineer\nExperienced in Java, Spring Boot, microservices architecture."
+    upload_res = client.post(
+        "/candidates/upload", 
+        files={"file": ("java_resume.txt", resume_bytes, "text/plain")}
+    )
+    assert upload_res.status_code == 200
+    upload_data = upload_res.json()
+    assert upload_data["status"] == "success"
+    cand_id = upload_data["candidate_id"]
+
+    # 2. Search exact query "java"
+    search_res = client.post(
+        "/search",
+        json={"query_text": "java"}
+    )
+    assert search_res.status_code == 200
+    search_data = search_res.json()
+    
+    assert search_data["total_results"] >= 1
+    assert search_data["results"][0]["candidate_id"] == cand_id
+    assert search_data["results"][0]["candidate_info"]["first_name"] == "Java"
+

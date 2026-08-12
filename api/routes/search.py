@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from api.dependencies import get_db
+from api.dependencies import get_db, get_vector_db
 from api.schemas.search import SearchQueryRequest, SearchResponse, SearchResultItem
 from candidate_intelligence_platform.search.hybrid_searcher import search_candidates
 from storage.db_models import Candidate
@@ -21,7 +21,8 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
 
     full_query = " AND ".join(query_parts) if query_parts else ""
 
-    raw_results = search_candidates(full_query) if full_query else []
+    vector_db = get_vector_db()
+    raw_results = search_candidates(full_query, db, vector_db) if full_query else []
     
     top_results = raw_results[:request.top_k]
     

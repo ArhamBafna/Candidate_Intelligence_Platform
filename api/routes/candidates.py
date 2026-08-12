@@ -11,6 +11,12 @@ from api.schemas.candidates import (
 from storage.db_models import Candidate
 from crm.state_machine import CandidateStateMachine
 from crm.timeline_ledger import TimelineLedger
+from sqlalchemy import text
+from ingestion.chunker import chunk_document
+from ingestion.parsers.models import ParsedDocument
+from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+from api.dependencies import get_vector_db
+from storage.vector_store import CandidateSectionVector
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -201,9 +207,46 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
         event_type="RESUME_INGESTED",
         title="Resume Ingested",
         description=f"File {file.filename} uploaded and processed",
+        metadata={},
         created_by="Recruiter"
     )
     db.commit()
+
+    # FTS Insertion
+    db.execute(
+        text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
+        {
+            "cid": cand_id,
+            "fname": f"{cand.first_name} {cand.last_name}",
+            "title": cand.current_title,
+            "company": cand.current_company or "",
+            "content": raw_text
+        }
+    )
+    db.commit()
+
+    # Vector Insertion
+    doc = ParsedDocument(text=raw_text, pages=1)
+    chunks = chunk_document(doc, cand_id, "SUMMARY")
+    if chunks:
+        texts = [c.text for c in chunks]
+        embeddings = generate_embeddings(texts)
+        vector_db = get_vector_db()
+        table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+        records = []
+        for i, chunk in enumerate(chunks):
+            records.append({
+                "chunk_id": chunk.chunk_id,
+                "candidate_id": chunk.candidate_id,
+                "resume_version_id": rv.id,
+                "section_type": chunk.section_name,
+                "chunk_text": chunk.text,
+                "vector": embeddings[i],
+                "start_offset": chunk.start_offset,
+                "end_offset": chunk.end_offset
+            })
+        table.add(records)
+
     return {"status": "success", "candidate_id": cand_id, "first_name": cand.first_name, "last_name": cand.last_name}
 
 @router.post("/upload-stream")
@@ -249,6 +292,8 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 # 3. Chunking
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'CHUNKING', 'status': 'IN_PROGRESS', 'progress': 50})}\n\n"
                 await asyncio.sleep(0.01)
+                doc = ParsedDocument(text=raw_text, pages=1)
+                chunks = chunk_document(doc, cand_id if 'cand_id' in locals() else "tmp", "SUMMARY")
                 
                 # 4. Entity Resolution (simplified extraction)
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 70})}\n\n"
@@ -295,6 +340,41 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                     created_by="Recruiter"
                 )
                 db.commit()
+
+                # FTS Insertion
+                db.execute(
+                    text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
+                    {
+                        "cid": cand_id,
+                        "fname": f"{cand.first_name} {cand.last_name}",
+                        "title": cand.current_title,
+                        "company": cand.current_company or "",
+                        "content": raw_text
+                    }
+                )
+                db.commit()
+
+                # Vector Insertion (use pre-computed chunks but fix candidate_id)
+                if chunks:
+                    for c in chunks:
+                        c.candidate_id = cand_id
+                    texts = [c.text for c in chunks]
+                    embeddings = generate_embeddings(texts)
+                    vector_db = get_vector_db()
+                    table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                    records = []
+                    for i, chunk in enumerate(chunks):
+                        records.append({
+                            "chunk_id": chunk.chunk_id,
+                            "candidate_id": chunk.candidate_id,
+                            "resume_version_id": rv.id,
+                            "section_type": chunk.section_name,
+                            "chunk_text": chunk.text,
+                            "vector": embeddings[i],
+                            "start_offset": chunk.start_offset,
+                            "end_offset": chunk.end_offset
+                        })
+                    table.add(records)
                 
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}'})}\n\n"
                 

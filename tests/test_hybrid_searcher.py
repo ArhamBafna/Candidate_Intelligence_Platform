@@ -7,10 +7,10 @@ def test_search_candidates(monkeypatch):
     def mock_parse(q):
         return "SELECT candidates.id FROM candidates WHERE candidates.current_city = :location", {"location": "NYC", "fts_query": "python"}
         
-    def mock_db_fts(sql, params):
+    def mock_db_fts(sql, params, db):
         return {"cand_1": 1, "cand_2": 2}
         
-    def mock_vector_search(query_text, candidate_ids):
+    def mock_vector_search(query_text, candidate_ids, vector_db):
         return {"cand_2": 1, "cand_1": 2}
         
     def mock_fusion(fts, vec):
@@ -29,9 +29,9 @@ def test_search_candidates(monkeypatch):
     monkeypatch.setattr(hs, "reciprocal_rank_fusion", mock_fusion)
     monkeypatch.setattr(hs, "rerank_candidates", mock_rerank)
     monkeypatch.setattr(hs, "build_match_rationale", mock_explainer)
-    monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids: ["doc2", "doc1"])
+    monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: ["doc2", "doc1"])
     
-    results = search_candidates(query)
+    results = search_candidates(query, None, None)
     
     assert len(results) == 2
     assert results[0]["candidate_id"] == "cand_2"

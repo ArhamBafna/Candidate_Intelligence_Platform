@@ -13,3 +13,4 @@ venv/
 storage/documents/
 storage/cas_blobs/
 storage/vector_index/
+storage/lancedb/
