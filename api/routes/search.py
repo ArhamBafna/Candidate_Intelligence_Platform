@@ -22,7 +22,10 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
     full_query = " AND ".join(query_parts) if query_parts else ""
 
     vector_db = get_vector_db()
-    raw_results = search_candidates(full_query, db, vector_db) if full_query else []
+    if full_query:
+        raw_results, warnings = search_candidates(full_query, db, vector_db, return_warnings=True)
+    else:
+        raw_results, warnings = [], []
     
     top_results = raw_results[:request.top_k]
     
@@ -54,5 +57,7 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
     return SearchResponse(
         query=request.query_text,
         total_results=len(items),
-        results=items
+        results=items,
+        warnings=warnings
     )
+

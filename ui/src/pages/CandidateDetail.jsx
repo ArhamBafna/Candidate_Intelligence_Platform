@@ -133,7 +133,8 @@ function CandidateDetail() {
                   status: event.status,
                   progress: event.progress,
                   message: event.message,
-                  candidateName: event.candidate_name || prev.candidateName
+                  candidateName: event.candidate_name || prev.candidateName,
+                  warnings: event.warnings || prev.warnings || []
                 } : null);
               } catch (err) {
                 console.error('Error parsing SSE event:', err);
@@ -487,10 +488,25 @@ function CandidateDetail() {
                   4. Timeline
                 </div>
               </div>
+
+              {reprocessState.warnings && reprocessState.warnings.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300">
+                  <div className="font-semibold text-amber-400 flex items-center gap-1.5 mb-1">
+                    <AlertCircle size={14} className="shrink-0 text-amber-400" />
+                    <span>Reprocessing warnings / skipped steps:</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-amber-300/90 text-[11px]">
+                    {reprocessState.warnings.map((w, wIdx) => (
+                      <li key={wIdx}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

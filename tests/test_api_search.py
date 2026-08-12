@@ -49,19 +49,23 @@ def test_search_candidates(mock_search, client, db_session):
     db_session.add(c)
     db_session.commit()
 
-    mock_search.return_value = [
-        {
-            "candidate_id": cid,
-            "rank": 1,
-            "rrf_score": 0.0328,
-            "match_scorecard": {
-                "strict_filters": [],
-                "keyword_matches": [],
-                "semantic_matches": [],
-                "ai_inferences": []
+    mock_search.return_value = (
+        [
+            {
+                "candidate_id": cid,
+                "rank": 1,
+                "rrf_score": 0.0328,
+                "match_scorecard": {
+                    "strict_filters": [],
+                    "keyword_matches": [],
+                    "semantic_matches": [],
+                    "ai_inferences": []
+                }
             }
-        }
-    ]
+        ],
+        ["Vector search skipped (test warning)"]
+    )
+
 
     response = client.post(
         "/search",
@@ -76,6 +80,7 @@ def test_search_candidates(mock_search, client, db_session):
     data = response.json()
     assert data["query"] == "Python Engineer"
     assert data["total_results"] == 1
+    assert "warnings" in data
     assert data["results"][0]["candidate_id"] == cid
     assert data["results"][0]["rrf_score"] == 0.0328
     assert data["results"][0]["candidate_info"]["first_name"] == "Search"

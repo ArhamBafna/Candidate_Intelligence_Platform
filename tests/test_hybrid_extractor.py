@@ -67,3 +67,18 @@ def test_extract_candidate_profile_hybrid_ai_fallback(monkeypatch):
     res = extract_candidate_profile_hybrid(text)
     assert res["used_ai_fallback"] is True
     assert res["primary_email"] == "john.doe@inferred.com"
+
+def test_extract_candidate_profile_hybrid_ai_fallback_failed_warning(monkeypatch):
+    # Text triggers fallback, but ollama returns []
+    text = "Jane Smith\nSoftware Engineer\nSkills: Python"
+    
+    def mock_extract_inferences(*args, **kwargs):
+        return []
+        
+    monkeypatch.setattr("candidate_intelligence_platform.extraction.hybrid_extractor.extract_inferences", mock_extract_inferences)
+    
+    res = extract_candidate_profile_hybrid(text)
+    assert res["used_ai_fallback"] is False
+    assert "warnings" in res
+    assert any("LLM fallback attempted" in w for w in res["warnings"])
+

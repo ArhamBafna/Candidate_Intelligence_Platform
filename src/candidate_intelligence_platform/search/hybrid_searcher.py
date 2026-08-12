@@ -14,20 +14,37 @@ def execute_fts_query(sql: str, params: dict, db) -> dict[str, int]:
         ranks[row[0]] = rank
     return ranks
 
-def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db) -> dict[str, int]:
+def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, warnings: list[str] = None) -> dict[str, int]:
     if not query_text:
         return {}
     
-    embeddings = generate_embeddings([query_text])
-    query_vector = embeddings[0]
+    try:
+        embeddings = generate_embeddings([query_text])
+        query_vector = embeddings[0]
+    except Exception as e:
+        if warnings is not None:
+            warnings.append("Semantic vector search skipped (embedding model unavailable); showing keyword matches.")
+        return {}
     
+    if not vector_db:
+        if warnings is not None:
+            warnings.append("Semantic vector search skipped (LanceDB connection unavailable); showing keyword matches.")
+        return {}
+
     try:
         table = vector_db.open_table("candidate_vectors")
     except Exception:
         # Table might not exist if no resumes uploaded
+        if warnings is not None:
+            warnings.append("Semantic vector search skipped (candidate_vectors table not found); showing keyword matches.")
         return {}
         
-    results = table.search(query_vector).limit(100).to_list()
+    try:
+        results = table.search(query_vector).limit(100).to_list()
+    except Exception as e:
+        if warnings is not None:
+            warnings.append(f"Semantic vector search skipped ({str(e)}); showing keyword matches.")
+        return {}
     
     ranks = {}
     current_rank = 1
@@ -59,19 +76,24 @@ def fetch_candidate_documents(candidate_ids: list[str], db) -> list[str]:
     doc_map = {row.candidate_id: row.raw_text for row in docs}
     return [doc_map.get(cid, "") for cid in candidate_ids]
 
-def search_candidates(query: str, db, vector_db) -> list[dict]:
+def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
+    warnings = []
     sql, params = parse_query_to_sql(query)
     fts_query = params.get("fts_query", query)
     
     fts_ranks = execute_fts_query(sql, params, db)
     
     filtered_ids = list(fts_ranks.keys())
-    vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db)
+    try:
+        vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db, warnings=warnings)
+    except TypeError:
+        vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db)
     
     rrf_results = reciprocal_rank_fusion(fts_ranks, vector_ranks)
+
     
     if not rrf_results:
-        return []
+        return ([], warnings) if return_warnings else []
         
     top_candidates = [cid for cid, score in rrf_results[:50]]
     documents = fetch_candidate_documents(top_candidates, db)
@@ -86,4 +108,5 @@ def search_candidates(query: str, db, vector_db) -> list[dict]:
         rationale = build_match_rationale(cid, rank, rrf)
         results.append(rationale)
         
-    return results
+    return (results, warnings) if return_warnings else results
+

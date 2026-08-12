@@ -19,3 +19,5 @@ class SearchResponse(BaseModel):
     query: str
     total_results: int
     results: List[SearchResultItem]
+    warnings: List[str] = Field(default_factory=list)
+

@@ -243,15 +243,16 @@ async def reprocess_candidate_stream(
     vector_db = Depends(get_vector_db)
 ):
     async def stream_generator():
+        reprocess_warnings = []
         try:
             # 1. Fetch Candidate & Resume
             candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
             if not candidate:
-                yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'message': 'Candidate not found', 'progress': 100})}\n\n"
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'message': 'Candidate not found', 'progress': 100, 'warnings': []})}\n\n"
                 return
 
             candidate_name = f"{candidate.first_name} {candidate.last_name}".strip()
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 15, 'message': 'Fetching resume and candidate profile'})}\n\n"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 15, 'message': 'Fetching resume and candidate profile', 'warnings': []})}\n\n"
             await asyncio.sleep(0.05)
 
             rv = db.query(ResumeVersion).filter(
@@ -262,7 +263,7 @@ async def reprocess_candidate_stream(
             raw_text = rv.raw_text if (rv and rv.raw_text) else ""
 
             # 2. Refresh Full-Text Search (FTS)
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 40, 'message': 'Refreshing FTS search index'})}\n\n"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 40, 'message': 'Refreshing FTS search index', 'warnings': []})}\n\n"
             await asyncio.sleep(0.05)
             if raw_text:
                 try:
@@ -280,45 +281,49 @@ async def reprocess_candidate_stream(
                     db.commit()
                 except Exception:
                     db.rollback()
+                    reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
             # 3. Refresh Vector Embeddings
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings'})}\n\n"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings', 'warnings': []})}\n\n"
             await asyncio.sleep(0.05)
-            if raw_text and vector_db:
-                if hasattr(vector_db, "delete_candidate_vectors"):
-                    vector_db.delete_candidate_vectors(candidate_id)
-                else:
-                    try:
-                        tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
-                        if "candidate_vectors" in tables:
-                            table = vector_db.open_table("candidate_vectors")
-                            table.delete(f'candidate_id = "{candidate_id}"')
-                    except Exception:
-                        pass
-                
-                doc = ParsedDocument(text=raw_text, pages=1)
-                chunks = chunk_document(doc, candidate_id, "SUMMARY")
-                if chunks:
-                    texts = [c.text for c in chunks]
-                    embeddings = generate_embeddings(texts)
-                    if hasattr(vector_db, "create_table"):
-                        table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                        records = []
-                        for i, chunk in enumerate(chunks):
-                            records.append({
-                                "chunk_id": chunk.chunk_id,
-                                "candidate_id": chunk.candidate_id,
-                                "resume_version_id": rv.id if rv else "",
-                                "section_type": chunk.section_name,
-                                "chunk_text": chunk.text,
-                                "vector": embeddings[i],
-                                "start_offset": chunk.start_offset,
-                                "end_offset": chunk.end_offset
-                            })
-                        table.add(records)
+            if raw_text:
+                try:
+                    if vector_db:
+                        if hasattr(vector_db, "delete_candidate_vectors"):
+                            vector_db.delete_candidate_vectors(candidate_id)
+                        else:
+                            tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
+                            if "candidate_vectors" in tables:
+                                table = vector_db.open_table("candidate_vectors")
+                                table.delete(f'candidate_id = "{candidate_id}"')
+                        
+                        doc = ParsedDocument(text=raw_text, pages=1)
+                        chunks = chunk_document(doc, candidate_id, "SUMMARY")
+                        if chunks:
+                            texts = [c.text for c in chunks]
+                            embeddings = generate_embeddings(texts)
+                            if hasattr(vector_db, "create_table"):
+                                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                                records = []
+                                for i, chunk in enumerate(chunks):
+                                    records.append({
+                                        "chunk_id": chunk.chunk_id,
+                                        "candidate_id": chunk.candidate_id,
+                                        "resume_version_id": rv.id if rv else "",
+                                        "section_type": chunk.section_name,
+                                        "chunk_text": chunk.text,
+                                        "vector": embeddings[i],
+                                        "start_offset": chunk.start_offset,
+                                        "end_offset": chunk.end_offset
+                                    })
+                                table.add(records)
+                    else:
+                        reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
+                except Exception:
+                    reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
 
             # 4. Log Timeline Event
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event'})}\n\n"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
             await asyncio.sleep(0.05)
             ledger = TimelineLedger()
             ledger.log_event(
@@ -333,12 +338,13 @@ async def reprocess_candidate_stream(
             db.commit()
 
             # 5. Completed
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully'})}\n\n"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully', 'warnings': reprocess_warnings})}\n\n"
         except Exception as e:
             db.rollback()
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e)})}\n\n"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e), 'warnings': reprocess_warnings})}\n\n"
 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
 
 from fastapi import UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -454,6 +460,7 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
 async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
     async def stream_generator():
         for file in files:
+            file_warnings = []
             try:
                 # 1. Hashing
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'IN_PROGRESS', 'progress': 10})}\n\n"
@@ -464,7 +471,7 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 file_hash = hashlib.sha256(content).hexdigest()
                 existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
                 if existing_rv:
-                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'SKIPPED_DUPLICATE', 'message': 'File already exists', 'progress': 100})}\n\n"
+                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'SKIPPED_DUPLICATE', 'message': 'File already exists', 'progress': 100, 'warnings': []})}\n\n"
                     continue
                 
                 _, cas_path = cas_mgr.store(content, extension=ext)
@@ -480,6 +487,7 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                         raw_text = doc.text
                     except Exception:
                         raw_text = content.decode("utf-8", errors="ignore")
+                        file_warnings.append("Structured PDF parsing failed; continued using raw text fallback.")
                 elif ext.lower() in [".docx", ".doc"]:
                     try:
                         from ingestion.parsers.docx_parser import parse_docx
@@ -487,6 +495,7 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                         raw_text = doc.text
                     except Exception:
                         raw_text = content.decode("utf-8", errors="ignore")
+                        file_warnings.append("Structured DOCX parsing failed; continued using raw text fallback.")
                 else:
                     raw_text = content.decode("utf-8", errors="ignore")
                     
@@ -499,6 +508,9 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 # 4. Entity Resolution (simplified extraction)
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 70})}\n\n"
                 extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                if extracted.get("warnings"):
+                    file_warnings.extend(extracted["warnings"])
+
                 cand_id = str(uuid.uuid4())
                 cand = Candidate(
                     id=cand_id,
@@ -553,30 +565,35 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
 
                 # Vector Insertion (use pre-computed chunks but fix candidate_id)
                 if chunks:
-                    for c in chunks:
-                        c.candidate_id = cand_id
-                    texts = [c.text for c in chunks]
-                    embeddings = generate_embeddings(texts)
-                    vector_db = get_vector_db()
-                    table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                    records = []
-                    for i, chunk in enumerate(chunks):
-                        records.append({
-                            "chunk_id": chunk.chunk_id,
-                            "candidate_id": chunk.candidate_id,
-                            "resume_version_id": rv.id,
-                            "section_type": chunk.section_name,
-                            "chunk_text": chunk.text,
-                            "vector": embeddings[i],
-                            "start_offset": chunk.start_offset,
-                            "end_offset": chunk.end_offset
-                        })
-                    table.add(records)
+                    try:
+                        for c in chunks:
+                            c.candidate_id = cand_id
+                        texts = [c.text for c in chunks]
+                        embeddings = generate_embeddings(texts)
+                        vector_db = get_vector_db()
+                        if vector_db:
+                            table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                            records = []
+                            for i, chunk in enumerate(chunks):
+                                records.append({
+                                    "chunk_id": chunk.chunk_id,
+                                    "candidate_id": chunk.candidate_id,
+                                    "resume_version_id": rv.id,
+                                    "section_type": chunk.section_name,
+                                    "chunk_text": chunk.text,
+                                    "vector": embeddings[i],
+                                    "start_offset": chunk.start_offset,
+                                    "end_offset": chunk.end_offset
+                                })
+                            table.add(records)
+                    except Exception:
+                        file_warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
                 
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}'})}\n\n"
+                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}', 'warnings': file_warnings})}\n\n"
                 
             except Exception as e:
                 db.rollback()
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100})}\n\n"
+                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100, 'warnings': file_warnings})}\n\n"
                 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
+

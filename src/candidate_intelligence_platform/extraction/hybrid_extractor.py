@@ -118,6 +118,8 @@ def extract_candidate_profile_hybrid(
     tier1_confidence = calculate_tier1_confidence(facts, profile)
     used_ai = False
 
+    warnings = []
+
     # Check if key fields are missing or if Tier 1 confidence is below 0.75 threshold
     missing_key_fields = (
         profile["first_name"] == "Uploaded" 
@@ -144,10 +146,14 @@ def extract_candidate_profile_hybrid(
                     profile["primary_email"] = str(val)
                 elif cat == "EMPLOYMENT" and val and (profile["current_title"] == "Candidate" or not profile["current_title"]):
                     profile["current_title"] = str(val)[:100]
+        else:
+            warnings.append("LLM fallback attempted but LLM service/model unavailable; continued using rule-based profile extraction.")
 
     return {
         **profile,
         "confidence_score": tier1_confidence if not used_ai else 0.85,
         "used_ai_fallback": used_ai,
-        "facts": facts
+        "facts": facts,
+        "warnings": warnings
     }
+

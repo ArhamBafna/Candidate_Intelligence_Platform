@@ -72,6 +72,8 @@ def test_upload_stream_multi_resume(client, tmp_path, monkeypatch):
     completed_events = [e for e in events if e.get("stage") == "COMPLETED"]
     print(f"DEBUG EVENTS: {events}")
     assert len(completed_events) == 2
+    for e in completed_events:
+        assert "warnings" in e
     
     names = {e.get("candidate_name") for e in completed_events}
     assert "John Doe" in names

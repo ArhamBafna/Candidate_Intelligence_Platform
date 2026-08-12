@@ -11,12 +11,16 @@ function CandidateList() {
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Search & Warnings State
+  const [searchWarnings, setSearchWarnings] = useState([]);
+  
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
   const [uploadQueue, setUploadQueue] = useState([]);
 
   // Reprocess Manager State
   const [reprocessState, setReprocessState] = useState(null);
+
 
   const fetchCandidates = () => {
     fetch('/api/candidates')
@@ -101,6 +105,7 @@ function CandidateList() {
     e.preventDefault();
     if (!query.trim()) {
       setIsSearching(false);
+      setSearchWarnings([]);
       fetchCandidates();
       return;
     }
@@ -113,27 +118,31 @@ function CandidateList() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data && data.results) {
-          const mapped = data.results.map((resItem) => {
-            const info = resItem.candidate_info || {};
-            return {
-              id: resItem.candidate_id,
-              first_name: info.first_name || 'Candidate',
-              last_name: info.last_name || `#${resItem.candidate_id.substring(0, 6)}`,
-              current_title: info.current_title || 'Software Engineer',
-              current_company: info.current_company || 'Tech Corp',
-              current_city: info.current_city || 'Remote',
-              availability_status: info.availability_status || 'ACTIVE',
-              rrf_score: resItem.rrf_score,
-              rank: resItem.rank,
-              match_scorecard: resItem.match_scorecard
-            };
-          });
-          setCandidates(mapped);
+        if (data) {
+          setSearchWarnings(data.warnings || []);
+          if (data.results) {
+            const mapped = data.results.map((resItem) => {
+              const info = resItem.candidate_info || {};
+              return {
+                id: resItem.candidate_id,
+                first_name: info.first_name || 'Candidate',
+                last_name: info.last_name || `#${resItem.candidate_id.substring(0, 6)}`,
+                current_title: info.current_title || 'Software Engineer',
+                current_company: info.current_company || 'Tech Corp',
+                current_city: info.current_city || 'Remote',
+                availability_status: info.availability_status || 'ACTIVE',
+                rrf_score: resItem.rrf_score,
+                rank: resItem.rank,
+                match_scorecard: resItem.match_scorecard
+              };
+            });
+            setCandidates(mapped);
+          }
         }
       })
       .catch((err) => console.error(err));
   };
+
 
   const toggleMenu = (e, id) => {
     e.stopPropagation();
@@ -202,7 +211,8 @@ function CandidateList() {
                   status: event.status,
                   progress: event.progress,
                   message: event.message,
-                  candidateName: event.candidate_name || prev.candidateName
+                  candidateName: event.candidate_name || prev.candidateName,
+                  warnings: event.warnings || prev.warnings || []
                 } : null);
               } catch (err) {
                 console.error('Error parsing SSE event:', err);
@@ -259,8 +269,24 @@ function CandidateList() {
         </form>
       </section>
 
+      {/* Search Warning Banner */}
+      {searchWarnings && searchWarnings.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 text-amber-300 text-sm font-medium shadow-lg shadow-amber-950/20">
+          <AlertCircle size={20} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="font-bold text-amber-200">Search Notice (Skipped components / fallbacks):</span>
+            <ul className="list-disc list-inside space-y-1 text-amber-300/90 text-xs">
+              {searchWarnings.map((w, idx) => (
+                <li key={idx}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Candidate List Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
         {candidates.map((candidate) => (
           <div 
             key={candidate.id} 
@@ -425,8 +451,23 @@ function CandidateList() {
                       Candidate created: {item.candidate_name}
                     </div>
                   )}
+
+                  {item.warnings && item.warnings.length > 0 && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 mt-1 text-xs text-amber-300">
+                      <div className="font-semibold text-amber-400 flex items-center gap-1.5 mb-1">
+                        <AlertCircle size={14} className="shrink-0 text-amber-400" />
+                        <span>Skipped steps / notices:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-amber-300/90 text-[11px]">
+                        {item.warnings.map((w, wIdx) => (
+                          <li key={wIdx}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               ))}
+
             </div>
           </div>
         </div>
@@ -550,10 +591,25 @@ function CandidateList() {
                   4. Timeline
                 </div>
               </div>
+
+              {reprocessState.warnings && reprocessState.warnings.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300">
+                  <div className="font-semibold text-amber-400 flex items-center gap-1.5 mb-1">
+                    <AlertCircle size={14} className="shrink-0 text-amber-400" />
+                    <span>Reprocessing warnings / skipped steps:</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-amber-300/90 text-[11px]">
+                    {reprocessState.warnings.map((w, wIdx) => (
+                      <li key={wIdx}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
