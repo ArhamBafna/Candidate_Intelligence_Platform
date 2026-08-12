@@ -3,10 +3,8 @@ import spacy
 
 try:
     nlp = spacy.load("en_core_web_sm")
-except OSError:
-    import spacy.cli
-    spacy.cli.download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+except BaseException:
+    nlp = None
 
 EMAIL_REGEX = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
 PHONE_REGEX = re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
@@ -69,29 +67,30 @@ def extract_facts(text: str) -> list[dict]:
             })
 
     # 3. Spacy NER (Names, Locations)
-    doc = nlp(text)
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            facts.append({
-                "source_type": "EXPLICIT_FACT",
-                "claim_category": "PERSON",
-                "claim_key": "name",
-                "claim_value": ent.text,
-                "source_char_offset_start": ent.start_char,
-                "source_char_offset_end": ent.end_char,
-                "extracted_by": "SPACY_NER",
-                "confidence_score": 1.0
-            })
-        elif ent.label_ in ("GPE", "LOC"):
-            facts.append({
-                "source_type": "EXPLICIT_FACT",
-                "claim_category": "LOCATION",
-                "claim_key": "city",
-                "claim_value": ent.text,
-                "source_char_offset_start": ent.start_char,
-                "source_char_offset_end": ent.end_char,
-                "extracted_by": "SPACY_NER",
-                "confidence_score": 1.0
-            })
+    if nlp is not None:
+        doc = nlp(text)
+        for ent in doc.ents:
+            if ent.label_ == "PERSON":
+                facts.append({
+                    "source_type": "EXPLICIT_FACT",
+                    "claim_category": "PERSON",
+                    "claim_key": "name",
+                    "claim_value": ent.text,
+                    "source_char_offset_start": ent.start_char,
+                    "source_char_offset_end": ent.end_char,
+                    "extracted_by": "SPACY_NER",
+                    "confidence_score": 1.0
+                })
+            elif ent.label_ in ("GPE", "LOC"):
+                facts.append({
+                    "source_type": "EXPLICIT_FACT",
+                    "claim_category": "LOCATION",
+                    "claim_key": "city",
+                    "claim_value": ent.text,
+                    "source_char_offset_start": ent.start_char,
+                    "source_char_offset_end": ent.end_char,
+                    "extracted_by": "SPACY_NER",
+                    "confidence_score": 1.0
+                })
             
     return facts

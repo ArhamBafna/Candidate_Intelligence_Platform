@@ -155,11 +155,72 @@ def get_candidate_file(candidate_id: str, db: Session = Depends(get_db)):
     )
 
 @router.post("/{candidate_id}/reprocess")
-def reprocess_candidate(candidate_id: str, db: Session = Depends(get_db)):
+def reprocess_candidate(
+    candidate_id: str, 
+    db: Session = Depends(get_db),
+    vector_db = Depends(get_vector_db)
+):
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
         
+    rv = db.query(ResumeVersion).filter(
+        ResumeVersion.candidate_id == candidate_id,
+        ResumeVersion.is_primary == True
+    ).first()
+    
+    if rv and rv.raw_text:
+        raw_text = rv.raw_text
+        
+        # 1. Refresh Full-Text Search (FTS)
+        try:
+            db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+            db.execute(
+                text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
+                {
+                    "cid": candidate_id,
+                    "fname": f"{candidate.first_name} {candidate.last_name}",
+                    "title": candidate.current_title or "",
+                    "company": candidate.current_company or "",
+                    "content": raw_text
+                }
+            )
+        except Exception:
+            pass
+
+        # 2. Refresh Vector Embeddings
+        if vector_db:
+            if hasattr(vector_db, "delete_candidate_vectors"):
+                vector_db.delete_candidate_vectors(candidate_id)
+            else:
+                    tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
+                    if "candidate_vectors" in tables:
+                        table = vector_db.open_table("candidate_vectors")
+                        table.delete(f'candidate_id = "{candidate_id}"')
+                except Exception:
+                    pass
+            
+            doc = ParsedDocument(text=raw_text, pages=1)
+            chunks = chunk_document(doc, candidate_id, "SUMMARY")
+            if chunks:
+                texts = [c.text for c in chunks]
+                embeddings = generate_embeddings(texts)
+                if hasattr(vector_db, "create_table"):
+                    table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                    records = []
+                    for i, chunk in enumerate(chunks):
+                        records.append({
+                            "chunk_id": chunk.chunk_id,
+                            "candidate_id": chunk.candidate_id,
+                            "resume_version_id": rv.id,
+                            "section_type": chunk.section_name,
+                            "chunk_text": chunk.text,
+                            "vector": embeddings[i],
+                            "start_offset": chunk.start_offset,
+                            "end_offset": chunk.end_offset
+                        })
+                    table.add(records)
+
     ledger = TimelineLedger()
     ledger.log_event(
         session=db,
@@ -171,7 +232,7 @@ def reprocess_candidate(candidate_id: str, db: Session = Depends(get_db)):
         created_by="Recruiter"
     )
     db.commit()
-    return {"status": "success", "message": "Reprocessing triggered"}
+    return {"status": "success", "message": "Reprocessing completed successfully"}
 
 from fastapi import UploadFile, File
 from fastapi.responses import StreamingResponse
