@@ -17,6 +17,7 @@ from ingestion.parsers.models import ParsedDocument
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
 from api.dependencies import get_vector_db
 from storage.vector_store import CandidateSectionVector
+from candidate_intelligence_platform.extraction.hybrid_extractor import extract_candidate_profile_hybrid
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -193,6 +194,7 @@ def reprocess_candidate(
             if hasattr(vector_db, "delete_candidate_vectors"):
                 vector_db.delete_candidate_vectors(candidate_id)
             else:
+                try:
                     tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
                     if "candidate_vectors" in tables:
                         table = vector_db.open_table("candidate_vectors")
@@ -270,20 +272,16 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     else:
         raw_text = content.decode("utf-8", errors="ignore")
         
-    lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
-    first_name = lines[0] if lines else "Uploaded"
-    last_name = "Candidate"
-    if " " in first_name and len(first_name.split()) == 2:
-        parts = first_name.split()
-        first_name, last_name = parts[0], parts[1]
-        
+    extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
     cand_id = str(uuid.uuid4())
     cand = Candidate(
         id=cand_id,
-        first_name=first_name[:50],
-        last_name=last_name[:50],
+        first_name=extracted["first_name"],
+        last_name=extracted["last_name"],
+        primary_email=extracted["primary_email"],
+        primary_phone=extracted["primary_phone"],
         availability_status="ACTIVE",
-        current_title=lines[1][:100] if len(lines) > 1 else "Candidate"
+        current_title=extracted["current_title"]
     )
     db.add(cand)
     
@@ -396,20 +394,16 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 
                 # 4. Entity Resolution (simplified extraction)
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 70})}\n\n"
-                lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
-                first_name = lines[0] if lines else "Uploaded"
-                last_name = "Candidate"
-                if " " in first_name and len(first_name.split()) == 2:
-                    parts = first_name.split()
-                    first_name, last_name = parts[0], parts[1]
-                
+                extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
                 cand_id = str(uuid.uuid4())
                 cand = Candidate(
                     id=cand_id,
-                    first_name=first_name[:50],
-                    last_name=last_name[:50],
+                    first_name=extracted["first_name"],
+                    last_name=extracted["last_name"],
+                    primary_email=extracted["primary_email"],
+                    primary_phone=extracted["primary_phone"],
                     availability_status="ACTIVE",
-                    current_title=lines[1][:100] if len(lines) > 1 else "Candidate"
+                    current_title=extracted["current_title"]
                 )
                 
                 # 5. Saving
