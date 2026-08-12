@@ -236,6 +236,110 @@ def reprocess_candidate(
     db.commit()
     return {"status": "success", "message": "Reprocessing completed successfully"}
 
+@router.post("/{candidate_id}/reprocess-stream")
+async def reprocess_candidate_stream(
+    candidate_id: str,
+    db: Session = Depends(get_db),
+    vector_db = Depends(get_vector_db)
+):
+    async def stream_generator():
+        try:
+            # 1. Fetch Candidate & Resume
+            candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+            if not candidate:
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'message': 'Candidate not found', 'progress': 100})}\n\n"
+                return
+
+            candidate_name = f"{candidate.first_name} {candidate.last_name}".strip()
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 15, 'message': 'Fetching resume and candidate profile'})}\n\n"
+            await asyncio.sleep(0.05)
+
+            rv = db.query(ResumeVersion).filter(
+                ResumeVersion.candidate_id == candidate_id,
+                ResumeVersion.is_primary == True
+            ).first()
+
+            raw_text = rv.raw_text if (rv and rv.raw_text) else ""
+
+            # 2. Refresh Full-Text Search (FTS)
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 40, 'message': 'Refreshing FTS search index'})}\n\n"
+            await asyncio.sleep(0.05)
+            if raw_text:
+                try:
+                    db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+                    db.execute(
+                        text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
+                        {
+                            "cid": candidate_id,
+                            "fname": candidate_name,
+                            "title": candidate.current_title or "",
+                            "company": candidate.current_company or "",
+                            "content": raw_text
+                        }
+                    )
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+            # 3. Refresh Vector Embeddings
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings'})}\n\n"
+            await asyncio.sleep(0.05)
+            if raw_text and vector_db:
+                if hasattr(vector_db, "delete_candidate_vectors"):
+                    vector_db.delete_candidate_vectors(candidate_id)
+                else:
+                    try:
+                        tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
+                        if "candidate_vectors" in tables:
+                            table = vector_db.open_table("candidate_vectors")
+                            table.delete(f'candidate_id = "{candidate_id}"')
+                    except Exception:
+                        pass
+                
+                doc = ParsedDocument(text=raw_text, pages=1)
+                chunks = chunk_document(doc, candidate_id, "SUMMARY")
+                if chunks:
+                    texts = [c.text for c in chunks]
+                    embeddings = generate_embeddings(texts)
+                    if hasattr(vector_db, "create_table"):
+                        table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                        records = []
+                        for i, chunk in enumerate(chunks):
+                            records.append({
+                                "chunk_id": chunk.chunk_id,
+                                "candidate_id": chunk.candidate_id,
+                                "resume_version_id": rv.id if rv else "",
+                                "section_type": chunk.section_name,
+                                "chunk_text": chunk.text,
+                                "vector": embeddings[i],
+                                "start_offset": chunk.start_offset,
+                                "end_offset": chunk.end_offset
+                            })
+                        table.add(records)
+
+            # 4. Log Timeline Event
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event'})}\n\n"
+            await asyncio.sleep(0.05)
+            ledger = TimelineLedger()
+            ledger.log_event(
+                session=db,
+                candidate_id=candidate_id,
+                event_type="REPROCESS_TRIGGERED",
+                title="Reprocessing Triggered",
+                description="Recruiter triggered a manual re-processing of candidate data",
+                metadata={},
+                created_by="Recruiter"
+            )
+            db.commit()
+
+            # 5. Completed
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully'})}\n\n"
+        except Exception as e:
+            db.rollback()
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e)})}\n\n"
+
+    return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
 from fastapi import UploadFile, File
 from fastapi.responses import StreamingResponse
 import uuid

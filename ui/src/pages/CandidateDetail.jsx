@@ -13,6 +13,9 @@ function CandidateDetail() {
   const [isDeleting, setIsDeleting] = useState(false);
   const saveTimeoutRef = useRef(null);
 
+  // Reprocess Manager State
+  const [reprocessState, setReprocessState] = useState(null);
+
   // Form state
   const [formData, setFormData] = useState({
     first_name: '',
@@ -92,11 +95,62 @@ function CandidateDetail() {
   };
 
   const handleReprocess = async () => {
+    const candidateName = candidate ? `${candidate.first_name} ${candidate.last_name}` : 'Candidate';
+    setReprocessState({
+      show: true,
+      candidateId: id,
+      candidateName: candidateName,
+      stage: 'STARTING',
+      status: 'IN_PROGRESS',
+      progress: 5,
+      message: 'Initiating re-processing...'
+    });
+
     try {
-      await fetch(`/api/candidates/${id}/reprocess`, { method: 'POST' });
-      alert('Reprocessing triggered!');
+      const response = await fetch(`/api/candidates/${id}/reprocess-stream`, { method: 'POST' });
+      if (!response.body) throw new Error('ReadableStream not supported.');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const block of lines) {
+          for (const line of block.split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.substring(6));
+                setReprocessState(prev => prev ? {
+                  ...prev,
+                  stage: event.stage,
+                  status: event.status,
+                  progress: event.progress,
+                  message: event.message,
+                  candidateName: event.candidate_name || prev.candidateName
+                } : null);
+              } catch (err) {
+                console.error('Error parsing SSE event:', err);
+              }
+            }
+          }
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Reprocess stream failed:', err);
+      setReprocessState(prev => prev ? {
+        ...prev,
+        stage: 'ERROR',
+        status: 'FAILED',
+        progress: 100,
+        message: 'Failed to re-process candidate data.'
+      } : null);
     }
   };
 
@@ -348,6 +402,91 @@ function CandidateDetail() {
               >
                 {isDeleting ? 'Deleting...' : 'Delete Permanently'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Reprocess Manager Modal */}
+      {reprocessState?.show && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="glass-panel border-slate-700 max-w-lg w-full rounded-2xl p-6 relative flex flex-col gap-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                  <RefreshCw size={22} className={`text-indigo-400 ${reprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                  Reprocessing Candidate
+                </h2>
+                <p className="text-sm text-slate-400 mt-0.5">Re-indexing resume and vector embeddings</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setReprocessState(null);
+                  fetchCandidate();
+                }}
+                disabled={reprocessState.status === 'IN_PROGRESS'}
+                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {reprocessState.status === 'SUCCESS' ? 'Done' : 'Close'}
+              </button>
+            </div>
+            
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-slate-200 text-base">{reprocessState.candidateName}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">ID: {reprocessState.candidateId}</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium">
+                  {reprocessState.status === 'SUCCESS' && (
+                    <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                      <CheckCircle2 size={14}/> Completed
+                    </span>
+                  )}
+                  {reprocessState.status === 'FAILED' && (
+                    <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20">
+                      <AlertCircle size={14}/> Failed
+                    </span>
+                  )}
+                  {reprocessState.status === 'IN_PROGRESS' && (
+                    <span className="text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20 animate-pulse">
+                      {reprocessState.stage}...
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-slate-400 font-medium">
+                  <span>{reprocessState.message || 'Processing...'}</span>
+                  <span>{reprocessState.progress}%</span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      reprocessState.status === 'FAILED' ? 'bg-red-500' : 
+                      reprocessState.status === 'SUCCESS' ? 'bg-emerald-500' : 
+                      'bg-indigo-500'
+                    }`} 
+                    style={{ width: `${reprocessState.progress}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Stage Stepper Badges */}
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 text-center font-medium">
+                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                  1. Profile
+                </div>
+                <div className={`p-1.5 rounded-lg border ${['UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                  2. FTS Search
+                </div>
+                <div className={`p-1.5 rounded-lg border ${['GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                  3. Vectors
+                </div>
+                <div className={`p-1.5 rounded-lg border ${['LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                  4. Timeline
+                </div>
+              </div>
             </div>
           </div>
         </div>

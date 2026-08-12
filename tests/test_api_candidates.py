@@ -216,3 +216,32 @@ def test_reprocess_candidate(client, db_session: Session):
     timeline_data = response_timeline.json()
     assert len(timeline_data) >= 1
     assert any(e["event_type"] == "REPROCESS_TRIGGERED" for e in timeline_data)
+
+def test_reprocess_candidate_stream(client, db_session: Session):
+    c_id = str(uuid.uuid4())
+    c = Candidate(id=c_id, first_name="Stream", last_name="Reprocess", availability_status="ACTIVE", current_title="Data Scientist")
+    db_session.add(c)
+    
+    rv = ResumeVersion(
+        id=str(uuid.uuid4()),
+        candidate_id=c_id,
+        cas_file_hash="stream_hash",
+        original_filename="stream.pdf",
+        file_type="PDF",
+        raw_text="Stream Reprocess Resume Content with PyTorch and Machine Learning",
+        layout_metadata={},
+        is_primary=True
+    )
+    db_session.add(rv)
+    db_session.commit()
+    
+    response = client.post(f"/candidates/{c_id}/reprocess-stream")
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    text_content = response.text
+    assert "FETCHING_RESUME" in text_content
+    assert "UPDATING_FTS" in text_content
+    assert "GENERATING_VECTORS" in text_content
+    assert "LOGGING_TIMELINE" in text_content
+    assert "COMPLETED" in text_content
+
