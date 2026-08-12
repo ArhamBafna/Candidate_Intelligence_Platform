@@ -172,8 +172,21 @@ def reprocess_candidate(
     
     if rv and rv.raw_text:
         raw_text = rv.raw_text
+        reprocess_warnings = []
         
-        # 1. Refresh Full-Text Search (FTS)
+        # 1. Entity Resolution
+        extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+        if extracted.get("warnings"):
+            reprocess_warnings.extend(extracted["warnings"])
+        
+        candidate.first_name = extracted.get("first_name", candidate.first_name)
+        candidate.last_name = extracted.get("last_name", candidate.last_name)
+        if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
+        if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
+        if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
+        db.commit()
+        
+        # 2. Refresh Full-Text Search (FTS)
         try:
             db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
             db.execute(
@@ -187,9 +200,9 @@ def reprocess_candidate(
                 }
             )
         except Exception:
-            pass
+            reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
-        # 2. Refresh Vector Embeddings
+        # 3. Refresh Vector Embeddings
         if vector_db:
             if hasattr(vector_db, "delete_candidate_vectors"):
                 vector_db.delete_candidate_vectors(candidate_id)
@@ -202,26 +215,31 @@ def reprocess_candidate(
                 except Exception:
                     pass
             
-            doc = ParsedDocument(text=raw_text, pages=1)
-            chunks = chunk_document(doc, candidate_id, "SUMMARY")
-            if chunks:
-                texts = [c.text for c in chunks]
-                embeddings = generate_embeddings(texts)
-                if hasattr(vector_db, "create_table"):
-                    table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                    records = []
-                    for i, chunk in enumerate(chunks):
-                        records.append({
-                            "chunk_id": chunk.chunk_id,
-                            "candidate_id": chunk.candidate_id,
-                            "resume_version_id": rv.id,
-                            "section_type": chunk.section_name,
-                            "chunk_text": chunk.text,
-                            "vector": embeddings[i],
-                            "start_offset": chunk.start_offset,
-                            "end_offset": chunk.end_offset
-                        })
-                    table.add(records)
+            try:
+                doc = ParsedDocument(text=raw_text, pages=1)
+                chunks = chunk_document(doc, candidate_id, "SUMMARY")
+                if chunks:
+                    texts = [c.text for c in chunks]
+                    embeddings = generate_embeddings(texts)
+                    if hasattr(vector_db, "create_table"):
+                        table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                        records = []
+                        for i, chunk in enumerate(chunks):
+                            records.append({
+                                "chunk_id": chunk.chunk_id,
+                                "candidate_id": chunk.candidate_id,
+                                "resume_version_id": rv.id,
+                                "section_type": chunk.section_name,
+                                "chunk_text": chunk.text,
+                                "vector": embeddings[i],
+                                "start_offset": chunk.start_offset,
+                                "end_offset": chunk.end_offset
+                            })
+                        table.add(records)
+            except Exception:
+                reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
+        else:
+            reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
 
     ledger = TimelineLedger()
     ledger.log_event(
@@ -234,7 +252,7 @@ def reprocess_candidate(
         created_by="Recruiter"
     )
     db.commit()
-    return {"status": "success", "message": "Reprocessing completed successfully"}
+    return {"status": "success", "message": "Reprocessing completed successfully", "warnings": reprocess_warnings if 'reprocess_warnings' in locals() else []}
 
 @router.post("/{candidate_id}/reprocess-stream")
 async def reprocess_candidate_stream(
@@ -399,7 +417,11 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     else:
         raw_text = content.decode("utf-8", errors="ignore")
         
+    upload_warnings = []
     extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+    if extracted.get("warnings"):
+        upload_warnings.extend(extracted["warnings"])
+        
     cand_id = str(uuid.uuid4())
     cand = Candidate(
         id=cand_id,
@@ -471,7 +493,7 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
             })
         table.add(records)
 
-    return {"status": "success", "candidate_id": cand_id, "first_name": cand.first_name, "last_name": cand.last_name}
+    return {"status": "success", "candidate_id": cand_id, "first_name": cand.first_name, "last_name": cand.last_name, "warnings": upload_warnings}
 
 @router.post("/upload-stream")
 async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
