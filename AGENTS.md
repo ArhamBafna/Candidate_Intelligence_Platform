@@ -63,3 +63,14 @@ Candidate_Intelligence_Platform/
 - **DB**: SQLite WAL pragmas mandatory.
 - **CAS**: SHA-256 files immutable once written.
 
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as GitHub issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context repository layout (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
+
+
