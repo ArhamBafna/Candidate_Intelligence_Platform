@@ -30,11 +30,8 @@ pip install -e .
 `pytest` uses `pythonpath = ["."]` in `pyproject.toml`.
 
 ```powershell
-# Backend tests
+# Backend & UI Build tests
 uv run pytest
-
-# Frontend build verification (must pass with 0 errors)
-cd ui; npm run build; cd ..
 ```
 
 ## Layout
@@ -55,7 +52,7 @@ Candidate_Intelligence_Platform/
 - **Validation**: Pydantic v2 schemas for all ingestion data.
 - **ORM**: Use SQLAlchemy 2.0 models in `storage/db_models.py`.
 - **Deduplication**: Check hash with `storage/cas.py` before parsing.
-- **Testing & Verification**: Every module in `ingestion/`, `storage/`, `config/` requires test in `tests/test_<module>.py`. Run both `uv run pytest` and `cd ui; npm run build` before declaring complete.
+- **Testing & Verification**: Every module in `ingestion/`, `storage/`, `config/` requires test in `tests/test_<module>.py`. Run `uv run pytest` before declaring complete.
 - **Task Tracking**: Update `docs/task.md` `[ ]` -> `[x]`.
 - **Commit, Push**: after minor change to move towards a greater big change, commit. after big changes, push.
 
