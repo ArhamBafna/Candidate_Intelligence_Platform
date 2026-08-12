@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function CandidateList() {
@@ -8,6 +8,8 @@ function CandidateList() {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
@@ -135,6 +137,25 @@ function CandidateList() {
     setOpenMenuId(openMenuId === id ? null : id);
   };
 
+  const confirmDeleteCandidate = async () => {
+    if (!deleteCandidate) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/candidates/${deleteCandidate.id}`, { method: 'DELETE' });
+      if (res.ok || res.status === 204) {
+        setCandidates(prev => prev.filter(c => c.id !== deleteCandidate.id));
+        setDeleteCandidate(null);
+      } else {
+        alert('Failed to delete candidate.');
+      }
+    } catch (err) {
+      console.error('Error deleting candidate:', err);
+      alert('An error occurred while deleting candidate.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleReprocess = async (e, id) => {
     e.stopPropagation();
     setOpenMenuId(null);
@@ -241,6 +262,16 @@ function CandidateList() {
                       >
                         <RefreshCw size={14} /> Re-process Data
                       </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          setDeleteCandidate(candidate);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 hover:text-red-300 transition-colors flex items-center gap-2 border-t border-slate-800"
+                      >
+                        <Trash2 size={14} /> Delete Candidate
+                      </button>
                     </div>
                   )}
                 </div>
@@ -341,6 +372,40 @@ function CandidateList() {
                   )}
                 </div>
               ))}
+            </div>
+      {/* Delete Confirmation Modal */}
+      {deleteCandidate && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400 mb-4">
+              <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-100">Delete Candidate</h3>
+            </div>
+            
+            <p className="text-slate-300 text-sm mb-2">
+              Are you sure you want to delete <span className="font-semibold text-slate-100">{deleteCandidate.first_name} {deleteCandidate.last_name}</span>?
+            </p>
+            <p className="text-slate-400 text-xs mb-6">
+              This action will permanently remove candidate details, timeline events, and search index vectors.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteCandidate(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteCandidate}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-red-900/20 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+              </button>
             </div>
           </div>
         </div>

@@ -8,7 +8,7 @@ from api.schemas.candidates import (
     TimelineEventResponse,
     CandidateUpdate
 )
-from storage.db_models import Candidate
+from storage.db_models import Candidate, ResumeVersion, CandidateClaim, CandidateTimelineEvent
 from crm.state_machine import CandidateStateMachine
 from crm.timeline_ledger import TimelineLedger
 from sqlalchemy import text
@@ -31,6 +31,44 @@ def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return candidate
+
+@router.delete("/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_candidate(
+    candidate_id: str, 
+    db: Session = Depends(get_db),
+    vector_db = Depends(get_vector_db)
+):
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    try:
+        db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+        db.execute(text("DELETE FROM claims_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+    except Exception:
+        pass
+
+    # Delete related child records
+    db.query(ResumeVersion).filter(ResumeVersion.candidate_id == candidate_id).delete()
+    db.query(CandidateClaim).filter(CandidateClaim.candidate_id == candidate_id).delete()
+    db.query(CandidateTimelineEvent).filter(CandidateTimelineEvent.candidate_id == candidate_id).delete()
+        
+    db.delete(candidate)
+    db.commit()
+
+    if vector_db:
+        if hasattr(vector_db, "delete_candidate_vectors"):
+            vector_db.delete_candidate_vectors(candidate_id)
+        else:
+            try:
+                table_names = vector_db.table_names()
+                if "candidate_vectors" in table_names:
+                    table = vector_db.open_table("candidate_vectors")
+                    table.delete(f'candidate_id = "{candidate_id}"')
+            except Exception:
+                pass
+
+    return None
 
 @router.patch("/{candidate_id}/status")
 def update_candidate_status(

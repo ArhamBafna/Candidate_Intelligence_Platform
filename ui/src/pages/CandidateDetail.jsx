@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, CheckCircle2, User, Mail, Phone, Briefcase, MapPin, Download, FileText, AlertCircle, Clock } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle2, User, Mail, Phone, Briefcase, MapPin, Download, FileText, AlertCircle, Clock, Trash2 } from 'lucide-react';
 
 function CandidateDetail() {
   const { id } = useParams();
@@ -9,6 +9,8 @@ function CandidateDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'typing', 'error'
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const saveTimeoutRef = useRef(null);
 
   // Form state
@@ -98,6 +100,23 @@ function CandidateDetail() {
     }
   };
 
+  const handleDeleteCandidate = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/candidates/${id}`, { method: 'DELETE' });
+      if (res.ok || res.status === 204) {
+        navigate('/');
+      } else {
+        alert('Failed to delete candidate.');
+      }
+    } catch (err) {
+      console.error('Error deleting candidate:', err);
+      alert('An error occurred while deleting candidate.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-slate-400">Loading candidate profile...</div>;
   }
@@ -137,6 +156,12 @@ function CandidateDetail() {
             className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-slate-700"
           >
             <RefreshCw size={16} /> Re-process Data
+          </button>
+          <button 
+            onClick={() => setShowDeleteModal(true)}
+            className="flex items-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          >
+            <Trash2 size={16} /> Delete Candidate
           </button>
         </div>
       </header>
@@ -289,6 +314,44 @@ function CandidateDetail() {
 
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400 mb-4">
+              <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-100">Delete Candidate</h3>
+            </div>
+            
+            <p className="text-slate-300 text-sm mb-2">
+              Are you sure you want to delete <span className="font-semibold text-slate-100">{candidate.first_name} {candidate.last_name}</span>?
+            </p>
+            <p className="text-slate-400 text-xs mb-6">
+              This action will permanently remove candidate details, timeline events, and search index vectors.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCandidate}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-red-900/20 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
