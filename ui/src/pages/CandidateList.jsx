@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2, Sparkles } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2, Sparkles, CheckSquare, Square, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function CandidateList() {
@@ -21,6 +21,155 @@ function CandidateList() {
 
   // Reprocess Manager State
   const [reprocessState, setReprocessState] = useState(null);
+
+  // Multi-Selection State
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [batchReprocessState, setBatchReprocessState] = useState(null);
+
+  const toggleSelectCandidate = (e, id) => {
+    if (e) e.stopPropagation();
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === candidates.length && candidates.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(candidates.map(c => c.id));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  const handleBatchDownloadResumes = async () => {
+    if (!selectedIds.length) return;
+    for (let i = 0; i < selectedIds.length; i++) {
+      const id = selectedIds[i];
+      const link = document.createElement('a');
+      link.href = `/api/candidates/${id}/file`;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  };
+
+  const confirmBatchDelete = async () => {
+    if (!selectedIds.length) return;
+    setIsBatchDeleting(true);
+    try {
+      const res = await fetch('/api/candidates/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_ids: selectedIds })
+      });
+      if (res.ok) {
+        setCandidates(prev => prev.filter(c => !selectedIds.includes(c.id)));
+        setSelectedIds([]);
+        setShowBatchDeleteModal(false);
+      } else {
+        alert('Failed to delete selected candidates.');
+      }
+    } catch (err) {
+      console.error('Batch delete failed:', err);
+      alert('An error occurred during batch delete.');
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  };
+
+  const handleBatchReprocess = async () => {
+    if (!selectedIds.length) return;
+
+    const initialQueue = selectedIds.map(id => {
+      const cand = candidates.find(c => c.id === id);
+      return {
+        candidate_id: id,
+        candidate_name: cand ? `${cand.first_name} ${cand.last_name}` : 'Candidate',
+        stage: 'QUEUED',
+        status: 'PENDING',
+        progress: 0,
+        message: 'Queued for reprocessing...',
+        warnings: []
+      };
+    });
+
+    setBatchReprocessState({
+      show: true,
+      status: 'IN_PROGRESS',
+      queue: initialQueue,
+      currentIndex: 0,
+      total: selectedIds.length
+    });
+
+    try {
+      const response = await fetch('/api/candidates/batch-reprocess-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_ids: selectedIds })
+      });
+
+      if (!response.body) throw new Error('ReadableStream not supported.');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const block of lines) {
+          for (const line of block.split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.substring(6));
+                setBatchReprocessState(prev => {
+                  if (!prev) return null;
+                  const newQueue = [...prev.queue];
+                  const idx = newQueue.findIndex(item => item.candidate_id === event.candidate_id);
+                  if (idx !== -1) {
+                    newQueue[idx] = {
+                      ...newQueue[idx],
+                      candidate_name: event.candidate_name || newQueue[idx].candidate_name,
+                      stage: event.stage,
+                      status: event.status,
+                      progress: event.progress,
+                      message: event.message,
+                      warnings: event.warnings || newQueue[idx].warnings
+                    };
+                  }
+                  const allDone = newQueue.every(i => i.status === 'SUCCESS' || i.status === 'FAILED' || i.status === 'SKIPPED');
+                  return {
+                    ...prev,
+                    queue: newQueue,
+                    currentIndex: event.batch_index || prev.currentIndex,
+                    status: allDone ? 'COMPLETED' : 'IN_PROGRESS'
+                  };
+                });
+              } catch (err) {
+                console.error('Error parsing SSE batch reprocess event:', err);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Batch reprocess stream failed:', err);
+      setBatchReprocessState(prev => prev ? { ...prev, status: 'FAILED' } : null);
+    }
+  };
 
 
   const fetchCandidates = () => {
@@ -361,19 +510,36 @@ function CandidateList() {
       {/* Candidate List Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        {candidates.map((candidate) => (
-          <div 
-            key={candidate.id} 
-            onClick={() => navigate(`/candidate/${candidate.id}`)}
-            className="glass-panel p-6 rounded-2xl hover:border-indigo-500/50 transition-all cursor-pointer group flex flex-col justify-between relative"
-          >
-            <div>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-indigo-950/60 border border-indigo-500/30 p-3 rounded-full text-indigo-400">
-                    <User size={20} />
-                  </div>
-                  <div>
+        {candidates.map((candidate) => {
+          const isSelected = selectedIds.includes(candidate.id);
+          return (
+            <div 
+              key={candidate.id} 
+              onClick={() => navigate(`/candidate/${candidate.id}`)}
+              className={`glass-panel p-6 rounded-2xl transition-all cursor-pointer group flex flex-col justify-between relative border ${
+                isSelected 
+                  ? 'border-indigo-500 bg-indigo-950/20 ring-2 ring-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.15)]' 
+                  : 'hover:border-indigo-500/50 border-slate-800/80'
+              }`}
+            >
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => toggleSelectCandidate(e, candidate.id)}
+                      className="text-slate-400 hover:text-indigo-400 p-1 rounded-md transition-colors shrink-0"
+                      title={isSelected ? "Deselect candidate" : "Select candidate"}
+                    >
+                      {isSelected ? (
+                        <CheckSquare size={20} className="text-indigo-400 fill-indigo-500/20" />
+                      ) : (
+                        <Square size={20} className="text-slate-500 hover:text-slate-300" />
+                      )}
+                    </button>
+                    <div className="bg-indigo-950/60 border border-indigo-500/30 p-2.5 rounded-full text-indigo-400 shrink-0">
+                      <User size={18} />
+                    </div>
+                    <div>
                     <h3 className="font-semibold text-lg text-slate-100 group-hover:text-indigo-300 transition-colors">
                       {candidate.first_name} {candidate.last_name}
                     </h3>
@@ -467,7 +633,8 @@ function CandidateList() {
               </button>
             </div>
           </div>
-        ))}
+        );
+      })}
         
         {candidates.length === 0 && (
           <div className="col-span-full py-16 text-center text-slate-500 border-2 border-dashed border-slate-700/60 rounded-2xl bg-slate-900/30">
@@ -694,6 +861,193 @@ function CandidateList() {
                   </ul>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Bar for Multi-Selection */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[50] bg-slate-900/90 border border-indigo-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300">
+          <div className="flex items-center gap-3 border-r border-slate-700/80 pr-5">
+            <button 
+              onClick={toggleSelectAll}
+              className="text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+            >
+              {selectedIds.length === candidates.length && candidates.length > 0 ? (
+                <> <CheckSquare size={15} className="text-indigo-400" /> Deselect All </>
+              ) : (
+                <> <Square size={15} className="text-slate-400" /> Select All </>
+              )}
+            </button>
+            <span className="text-sm font-semibold text-indigo-300">
+              {selectedIds.length} candidate{selectedIds.length > 1 ? 's' : ''} selected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleBatchReprocess}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-indigo-900/30 border border-indigo-400/30"
+            >
+              <RefreshCw size={16} /> Re-process ({selectedIds.length})
+            </button>
+            <button
+              onClick={handleBatchDownloadResumes}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors border border-slate-700"
+            >
+              <Download size={16} /> Download Resumes
+            </button>
+            <button
+              onClick={() => setShowBatchDeleteModal(true)}
+              className="bg-red-600/90 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-red-950/30 border border-red-500/30"
+            >
+              <Trash2 size={16} /> Delete ({selectedIds.length})
+            </button>
+            <button
+              onClick={clearSelection}
+              className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors ml-1"
+              title="Clear selection"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {showBatchDeleteModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400 mb-4">
+              <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-100">Delete {selectedIds.length} Candidates</h3>
+            </div>
+            
+            <p className="text-slate-300 text-sm mb-2">
+              Are you sure you want to permanently delete <span className="font-semibold text-slate-100">{selectedIds.length} selected candidate(s)</span>?
+            </p>
+            <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 max-h-32 overflow-y-auto my-3 text-xs text-slate-400 space-y-1">
+              {candidates
+                .filter(c => selectedIds.includes(c.id))
+                .map(c => (
+                  <div key={c.id} className="truncate">• {c.first_name} {c.last_name}</div>
+                ))
+              }
+            </div>
+            <p className="text-slate-400 text-xs mb-6">
+              This action will permanently purge their profile records, uploaded resumes, timeline logs, and vector search embeddings.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowBatchDeleteModal(false)}
+                disabled={isBatchDeleting}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBatchDelete}
+                disabled={isBatchDeleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-red-900/20 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isBatchDeleting ? 'Deleting...' : `Delete ${selectedIds.length} Candidates`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Reprocess Manager Modal */}
+      {batchReprocessState?.show && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="glass-panel border-slate-700 max-w-2xl w-full rounded-2xl p-6 relative flex flex-col max-h-[80vh] shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                  <RefreshCw size={22} className={`text-indigo-400 ${batchReprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                  Batch Reprocessing ({batchReprocessState.queue.filter(i => i.status === 'SUCCESS' || i.status === 'SKIPPED').length} / {batchReprocessState.total})
+                </h2>
+                <p className="text-sm text-slate-400 mt-0.5">Re-indexing profile entities, FTS, and vector embeddings in real time</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setBatchReprocessState(null);
+                  fetchCandidates();
+                  setSelectedIds([]);
+                }}
+                disabled={batchReprocessState.status === 'IN_PROGRESS'}
+                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {batchReprocessState.status === 'COMPLETED' ? 'Done' : 'Close'}
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+              {batchReprocessState.queue.map((item, idx) => (
+                <div key={item.candidate_id || idx} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-semibold text-slate-200 text-sm">{item.candidate_name}</h4>
+                      <p className="text-[11px] text-slate-500">{item.message}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-medium">
+                      {item.status === 'SUCCESS' && (
+                        <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          <CheckCircle2 size={13}/> Completed
+                        </span>
+                      )}
+                      {item.status === 'FAILED' && (
+                        <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                          <AlertCircle size={13}/> Failed
+                        </span>
+                      )}
+                      {item.status === 'SKIPPED' && (
+                        <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          <RefreshCw size={13}/> Skipped
+                        </span>
+                      )}
+                      {item.status === 'IN_PROGRESS' && (
+                        <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 animate-pulse">
+                          {item.stage}...
+                        </span>
+                      )}
+                      {item.status === 'PENDING' && (
+                        <span className="text-slate-500">Queued</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        item.status === 'FAILED' ? 'bg-red-500' : 
+                        item.status === 'SUCCESS' ? 'bg-emerald-500' : 
+                        item.status === 'SKIPPED' ? 'bg-amber-500' : 
+                        'bg-indigo-500'
+                      }`}
+                      style={{ width: `${item.progress}%` }}
+                    ></div>
+                  </div>
+
+                  {item.warnings && item.warnings.length > 0 && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 text-xs text-amber-300 mt-1">
+                      <div className="font-semibold text-amber-400 flex items-center gap-1 text-[11px]">
+                        <AlertCircle size={12} className="shrink-0 text-amber-400" />
+                        <span>Warnings / Skipped steps:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-amber-300/90 text-[10px] mt-0.5">
+                        {item.warnings.map((w, wIdx) => (
+                          <li key={wIdx}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>

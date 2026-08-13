@@ -253,3 +253,53 @@ def test_delete_candidate_success(client: TestClient, db_session: Session, mock_
 def test_delete_candidate_not_found(client: TestClient) -> None:
     response = client.delete("/candidates/non-existent-id")
     assert response.status_code == 404
+
+def test_batch_delete_candidates(client: TestClient, db_session: Session, monkeypatch) -> None:
+    mock_vector_db = MockVectorStore()
+    from api.dependencies import get_vector_db
+    monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: mock_vector_db)
+
+    c1_id = str(uuid.uuid4())
+    c2_id = str(uuid.uuid4())
+    c1 = Candidate(id=c1_id, first_name="Batch1", last_name="Delete")
+    c2 = Candidate(id=c2_id, first_name="Batch2", last_name="Delete")
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    response = client.post("/candidates/batch-delete", json={"candidate_ids": [c1_id, c2_id]})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["deleted_count"] == 2
+    assert c1_id in data["candidate_ids"]
+    assert c2_id in data["candidate_ids"]
+
+    assert db_session.query(Candidate).filter(Candidate.id == c1_id).first() is None
+    assert db_session.query(Candidate).filter(Candidate.id == c2_id).first() is None
+
+def test_batch_reprocess_stream(client: TestClient, db_session: Session, monkeypatch) -> None:
+    mock_vector_db = MockVectorStore()
+    monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: mock_vector_db)
+
+    c_id = str(uuid.uuid4())
+    candidate = Candidate(id=c_id, first_name="Stream", last_name="Tester")
+    db_session.add(candidate)
+    
+    rv = ResumeVersion(
+        id=str(uuid.uuid4()),
+        candidate_id=c_id,
+        cas_file_hash="hash_stream_123",
+        original_filename="resume_stream.pdf",
+        file_type="pdf",
+        is_primary=True,
+        raw_text="Experienced Software Engineer skilled in Python, FastAPI and React.",
+        layout_metadata={}
+    )
+    db_session.add(rv)
+    db_session.commit()
+
+    response = client.post("/candidates/batch-reprocess-stream", json={"candidate_ids": [c_id]})
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers.get("content-type", "")
+    assert "COMPLETED" in response.text
+

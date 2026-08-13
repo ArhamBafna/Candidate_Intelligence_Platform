@@ -62,3 +62,10 @@ class TimelineEventResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class BatchCandidateIds(BaseModel):
+    candidate_ids: List[str]
+
+class BatchReprocessRequest(BaseModel):
+    candidate_ids: List[str]
+

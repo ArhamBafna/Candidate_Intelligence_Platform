@@ -6,7 +6,9 @@ from api.schemas.candidates import (
     CandidateResponse, 
     CandidateStatusUpdate, 
     TimelineEventResponse,
-    CandidateUpdate
+    CandidateUpdate,
+    BatchCandidateIds,
+    BatchReprocessRequest
 )
 from storage.db_models import Candidate, ResumeVersion, CandidateClaim, CandidateTimelineEvent
 from crm.state_machine import CandidateStateMachine
@@ -642,4 +644,187 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100, 'warnings': file_warnings})}\n\n"
                 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
+
+@router.post("/batch-delete", status_code=status.HTTP_200_OK)
+def batch_delete_candidates(
+    payload: BatchCandidateIds,
+    db: Session = Depends(get_db),
+    vector_db = Depends(get_vector_db)
+):
+    deleted_ids = []
+    for candidate_id in payload.candidate_ids:
+        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+        if not candidate:
+            continue
+            
+        try:
+            db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+            db.execute(text("DELETE FROM claims_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+        except Exception:
+            pass
+
+        # Delete related child records
+        db.query(ResumeVersion).filter(ResumeVersion.candidate_id == candidate_id).delete()
+        db.query(CandidateClaim).filter(CandidateClaim.candidate_id == candidate_id).delete()
+        db.query(CandidateTimelineEvent).filter(CandidateTimelineEvent.candidate_id == candidate_id).delete()
+            
+        db.delete(candidate)
+        db.commit()
+        deleted_ids.append(candidate_id)
+
+        if vector_db:
+            if hasattr(vector_db, "delete_candidate_vectors"):
+                vector_db.delete_candidate_vectors(candidate_id)
+            else:
+                try:
+                    table_names = vector_db.table_names() if hasattr(vector_db, "table_names") else vector_db.list_tables()
+                    if "candidate_vectors" in table_names:
+                        table = vector_db.open_table("candidate_vectors")
+                        table.delete(f'candidate_id = "{candidate_id}"')
+                except Exception:
+                    pass
+
+    return {
+        "status": "success",
+        "deleted_count": len(deleted_ids),
+        "candidate_ids": deleted_ids
+    }
+
+
+@router.post("/batch-reprocess-stream")
+async def batch_reprocess_candidate_stream(
+    payload: BatchReprocessRequest,
+    db: Session = Depends(get_db),
+    vector_db = Depends(get_vector_db)
+):
+    async def batch_stream_generator():
+        total_candidates = len(payload.candidate_ids)
+        for idx, candidate_id in enumerate(payload.candidate_ids):
+            reprocess_warnings = []
+            candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+            if not candidate:
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': 'Unknown Candidate', 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': 'Candidate not found', 'warnings': []})}\n\n"
+                continue
+
+            candidate_name = f"{candidate.first_name} {candidate.last_name}"
+            
+            try:
+                # 1. Fetch resume
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 10, 'message': f'Fetching primary resume for {candidate_name}', 'warnings': reprocess_warnings})}\n\n"
+                
+                rv = db.query(ResumeVersion).filter(
+                    ResumeVersion.candidate_id == candidate_id,
+                    ResumeVersion.is_primary == True
+                ).first()
+                
+                if not rv or not rv.raw_text:
+                    reprocess_warnings.append("No primary resume text available for entity resolution.")
+                    yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SKIPPED', 'progress': 100, 'message': 'No raw resume text available', 'warnings': reprocess_warnings})}\n\n"
+                    continue
+                
+                raw_text = rv.raw_text
+
+                # 2. Entity Resolution
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities', 'warnings': reprocess_warnings})}\n\n"
+                
+                try:
+                    extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                    if extracted.get("warnings"):
+                        reprocess_warnings.extend(extracted["warnings"])
+                    
+                    candidate.first_name = extracted.get("first_name", candidate.first_name)
+                    candidate.last_name = extracted.get("last_name", candidate.last_name)
+                    if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
+                    if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
+                    if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
+                    db.commit()
+                    candidate_name = f"{candidate.first_name} {candidate.last_name}"
+                except Exception as e:
+                    reprocess_warnings.append(f"Entity extraction warning: {str(e)}")
+
+                # 3. Refresh FTS
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings})}\n\n"
+                try:
+                    db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
+                    db.execute(
+                        text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
+                        {
+                            "cid": candidate_id,
+                            "fname": candidate_name,
+                            "title": candidate.current_title or "",
+                            "company": candidate.current_company or "",
+                            "content": raw_text
+                        }
+                    )
+                    db.commit()
+                except Exception:
+                    reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
+
+                # 4. Refresh Vectors
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating vector embeddings', 'warnings': reprocess_warnings})}\n\n"
+                if vector_db:
+                    if hasattr(vector_db, "delete_candidate_vectors"):
+                        vector_db.delete_candidate_vectors(candidate_id)
+                    else:
+                        try:
+                            tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
+                            if "candidate_vectors" in tables:
+                                table = vector_db.open_table("candidate_vectors")
+                                table.delete(f'candidate_id = "{candidate_id}"')
+                        except Exception:
+                            pass
+                    
+                    try:
+                        doc = ParsedDocument(text=raw_text, pages=1)
+                        chunks = chunk_document(doc, candidate_id, "SUMMARY")
+                        if chunks:
+                            texts = [c.text for c in chunks]
+                            embeddings = generate_embeddings(texts)
+                            if hasattr(vector_db, "create_table"):
+                                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                                records = []
+                                for i_chunk, chunk in enumerate(chunks):
+                                    records.append({
+                                        "chunk_id": chunk.chunk_id,
+                                        "candidate_id": chunk.candidate_id,
+                                        "resume_version_id": rv.id,
+                                        "section_type": chunk.section_name,
+                                        "chunk_text": chunk.text,
+                                        "vector": embeddings[i_chunk],
+                                        "start_offset": chunk.start_offset,
+                                        "end_offset": chunk.end_offset
+                                    })
+                                table.add(records)
+                    except Exception:
+                        reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
+                else:
+                    reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
+
+                # 5. Timeline Audit Log
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
+                try:
+                    ledger = TimelineLedger()
+                    ledger.log_event(
+                        session=db,
+                        candidate_id=candidate_id,
+                        event_type="REPROCESS_TRIGGERED",
+                        title="Reprocessing Triggered",
+                        description="Recruiter triggered batch re-processing of candidate data",
+                        metadata={},
+                        created_by="Recruiter"
+                    )
+                    db.commit()
+                except Exception:
+                    pass
+
+                # 6. Completed for candidate
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully', 'warnings': reprocess_warnings})}\n\n"
+
+            except Exception as e:
+                db.rollback()
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e), 'warnings': reprocess_warnings})}\n\n"
+
+    return StreamingResponse(batch_stream_generator(), media_type="text/event-stream")
+
 
