@@ -1,4 +1,6 @@
 from sqlalchemy import text
+from typing import Optional, Callable
+import json
 from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql
 from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_fusion
 from candidate_intelligence_platform.search.reranker import rerank_candidates
@@ -76,19 +78,31 @@ def fetch_candidate_documents(candidate_ids: list[str], db) -> list[str]:
     doc_map = {row.candidate_id: row.raw_text for row in docs}
     return [doc_map.get(cid, "") for cid in candidate_ids]
 
-def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
+def search_candidates(query: str, db, vector_db, return_warnings: bool = False, progress_callback: Optional[Callable[[str, int, str], None]] = None):
     warnings = []
+    
+    if progress_callback:
+        progress_callback("STARTING", 0, "Initializing search...")
+    if progress_callback:
+        progress_callback("FTS_SEARCH", 20, "Executing keyword and filter query...")
+    
     sql, params = parse_query_to_sql(query)
     fts_query = params.get("fts_query", query)
     
     fts_ranks = execute_fts_query(sql, params, db)
     
     filtered_ids = list(fts_ranks.keys())
+    
+    if progress_callback:
+        progress_callback("VECTOR_SEARCH", 40, "Performing semantic vector search...")
     try:
         vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db, warnings=warnings)
     except TypeError:
         vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db)
     
+    if progress_callback:
+        progress_callback("RANK_FUSION", 60, "Fusing keyword and semantic ranks...")
+        
     rrf_results = reciprocal_rank_fusion(fts_ranks, vector_ranks)
 
     
@@ -96,8 +110,15 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
         return ([], warnings) if return_warnings else []
         
     top_candidates = [cid for cid, score in rrf_results[:50]]
+    
+    if progress_callback:
+        progress_callback("DB_HYDRATION", 70, "Fetching candidate profiles...")
+        
     documents = fetch_candidate_documents(top_candidates, db)
     
+    if progress_callback:
+        progress_callback("RERANKING", 80, "Reranking top matches...")
+        
     rerank_scores = rerank_candidates(query, documents)
     
     reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
@@ -107,6 +128,9 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
         rrf = next((s for c, s in rrf_results if c == cid), 0.0)
         rationale = build_match_rationale(cid, rank, rrf, rerank_score=score)
         results.append(rationale)
+        
+    if progress_callback:
+        progress_callback("COMPLETE", 100, "Search complete.")
         
     return (results, warnings) if return_warnings else results
 
