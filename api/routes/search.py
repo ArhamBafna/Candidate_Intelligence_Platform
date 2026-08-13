@@ -49,6 +49,8 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
             candidate_id=cid,
             rank=raw.get("rank", 1),
             rrf_score=raw.get("rrf_score", 0.0),
+            rerank_score=raw.get("rerank_score"),
+            match_percentage=raw.get("match_percentage", 0.0),
             match_scorecard=raw.get("match_scorecard", {}),
             candidate_info=c_info
         )

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2 } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function CandidateList() {
@@ -132,6 +132,7 @@ function CandidateList() {
                 current_city: info.current_city || 'Remote',
                 availability_status: info.availability_status || 'ACTIVE',
                 rrf_score: resItem.rrf_score,
+                match_percentage: resItem.match_percentage,
                 rank: resItem.rank,
                 match_scorecard: resItem.match_scorecard
               };
@@ -303,12 +304,24 @@ function CandidateList() {
                     <h3 className="font-semibold text-lg text-slate-100 group-hover:text-indigo-300 transition-colors">
                       {candidate.first_name} {candidate.last_name}
                     </h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      candidate.availability_status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                      'bg-slate-700 text-slate-300 border border-slate-600'
-                    }`}>
-                      {candidate.availability_status}
-                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        candidate.availability_status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                        'bg-slate-700 text-slate-300 border border-slate-600'
+                      }`}>
+                        {candidate.availability_status}
+                      </span>
+                      {candidate.match_percentage != null && candidate.match_percentage > 0 && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border ${
+                          candidate.match_percentage >= 80 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                          candidate.match_percentage >= 50 ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' :
+                          'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        }`}>
+                          <Sparkles size={11} className="shrink-0" />
+                          {candidate.match_percentage}% Match
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 

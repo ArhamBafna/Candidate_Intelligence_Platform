@@ -57,8 +57,8 @@ def test_hybrid_search_candidates(monkeypatch):
     def mock_rerank(q, docs):
         return [0.9, 0.8]
 
-    def mock_explainer(cid, rank, score):
-        return {"candidate_id": cid, "rank": rank, "rrf_score": score, "match_scorecard": {}}
+    def mock_explainer(cid, rank, score, **kwargs):
+        return {"candidate_id": cid, "rank": rank, "rrf_score": score, "match_percentage": 85.0, "match_scorecard": {}}
 
     import candidate_intelligence_platform.search.hybrid_searcher as hs
     monkeypatch.setattr(hs, "parse_query_to_sql", mock_parse)

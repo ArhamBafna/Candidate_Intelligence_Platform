@@ -26,7 +26,7 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
             warnings.append("Semantic vector search skipped (embedding model unavailable); showing keyword matches.")
         return {}
     
-    if not vector_db:
+    if vector_db is None:
         if warnings is not None:
             warnings.append("Semantic vector search skipped (LanceDB connection unavailable); showing keyword matches.")
         return {}
@@ -105,7 +105,7 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
     results = []
     for rank, (cid, score) in enumerate(reranked, start=1):
         rrf = next((s for c, s in rrf_results if c == cid), 0.0)
-        rationale = build_match_rationale(cid, rank, rrf)
+        rationale = build_match_rationale(cid, rank, rrf, rerank_score=score)
         results.append(rationale)
         
     return (results, warnings) if return_warnings else results

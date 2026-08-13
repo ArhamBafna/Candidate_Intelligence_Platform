@@ -12,6 +12,8 @@ class SearchResultItem(BaseModel):
     candidate_id: str
     rank: int
     rrf_score: float
+    rerank_score: Optional[float] = None
+    match_percentage: float = 0.0
     match_scorecard: Dict[str, Any] = Field(default_factory=dict)
     candidate_info: Optional[Dict[str, Any]] = None
 
