@@ -18,6 +18,9 @@ from candidate_intelligence_platform.intelligence.embeddings import generate_emb
 from api.dependencies import get_vector_db
 from storage.vector_store import CandidateSectionVector
 from candidate_intelligence_platform.extraction.hybrid_extractor import extract_candidate_profile_hybrid
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -493,6 +496,7 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
             })
         table.add(records)
 
+    logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
     return {"status": "success", "candidate_id": cand_id, "first_name": cand.first_name, "last_name": cand.last_name, "warnings": upload_warnings}
 
 @router.post("/upload-stream")
@@ -510,6 +514,7 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 file_hash = hashlib.sha256(content).hexdigest()
                 existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
                 if existing_rv:
+                    logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", file_hash=file_hash)
                     yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'SKIPPED_DUPLICATE', 'message': 'File already exists', 'progress': 100, 'warnings': []})}\n\n"
                     continue
                 
@@ -628,10 +633,12 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                     except Exception:
                         file_warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
                 
+                logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}', 'warnings': file_warnings})}\n\n"
                 
             except Exception as e:
                 db.rollback()
+                logger.error("resume_upload_complete", status="failed", file_hash=file_hash if 'file_hash' in locals() else None, error=str(e))
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100, 'warnings': file_warnings})}\n\n"
                 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")

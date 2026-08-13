@@ -1,11 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import structlog
+from config.logging import setup_logging
+import time
+import uuid
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Set up canonical structured logging
+setup_logging()
+logger = structlog.get_logger(__name__)
 
 from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
 from config.settings import Settings
 from config.database import get_engine
 from storage.db_models import init_db
@@ -38,6 +44,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def structlog_middleware(request: Request, call_next):
+    structlog.contextvars.clear_contextvars()
+    request_id = str(uuid.uuid4())
+    structlog.contextvars.bind_contextvars(
+        request_id=request_id,
+        path=request.url.path,
+        method=request.method,
+    )
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    structlog.contextvars.bind_contextvars(duration_ms=round(duration_ms, 2))
+    return response
 
 from api.routes.candidates import router as candidates_router
 from api.routes.search import router as search_router
