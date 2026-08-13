@@ -84,6 +84,8 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
         db_retrieval_duration_ms=db_retrieval_duration_ms,
         total_duration_ms=total_duration_ms
     )
+    return response
+
 @router.post("/stream")
 def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db)):
     import queue
