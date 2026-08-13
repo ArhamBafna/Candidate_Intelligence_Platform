@@ -47,4 +47,4 @@
   - `[x]` Update `hybrid_searcher.py` to support `progress_callback`
   - `[x]` Add `POST /api/search/stream` in `search.py`
   - `[x]` Add unit test `test_api_search_stream.py`
-  - `[ ]` Update UI `CandidateList.jsx` to parse and render stream events
+  - `[x]` Update UI `CandidateList.jsx` to parse and render stream events

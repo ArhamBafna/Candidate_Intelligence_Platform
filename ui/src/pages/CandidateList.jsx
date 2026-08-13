@@ -13,6 +13,7 @@ function CandidateList() {
   
   // Search & Warnings State
   const [searchWarnings, setSearchWarnings] = useState([]);
+  const [searchProgress, setSearchProgress] = useState(null);
   
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
@@ -101,47 +102,100 @@ function CandidateList() {
     }
   };
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) {
       setIsSearching(false);
+      setSearchProgress(null);
       setSearchWarnings([]);
       fetchCandidates();
       return;
     }
 
     setIsSearching(true);
-    fetch('/api/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query_text: query, top_k: 10 })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data) {
-          setSearchWarnings(data.warnings || []);
-          if (data.results) {
-            const mapped = data.results.map((resItem) => {
-              const info = resItem.candidate_info || {};
-              return {
-                id: resItem.candidate_id,
-                first_name: info.first_name || 'Candidate',
-                last_name: info.last_name || `#${resItem.candidate_id.substring(0, 6)}`,
-                current_title: info.current_title || 'Software Engineer',
-                current_company: info.current_company || 'Tech Corp',
-                current_city: info.current_city || 'Remote',
-                availability_status: info.availability_status || 'ACTIVE',
-                rrf_score: resItem.rrf_score,
-                match_percentage: resItem.match_percentage,
-                rank: resItem.rank,
-                match_scorecard: resItem.match_scorecard
-              };
-            });
-            setCandidates(mapped);
+    setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search...' });
+    setCandidates([]);
+
+    try {
+      const response = await fetch('/api/search/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query_text: query, top_k: 10 })
+      });
+
+      if (!response.body) throw new Error('ReadableStream not supported.');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+        
+        for (const block of lines) {
+          const linesInBlock = block.split('\n');
+          for (const line of linesInBlock) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.substring(6));
+                
+                if (event.stage === 'COMPLETE') {
+                  if (event.data) {
+                    setSearchWarnings(event.data.warnings || []);
+                    if (event.data.results) {
+                      const mapped = event.data.results.map((resItem) => {
+                        const info = resItem.candidate_info || {};
+                        return {
+                          id: resItem.candidate_id,
+                          first_name: info.first_name || 'Candidate',
+                          last_name: info.last_name || `#${resItem.candidate_id.substring(0, 6)}`,
+                          current_title: info.current_title || 'Software Engineer',
+                          current_company: info.current_company || 'Tech Corp',
+                          current_city: info.current_city || 'Remote',
+                          availability_status: info.availability_status || 'ACTIVE',
+                          rrf_score: resItem.rrf_score,
+                          match_percentage: resItem.match_percentage,
+                          rank: resItem.rank,
+                          match_scorecard: resItem.match_scorecard
+                        };
+                      });
+                      setCandidates(mapped);
+                    }
+                  }
+                  
+                  // Clear progress after short delay
+                  setTimeout(() => {
+                    setSearchProgress(null);
+                    setIsSearching(false);
+                  }, 800);
+                } else if (event.stage === 'ERROR') {
+                  console.error('Search error:', event.message);
+                  setIsSearching(false);
+                  setSearchProgress(null);
+                } else {
+                  setSearchProgress({
+                    stage: event.stage,
+                    progress: event.progress,
+                    message: event.message
+                  });
+                }
+              } catch (err) {
+                console.error('Error parsing search event:', err);
+              }
+            }
           }
         }
-      })
-      .catch((err) => console.error(err));
+      }
+    } catch (err) {
+      console.error('Search stream failed:', err);
+      setIsSearching(false);
+      setSearchProgress(null);
+    }
   };
 
 
@@ -269,6 +323,25 @@ function CandidateList() {
           </button>
         </form>
       </section>
+
+      {/* Search Progress */}
+      {searchProgress && (
+        <section className="glass-panel p-5 rounded-2xl border border-indigo-500/30 bg-indigo-950/20 shadow-[0_0_20px_rgba(99,102,241,0.1)] transition-all animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium text-indigo-300 flex items-center gap-2">
+              <RefreshCw size={16} className="animate-spin text-indigo-400" />
+              {searchProgress.message}
+            </span>
+            <span className="text-sm font-bold text-indigo-400 font-mono bg-indigo-500/10 px-2 py-1 rounded-md">{searchProgress.progress}%</span>
+          </div>
+          <div className="w-full bg-slate-900/80 rounded-full h-2.5 overflow-hidden shadow-inner">
+            <div 
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+              style={{ width: `${searchProgress.progress}%` }}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Search Warning Banner */}
       {searchWarnings && searchWarnings.length > 0 && (
