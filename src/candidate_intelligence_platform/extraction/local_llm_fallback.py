@@ -48,7 +48,7 @@ def extract_inferences(text: str, model_name: str | None = None) -> list[dict]:
             
         return facts
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Ollama inference failed. AI extraction will be skipped. Error: {e}")
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.warning("ai_llm_extraction_failed", model=selected_model, error=str(e), action="skipping_ai_extraction")
         return []

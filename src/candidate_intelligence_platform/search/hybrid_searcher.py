@@ -6,6 +6,9 @@ from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_f
 from candidate_intelligence_platform.search.reranker import rerank_candidates
 from candidate_intelligence_platform.intelligence.explainer import build_match_rationale
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 def execute_fts_query(sql: str, params: dict, db) -> dict[str, int]:
     if not sql:
@@ -24,6 +27,7 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
         embeddings = generate_embeddings([query_text])
         query_vector = embeddings[0]
     except Exception as e:
+        logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
         if warnings is not None:
             warnings.append("Semantic vector search skipped (embedding model unavailable); showing keyword matches.")
         return {}
@@ -44,6 +48,7 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
     try:
         results = table.search(query_vector).limit(100).to_list()
     except Exception as e:
+        logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
         if warnings is not None:
             warnings.append(f"Semantic vector search skipped ({str(e)}); showing keyword matches.")
         return {}
@@ -119,7 +124,11 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False, 
     if progress_callback:
         progress_callback("RERANKING", 80, "Reranking top matches...")
         
-    rerank_scores = rerank_candidates(query, documents)
+    try:
+        rerank_scores = rerank_candidates(query, documents)
+    except Exception as e:
+        logger.warning("ai_reranking_failed", query=query, error=str(e), action="falling_back_to_rrf_scores")
+        rerank_scores = [0.0] * len(top_candidates)
     
     reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
     
