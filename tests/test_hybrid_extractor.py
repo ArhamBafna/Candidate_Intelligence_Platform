@@ -6,8 +6,6 @@ from candidate_intelligence_platform.extraction.hybrid_extractor import (
 
 def test_calculate_tier1_confidence_high():
     facts = [
-        {"claim_category": "CONTACT", "claim_key": "email", "claim_value": "john.doe@example.com"},
-        {"claim_category": "CONTACT", "claim_key": "phone", "claim_value": "555-123-4567"},
         {"claim_category": "PERSON", "claim_key": "name", "claim_value": "John Doe"},
         {"claim_category": "SKILL", "claim_key": "python", "claim_value": "Python"}
     ]
@@ -19,7 +17,23 @@ def test_calculate_tier1_confidence_high():
         "current_title": "Senior Software Engineer"
     }
     score = calculate_tier1_confidence(facts, parsed_profile)
-    assert score >= 0.70
+    assert score == 1.0  # Name (0.50) + Title (0.25) + Skills (0.25) = 1.0
+
+def test_calculate_tier1_confidence_no_email_phone_bonus():
+    # Email & phone present, but no title or skills -> score is only for Name (0.50)
+    facts = [
+        {"claim_category": "CONTACT", "claim_key": "email", "claim_value": "john.doe@example.com"},
+        {"claim_category": "CONTACT", "claim_key": "phone", "claim_value": "555-123-4567"}
+    ]
+    parsed_profile = {
+        "first_name": "John",
+        "last_name": "Doe",
+        "primary_email": "john.doe@example.com",
+        "primary_phone": "555-123-4567",
+        "current_title": "Candidate"
+    }
+    score = calculate_tier1_confidence(facts, parsed_profile)
+    assert score == 0.50
 
 def test_calculate_tier1_confidence_very_low():
     facts = []
@@ -31,7 +45,7 @@ def test_calculate_tier1_confidence_very_low():
         "current_title": "Candidate"
     }
     score = calculate_tier1_confidence(facts, parsed_profile)
-    assert score < 0.40
+    assert score == 0.0
 
 def test_extract_candidate_profile_hybrid_deterministic():
     text = """
@@ -49,8 +63,8 @@ def test_extract_candidate_profile_hybrid_deterministic():
     assert res["confidence_score"] >= 0.70
 
 def test_extract_candidate_profile_hybrid_ai_fallback(monkeypatch):
-    # Missing email triggers AI fallback even if name is present
-    text = "John Doe\nSenior Software Engineer\nSkills: Python"
+    # Missing skills/location triggers AI fallback even if name & title are present
+    text = "John Doe\nSenior Software Engineer"
     
     class MockMessage:
         content = '{"claims": [{"claim_category": "PERSON", "claim_key": "name", "claim_value": "John Doe"}, {"claim_category": "CONTACT", "claim_key": "email", "claim_value": "john.doe@inferred.com"}]}'
@@ -69,8 +83,8 @@ def test_extract_candidate_profile_hybrid_ai_fallback(monkeypatch):
     assert res["primary_email"] == "john.doe@inferred.com"
 
 def test_extract_candidate_profile_hybrid_ai_fallback_failed_warning(monkeypatch):
-    # Text triggers fallback, but ollama returns []
-    text = "Jane Smith\nSoftware Engineer\nSkills: Python"
+    # Text missing skills triggers fallback, but ollama returns []
+    text = "Jane Smith\nSoftware Engineer"
     
     def mock_extract_inferences(*args, **kwargs):
         return []
@@ -81,4 +95,5 @@ def test_extract_candidate_profile_hybrid_ai_fallback_failed_warning(monkeypatch
     assert res["used_ai_fallback"] is False
     assert "warnings" in res
     assert any("LLM fallback attempted" in w for w in res["warnings"])
+
 
