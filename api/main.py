@@ -62,6 +62,7 @@ async def structlog_middleware(request: Request, call_next):
 
 from api.routes.candidates import router as candidates_router
 from api.routes.search import router as search_router
+from api.routes.logs import router as logs_router
 
 @app.get("/health")
 def health_check():
@@ -69,4 +70,5 @@ def health_check():
 
 app.include_router(candidates_router)
 app.include_router(search_router)
+app.include_router(logs_router)
 
