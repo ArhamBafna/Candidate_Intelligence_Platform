@@ -101,10 +101,10 @@ def extract_candidate_profile_hybrid(
                 last_name = parts[1] if len(parts) > 1 else "Candidate"
 
     title = "Candidate"
-    if len(lines) > 1:
-        possible_title = lines[1]
-        if not EMAIL_REGEX.search(possible_title) and not PHONE_REGEX.search(possible_title):
-            title = possible_title[:100]
+    for line in lines[1:]:
+        if not EMAIL_REGEX.search(line) and not PHONE_REGEX.search(line):
+            title = line[:100]
+            break
 
     profile = {
         "first_name": first_name[:50],
