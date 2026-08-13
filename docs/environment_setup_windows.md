@@ -8,10 +8,10 @@ This document provides a concise guide to set up the necessary tools and runtime
 
 | Tool | Status | Binary Path / Details |
 |---|---|---|
-| **Git** | Installed | `C:\Users\bafna_ci\AppData\Local\Programs\Git\cmd\git.exe` |
-| **uv** | Installed | `C:\Users\bafna_ci\.local\bin\uv.exe` *(Needs PATH setup)* |
-| **Python** | Installed (Managed by uv) | Python 3.14 (`C:\Users\bafna_ci\AppData\Roaming\uv\python\...`) |
-| **Ollama** | Installed | Installed by user (Default model: `llama3.2`) |
+| **Git** | Configured in PATH | `git` (`C:\Users\bafna_ci\AppData\Local\Programs\Git\cmd`) |
+| **uv** | Configured in PATH | `uv` (`C:\Users\bafna_ci\.local\bin`) |
+| **Python** | Configured in PATH | `python` (`C:\Users\bafna_ci\AppData\Roaming\uv\python\cpython-3.14-windows-x86_64-none`) |
+| **Ollama** | Configured in PATH | `ollama` (`C:\Users\bafna_ci\AppData\Local\Programs\Ollama`) |
 
 ---
 
