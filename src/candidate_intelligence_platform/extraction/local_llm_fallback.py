@@ -106,7 +106,7 @@ Text:
                     original_category=claim.get("claim_category"),
                     normalized_category=raw_cat or "SKILL"
                 )
-                raw_cat = raw_cat if raw_cat in VALID_CATEGORIES else "SKILL"
+                raw_cat = "SKILL"
 
             # 2. Check and repair claim_value / claim_key inversion (where claim_value was null)
             repaired_key = str(raw_key).strip() if raw_key is not None else ""
