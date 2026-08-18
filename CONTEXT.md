@@ -1,7 +1,5 @@
 # Candidate Intelligence Platform (CIP) Domain Context
 
-# Candidate Intelligence Platform (CIP) Domain Context
-
 ## Core Concepts
 - **Candidate**: Primary profile containing contact info, work history summary, and attributes.
 - **Resume Version**: Parsing output associated with a CAS file hash representing a resume upload.
