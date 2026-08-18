@@ -19,7 +19,11 @@ from ingestion.parsers.models import ParsedDocument
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
 from api.dependencies import get_vector_db
 from storage.vector_store import CandidateSectionVector
-from candidate_intelligence_platform.extraction.hybrid_extractor import extract_candidate_profile_hybrid
+from candidate_intelligence_platform.extraction.hybrid_extractor import (
+    extract_candidate_profile_hybrid,
+    normalize_name,
+    normalize_title
+)
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -111,6 +115,13 @@ def update_candidate(candidate_id: str, update_data: CandidateUpdate, db: Sessio
         raise HTTPException(status_code=404, detail="Candidate not found")
         
     update_dict = update_data.model_dump(exclude_unset=True)
+    if "first_name" in update_dict:
+        update_dict["first_name"] = normalize_name(update_dict["first_name"])
+    if "last_name" in update_dict:
+        update_dict["last_name"] = normalize_name(update_dict["last_name"])
+    if "current_title" in update_dict:
+        update_dict["current_title"] = normalize_title(update_dict["current_title"])
+        
     for key, value in update_dict.items():
         setattr(candidate, key, value)
         

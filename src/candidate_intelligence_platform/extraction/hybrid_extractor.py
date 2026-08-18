@@ -5,8 +5,50 @@ from candidate_intelligence_platform.extraction.local_llm_fallback import extrac
 
 TITLE_KEYWORDS = {
     "engineer", "developer", "manager", "lead", "architect", "analyst", 
-    "specialist", "director", "administrator", "consultant", "designer", "scientist"
+    "specialist", "director", "administrator", "consultant", "designer", "scientist",
+    "programmer", "officer", "executive", "coordinator", "technician"
 }
+
+TITLE_IGNORE_HEADINGS = {
+    "summary", "professional summary", "executive summary", "career summary",
+    "overview", "profile", "professional profile", "career profile",
+    "experience", "work experience", "professional experience", "employment history",
+    "contact", "contact info", "contact information",
+    "about", "about me", "objective", "career objective",
+    "skills", "technical skills", "core competencies",
+    "education", "academic background", "certifications",
+    "resume", "curriculum vitae", "cv"
+}
+
+def normalize_name(text: str | None) -> str:
+    """
+    Format candidate name cleanly in Title Case while preserving special casing.
+    Handles ALL CAPS (e.g. INZAMAM -> Inzamam), all lowercase, and mixed cases.
+    """
+    if not text:
+        return ""
+    text = " ".join(text.strip().split())
+    if not text:
+        return ""
+    if text.lower() == "candidate" or text.lower() == "uploaded":
+        return text.title()
+    if text.isupper() or text.islower():
+        return text.title()
+    words = text.split()
+    return " ".join(w.capitalize() if (w.isupper() or w.islower()) else w for w in words)
+
+def normalize_title(text: str | None) -> str:
+    """
+    Format candidate job title cleanly in Title Case.
+    """
+    if not text:
+        return "Candidate"
+    text = " ".join(text.strip().split())
+    if not text:
+        return "Candidate"
+    if text.isupper() or text.islower():
+        return text.title()
+    return text
 
 def calculate_tier1_confidence(facts: List[Dict[str, Any]], parsed_profile: Dict[str, Any]) -> float:
     """
@@ -50,6 +92,7 @@ def extract_candidate_profile_hybrid(
     Extract candidate profile using Tier 1 deterministic parsing first.
     If Tier 1 confidence is below confidence_threshold (0.70) or if any of the key fields
     (Name, Job Title, or Skills/Location) are missing, trigger Tier 2 local AI LLM extraction.
+    Applies Title Case normalization to candidate names and titles.
     """
     facts = extract_facts(text)
     
@@ -78,29 +121,53 @@ def extract_candidate_profile_hybrid(
     
     if name_from_ner:
         parts = name_from_ner.split()
-        first_name = parts[0]
-        last_name = " ".join(parts[1:]) if len(parts) > 1 else "Candidate"
+        first_name = normalize_name(parts[0])
+        last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
     elif lines:
         header_line = lines[0]
         if not EMAIL_REGEX.search(header_line) and not PHONE_REGEX.search(header_line):
             parts = header_line.split()
             if 1 <= len(parts) <= 3:
-                first_name = parts[0]
-                last_name = parts[1] if len(parts) > 1 else "Candidate"
+                first_name = normalize_name(parts[0])
+                last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
 
+    # Smart last name inference from email if missing
+    if (last_name.lower() in ("candidate", "") or not last_name) and email:
+        local_part = email.split("@")[0]
+        if "." in local_part:
+            email_parts = local_part.split(".")
+            if len(email_parts) >= 2 and email_parts[0].lower() == first_name.lower():
+                inferred_last = re.sub(r'\d+', '', email_parts[1])
+                if inferred_last and len(inferred_last) > 1:
+                    last_name = normalize_name(inferred_last)
+
+    # Smart title extraction
     title = "Candidate"
+    candidate_full_name = f"{first_name} {last_name}".strip().lower()
     for line in lines[1:]:
-        if not EMAIL_REGEX.search(line) and not PHONE_REGEX.search(line):
-            title = line[:100]
+        clean_l = line.strip()
+        if not clean_l:
+            continue
+        if EMAIL_REGEX.search(clean_l) or PHONE_REGEX.search(clean_l):
+            continue
+        lower_l = clean_l.lower()
+        if lower_l in TITLE_IGNORE_HEADINGS:
+            continue
+        if lower_l == candidate_full_name or lower_l == first_name.lower():
+            continue
+        if any(kw in lower_l for kw in TITLE_KEYWORDS):
+            title = normalize_title(clean_l[:100])
             break
+        if title == "Candidate" and len(clean_l) <= 100 and not any(kw in lower_l for kw in ("http", "www", "github", "linkedin")):
+            title = normalize_title(clean_l)
 
     profile = {
-        "first_name": first_name[:50],
-        "last_name": last_name[:50],
+        "first_name": normalize_name(first_name[:50]),
+        "last_name": normalize_name(last_name[:50]),
         "primary_email": email,
         "primary_phone": phone,
-        "current_title": title,
-        "location": location,
+        "current_title": normalize_title(title),
+        "location": normalize_title(location) if location else None,
     }
 
     tier1_confidence = calculate_tier1_confidence(facts, profile)
@@ -115,7 +182,7 @@ def extract_candidate_profile_hybrid(
     # Check if Tier 1 confidence is below threshold or if any key field (Name, Job Title, Skills/Loc) is missing
     missing_key_fields = (
         profile["first_name"] == "Uploaded" 
-        or profile["current_title"] == "Candidate"
+        or profile["current_title"] in ("Candidate", "Summary")
         or not has_skills_or_loc
     )
 
@@ -128,18 +195,30 @@ def extract_candidate_profile_hybrid(
             for claim in ai_claims:
                 cat = claim.get("claim_category")
                 val = claim.get("claim_value")
-                key = claim.get("claim_key")
+                key = (claim.get("claim_key") or "").lower()
                 
-                if cat == "PERSON" and val and (profile["first_name"] == "Uploaded" or not profile["first_name"]):
+                if cat == "PERSON" and val and (profile["first_name"] == "Uploaded" or not profile["first_name"] or profile["first_name"] == "Candidate"):
                     parts = str(val).split()
-                    profile["first_name"] = parts[0][:50]
-                    profile["last_name"] = parts[1][:50] if len(parts) > 1 else "Candidate"
-                elif cat == "CONTACT" and key == "email" and val and not profile["primary_email"]:
-                    profile["primary_email"] = str(val)
-                elif cat == "EMPLOYMENT" and val and (profile["current_title"] == "Candidate" or not profile["current_title"]):
-                    profile["current_title"] = str(val)[:100]
+                    profile["first_name"] = normalize_name(parts[0][:50])
+                    profile["last_name"] = normalize_name(" ".join(parts[1:])[:50] if len(parts) > 1 else "Candidate")
+                elif cat == "CONTACT" and key in ("email", "contact") and val and "@" in str(val) and not profile["primary_email"]:
+                    profile["primary_email"] = str(val).strip()
+                elif cat == "CONTACT" and key in ("phone", "tel") and val and not profile["primary_phone"]:
+                    profile["primary_phone"] = str(val).strip()
+                elif cat == "EMPLOYMENT" and val and key in ("title", "job_title", "position", "role") and (profile["current_title"] in ("Candidate", "Summary", "SUMMARY") or not profile["current_title"]):
+                    profile["current_title"] = normalize_title(str(val)[:100])
+                elif cat == "EMPLOYMENT" and val and (profile["current_title"] in ("Candidate", "Summary", "SUMMARY") or not profile["current_title"]):
+                    if not re.search(r'\b(20\d\d|19\d\d|present)\b', str(val), re.IGNORECASE):
+                        profile["current_title"] = normalize_title(str(val)[:100])
         else:
             warnings.append("LLM fallback attempted but LLM service/model unavailable; continued using rule-based profile extraction.")
+
+    # Final normalization guarantee
+    profile["first_name"] = normalize_name(profile["first_name"])
+    profile["last_name"] = normalize_name(profile["last_name"])
+    profile["current_title"] = normalize_title(profile["current_title"])
+    if profile.get("location"):
+        profile["location"] = normalize_title(profile["location"])
 
     return {
         **profile,
@@ -148,4 +227,3 @@ def extract_candidate_profile_hybrid(
         "facts": facts,
         "warnings": warnings
     }
-
