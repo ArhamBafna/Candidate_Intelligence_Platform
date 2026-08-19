@@ -7,7 +7,7 @@ def test_ui_build() -> None:
     """
     ui_dir = Path(__file__).parent.parent / "ui"
     result = subprocess.run(
-        ["npm", "run", "build"],
+        "npm run build",
         cwd=str(ui_dir),
         shell=True,
         capture_output=True,
