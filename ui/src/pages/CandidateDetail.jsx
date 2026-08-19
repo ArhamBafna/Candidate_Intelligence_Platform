@@ -9,6 +9,7 @@ function CandidateDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'typing', 'error'
+  const [lastSavedTime, setLastSavedTime] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const saveTimeoutRef = useRef(null);
@@ -68,6 +69,7 @@ function CandidateDetail() {
       });
       if (res.ok) {
         setSaveStatus('saved');
+        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       } else {
         setSaveStatus('error');
       }
@@ -251,7 +253,7 @@ function CandidateDetail() {
             {saveStatus === 'saved' && (
               <>
                 <CheckCircle2 size={14} className="text-emerald-400" />
-                <span>All changes saved</span>
+                <span>All changes saved {lastSavedTime && `(Last saved at ${lastSavedTime})`}</span>
               </>
             )}
           </div>

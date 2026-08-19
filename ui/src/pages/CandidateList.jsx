@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2, Sparkles, CheckSquare, Square, Check, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function CandidateList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [candidates, setCandidates] = useState([]);
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -184,8 +185,10 @@ function CandidateList() {
   };
 
   useEffect(() => {
-    fetchCandidates();
-  }, []);
+    if (location.pathname === '/') {
+      fetchCandidates();
+    }
+  }, [location.pathname]);
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -466,6 +469,26 @@ function CandidateList() {
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
+            {query.length > 0 && (
+              <button 
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setIsSearching(false);
+                  setSearchProgress(null);
+                  setSearchWarnings([]);
+                  fetch('/api/candidates')
+                    .then((res) => res.json())
+                    .then((data) => {
+                      if (Array.isArray(data)) setCandidates(data);
+                    })
+                    .catch((err) => console.error(err));
+                }}
+                className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-200"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
           <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-900/20">
             {isSearching ? 'Search' : 'Search'}
@@ -506,6 +529,56 @@ function CandidateList() {
           </div>
         </div>
       )}
+
+      {/* Batch Actions & Master Select */}
+      <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleSelectAll}
+            className="text-slate-400 hover:text-indigo-400 flex items-center gap-2 font-medium"
+          >
+            {candidates.length > 0 && selectedIds.length === candidates.length ? (
+              <CheckSquare size={20} className="text-indigo-400" />
+            ) : selectedIds.length > 0 ? (
+              <div className="w-5 h-5 bg-indigo-500/20 border-2 border-indigo-400 rounded-sm flex items-center justify-center">
+                <div className="w-2.5 h-0.5 bg-indigo-400 rounded-full" />
+              </div>
+            ) : (
+              <Square size={20} />
+            )}
+            <span className="text-sm">Select All</span>
+          </button>
+          
+          {selectedIds.length > 0 && (
+            <span className="text-sm text-indigo-300 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
+              {selectedIds.length} selected
+            </span>
+          )}
+        </div>
+        
+        {selectedIds.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBatchDownloadResumes}
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download size={14} /> Download
+            </button>
+            <button
+              onClick={handleBatchReprocess}
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <RefreshCw size={14} /> Reprocess
+            </button>
+            <button
+              onClick={() => setShowBatchDeleteModal(true)}
+              className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/30 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Candidate List Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

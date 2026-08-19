@@ -147,9 +147,10 @@ async function runE2ETests() {
       const resultCardsCount = await page.locator('section.grid > div.glass-panel').count();
       console.log(`[PASS] Search returned ${resultCardsCount} candidate card(s)`);
 
-      // Reset search
-      await searchInput.fill('');
-      await page.locator('button[type="submit"]:has-text("Search")').click();
+      // Reset search using clear button
+      const clearBtn = page.locator('button').filter({ has: page.locator('svg.lucide-x') }).first();
+      await clearBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await clearBtn.click();
       await page.waitForTimeout(1200);
       const resetCount = await page.locator('section.grid > div.glass-panel').count();
       console.log(`[PASS] Reset search restored list to ${resetCount} candidate(s)`);
@@ -186,7 +187,10 @@ async function runE2ETests() {
         console.log('[ACTION] Updated title input, awaiting debounce autosave...');
         await page.waitForTimeout(1800);
         const saveStatus = await page.locator('div:has-text("All changes saved"), div:has-text("Saved")').first().textContent();
-        console.log(`[PASS] Autosave state verified`);
+        console.log(`[PASS] Autosave state verified: ${saveStatus}`);
+        if (!saveStatus.includes('Last saved at')) {
+          console.warn('[WARN] Timestamp not found in save status');
+        }
       }
 
       // Verify download button exists
@@ -217,10 +221,17 @@ async function runE2ETests() {
       const count = await selectCheckboxes.count();
       console.log(`Found ${count} candidate checkboxes`);
 
+      const masterCheckboxBtn = page.locator('button:has-text("Select All")');
       if (count > 0) {
-        await selectCheckboxes.first().click();
-        console.log('[ACTION] Selected 1 candidate');
-        await page.waitForTimeout(400);
+        if (await masterCheckboxBtn.isVisible()) {
+          await masterCheckboxBtn.click();
+          console.log('[ACTION] Clicked Master Select All');
+          await page.waitForTimeout(400);
+        } else {
+          await selectCheckboxes.first().click();
+          console.log('[ACTION] Selected 1 candidate manually');
+          await page.waitForTimeout(400);
+        }
 
         // Verify batch action bar appears
         const batchDeleteBtn = page.locator('button:has-text("Delete (1)")');
