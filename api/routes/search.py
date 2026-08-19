@@ -67,7 +67,9 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
     
     t0 = time.perf_counter()
     if full_query:
-        raw_results, warnings = search_candidates(full_query, db, vector_db, return_warnings=True)
+        for stage, progress, msg, data in search_candidates(full_query, db, vector_db, return_warnings=True):
+            if stage == "COMPLETE":
+                raw_results, warnings = data
     else:
         raw_results, warnings = [], []
     
@@ -100,32 +102,24 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
 
 @router.post("/stream")
 def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db)):
-    import queue
-    import threading
-    
-    q = queue.Queue()
-    
-    def progress_callback(stage: str, progress: int, message: str):
-        event = {
-            "stage": stage,
-            "progress": progress,
-            "message": message,
-            "status": "IN_PROGRESS"
-        }
-        q.put(event)
-        
-    def worker():
+    def event_generator():
         try:
             full_query = _build_search_query(request)
             vector_db = get_vector_db()
             
             t0 = time.perf_counter()
             if full_query:
-                raw_results, warnings = search_candidates(
-                    full_query, db, vector_db, 
-                    return_warnings=True, 
-                    progress_callback=progress_callback
-                )
+                for stage, progress, message, data in search_candidates(full_query, db, vector_db, return_warnings=True):
+                    if stage == "COMPLETE":
+                        raw_results, warnings = data
+                    else:
+                        event = {
+                            "stage": stage,
+                            "progress": progress,
+                            "message": message,
+                            "status": "IN_PROGRESS"
+                        }
+                        yield f"data: {json.dumps(event)}\n\n"
             else:
                 raw_results, warnings = [], []
                 
@@ -142,30 +136,8 @@ def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get
                 warnings=warnings
             )
             
-            q.put({
-                "stage": "COMPLETE",
-                "progress": 100,
-                "message": "Search complete",
-                "status": "SUCCESS",
-                "data": response_data.model_dump()
-            })
-            q.put(None) # Sentinel to stop generator
+            yield f"data: {json.dumps({'stage': 'COMPLETE', 'progress': 100, 'message': 'Search complete', 'status': 'SUCCESS', 'data': response_data.model_dump()})}\n\n"
         except Exception as e:
-            q.put({
-                "stage": "ERROR",
-                "progress": 100,
-                "message": str(e),
-                "status": "FAILED"
-            })
-            q.put(None)
-            
-    threading.Thread(target=worker, daemon=True).start()
-    
-    def event_generator():
-        while True:
-            event = q.get()
-            if event is None:
-                break
-            yield f"data: {json.dumps(event)}\n\n"
+            yield f"data: {json.dumps({'stage': 'ERROR', 'progress': 100, 'message': str(e), 'status': 'FAILED'})}\n\n"
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")

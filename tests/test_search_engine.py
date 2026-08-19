@@ -69,8 +69,12 @@ def test_hybrid_search_candidates(monkeypatch):
     monkeypatch.setattr(hs, "build_match_rationale", mock_explainer)
     monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: ["doc2", "doc1"])
 
-    results = search_candidates(query, None, None)
-
+    gen = search_candidates(query, None, None)
+    results = None
+    for stage, progress, message, data in gen:
+        if stage == "COMPLETE":
+            results = data
+            
     assert len(results) == 2
     assert results[0]["candidate_id"] == "cand_2"
     assert results[0]["rank"] == 1

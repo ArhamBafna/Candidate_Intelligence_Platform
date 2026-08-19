@@ -236,7 +236,10 @@ async def reprocess_candidate_stream(
             yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities', 'warnings': reprocess_warnings})}\n\n"
             await asyncio.sleep(0.05)
             if raw_text:
-                extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                def do_extract():
+                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                extracted = await asyncio.to_thread(do_extract)
+                
                 if extracted.get("warnings"):
                     reprocess_warnings.extend(extracted["warnings"])
                 

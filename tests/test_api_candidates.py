@@ -165,7 +165,10 @@ def test_reprocess_candidate(client: TestClient, db_session: Session):
     assert len(timeline_data) >= 1
     assert any(e["event_type"] == "REPROCESS_TRIGGERED" for e in timeline_data)
 
-def test_reprocess_candidate_stream(client: TestClient, db_session: Session):
+def test_reprocess_candidate_stream(client: TestClient, db_session: Session, monkeypatch):
+    import api.routes.candidates as routes
+    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Stream", "last_name": "Reprocess", "primary_email": "", "primary_phone": "", "current_title": "Data Scientist", "warnings": []})
+
     c_id = str(uuid.uuid4())
     c = Candidate(id=c_id, first_name="Stream", last_name="Reprocess", availability_status="ACTIVE", current_title="Data Scientist")
     db_session.add(c)
@@ -279,7 +282,11 @@ def test_batch_delete_candidates(client: TestClient, db_session: Session, monkey
 
 def test_batch_reprocess_stream(client: TestClient, db_session: Session, monkeypatch) -> None:
     mock_vector_db = MockVectorStore()
+    from api.dependencies import get_vector_db
     monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: mock_vector_db)
+    
+    import api.routes.candidates as routes
+    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Stream", "last_name": "Tester", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []})
 
     c_id = str(uuid.uuid4())
     candidate = Candidate(id=c_id, first_name="Stream", last_name="Tester")

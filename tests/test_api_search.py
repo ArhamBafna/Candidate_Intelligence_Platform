@@ -13,22 +13,24 @@ def test_search_candidates(mock_search, client: TestClient, db_session: Session)
     db_session.add(c)
     db_session.commit()
 
-    mock_search.return_value = (
-        [
-            {
-                "candidate_id": cid,
-                "rank": 1,
-                "rrf_score": 0.0328,
-                "match_scorecard": {
-                    "strict_filters": [],
-                    "keyword_matches": [],
-                    "semantic_matches": [],
-                    "ai_inferences": []
+    def mock_generator(*args, **kwargs):
+        yield ("COMPLETE", 100, "Search complete", (
+            [
+                {
+                    "candidate_id": cid,
+                    "rank": 1,
+                    "rrf_score": 0.0328,
+                    "match_scorecard": {
+                        "strict_filters": [],
+                        "keyword_matches": [],
+                        "semantic_matches": [],
+                        "ai_inferences": []
+                    }
                 }
-            }
-        ],
-        ["Vector search skipped (test warning)"]
-    )
+            ],
+            ["Vector search skipped (test warning)"]
+        ))
+    mock_search.side_effect = mock_generator
 
     response = client.post(
         "/search",
