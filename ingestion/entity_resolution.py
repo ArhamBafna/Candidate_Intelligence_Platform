@@ -37,10 +37,7 @@ def similarity_score(name1: str, name2: str) -> float:
         return 0.0
     return difflib.SequenceMatcher(None, n1, n2).ratio()
 
-def resolve(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]) -> ResolutionResult:
-    if not existing:
-        return ResolutionResult(action=ResolutionAction.NEW, tier=0, confidence=0.0)
-
+def _resolve_tier_1(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]) -> Optional[ResolutionResult]:
     best_tier1_match = None
     best_tier1_keys = set()
 
@@ -65,9 +62,11 @@ def resolve(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]
             matched_id=best_tier1_match.candidate_id,
             matching_keys=best_tier1_keys
         )
+    return None
 
+def _resolve_tier_2(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]) -> Optional[ResolutionResult]:
     if not incoming.full_name:
-        return ResolutionResult(action=ResolutionAction.NEW, tier=0, confidence=0.0)
+        return None
 
     best_tier2_match = None
     best_tier2_score = 0.0
@@ -95,5 +94,18 @@ def resolve(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]
                 matched_id=best_tier2_match.candidate_id,
                 matching_keys={"full_name"}
             )
+    return None
+
+def resolve(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]) -> ResolutionResult:
+    if not existing:
+        return ResolutionResult(action=ResolutionAction.NEW, tier=0, confidence=0.0)
+
+    tier1_result = _resolve_tier_1(incoming, existing)
+    if tier1_result:
+        return tier1_result
+
+    tier2_result = _resolve_tier_2(incoming, existing)
+    if tier2_result:
+        return tier2_result
 
     return ResolutionResult(action=ResolutionAction.NEW, tier=0, confidence=0.0)

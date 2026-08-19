@@ -11,8 +11,9 @@ from api.schemas.candidates import (
     BatchReprocessRequest
 )
 from storage.db_models import Candidate, ResumeVersion, CandidateClaim, CandidateTimelineEvent
-from crm.state_machine import CandidateStateMachine
+from crm.state_machine import CandidateStateMachine, TransitionContext
 from crm.timeline_ledger import TimelineLedger
+from api.services.candidate_service import CandidateService
 from sqlalchemy import text
 from ingestion.chunker import chunk_document
 from ingestion.parsers.models import ParsedDocument
@@ -44,35 +45,9 @@ def delete_candidate(
     db: Session = Depends(get_db),
     vector_db = Depends(get_vector_db)
 ):
-    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
-    if not candidate:
+    success = CandidateService.delete_candidate(db, candidate_id, vector_db)
+    if not success:
         raise HTTPException(status_code=404, detail="Candidate not found")
-        
-    try:
-        db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-        db.execute(text("DELETE FROM claims_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-    except Exception:
-        pass
-
-    # Delete related child records
-    db.query(ResumeVersion).filter(ResumeVersion.candidate_id == candidate_id).delete()
-    db.query(CandidateClaim).filter(CandidateClaim.candidate_id == candidate_id).delete()
-    db.query(CandidateTimelineEvent).filter(CandidateTimelineEvent.candidate_id == candidate_id).delete()
-        
-    db.delete(candidate)
-    db.commit()
-
-    if vector_db:
-        if hasattr(vector_db, "delete_candidate_vectors"):
-            vector_db.delete_candidate_vectors(candidate_id)
-        else:
-            try:
-                table_names = vector_db.table_names()
-                if "candidate_vectors" in table_names:
-                    table = vector_db.open_table("candidate_vectors")
-                    table.delete(f'candidate_id = "{candidate_id}"')
-            except Exception:
-                pass
 
     return None
 
@@ -84,13 +59,14 @@ def update_candidate_status(
 ):
     try:
         sm = CandidateStateMachine()
-        sm.transition_state(
+        context = TransitionContext(
             session=db,
             candidate_id=candidate_id,
             new_status=update.new_status,
             recruiter_name=update.recruiter_name,
             reason=update.reason
         )
+        sm.transition_state(context)
         db.commit()
         return {"status": "success"}
     except ValueError as e:
@@ -193,54 +169,14 @@ def reprocess_candidate(
         
         # 2. Refresh Full-Text Search (FTS)
         try:
-            db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-            db.execute(
-                text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
-                {
-                    "cid": candidate_id,
-                    "fname": f"{candidate.first_name} {candidate.last_name}",
-                    "title": candidate.current_title or "",
-                    "company": candidate.current_company or "",
-                    "content": raw_text
-                }
-            )
+            CandidateService.update_fts_index(db, candidate_id, f"{candidate.first_name} {candidate.last_name}", candidate, raw_text)
         except Exception:
             reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
         # 3. Refresh Vector Embeddings
         if vector_db:
-            if hasattr(vector_db, "delete_candidate_vectors"):
-                vector_db.delete_candidate_vectors(candidate_id)
-            else:
-                try:
-                    tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
-                    if "candidate_vectors" in tables:
-                        table = vector_db.open_table("candidate_vectors")
-                        table.delete(f'candidate_id = "{candidate_id}"')
-                except Exception:
-                    pass
-            
             try:
-                doc = ParsedDocument(text=raw_text, pages=1)
-                chunks = chunk_document(doc, candidate_id, "SUMMARY")
-                if chunks:
-                    texts = [c.text for c in chunks]
-                    embeddings = generate_embeddings(texts)
-                    if hasattr(vector_db, "create_table"):
-                        table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                        records = []
-                        for i, chunk in enumerate(chunks):
-                            records.append({
-                                "chunk_id": chunk.chunk_id,
-                                "candidate_id": chunk.candidate_id,
-                                "resume_version_id": rv.id,
-                                "section_type": chunk.section_name,
-                                "chunk_text": chunk.text,
-                                "vector": embeddings[i],
-                                "start_offset": chunk.start_offset,
-                                "end_offset": chunk.end_offset
-                            })
-                        table.add(records)
+                CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id)
             except Exception:
                 reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
         else:
@@ -307,18 +243,7 @@ async def reprocess_candidate_stream(
             await asyncio.sleep(0.05)
             if raw_text:
                 try:
-                    db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-                    db.execute(
-                        text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
-                        {
-                            "cid": candidate_id,
-                            "fname": candidate_name,
-                            "title": candidate.current_title or "",
-                            "company": candidate.current_company or "",
-                            "content": raw_text
-                        }
-                    )
-                    db.commit()
+                    CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
                 except Exception:
                     db.rollback()
                     reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
@@ -329,34 +254,7 @@ async def reprocess_candidate_stream(
             if raw_text:
                 try:
                     if vector_db:
-                        if hasattr(vector_db, "delete_candidate_vectors"):
-                            vector_db.delete_candidate_vectors(candidate_id)
-                        else:
-                            tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
-                            if "candidate_vectors" in tables:
-                                table = vector_db.open_table("candidate_vectors")
-                                table.delete(f'candidate_id = "{candidate_id}"')
-                        
-                        doc = ParsedDocument(text=raw_text, pages=1)
-                        chunks = chunk_document(doc, candidate_id, "SUMMARY")
-                        if chunks:
-                            texts = [c.text for c in chunks]
-                            embeddings = generate_embeddings(texts)
-                            if hasattr(vector_db, "create_table"):
-                                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                                records = []
-                                for i, chunk in enumerate(chunks):
-                                    records.append({
-                                        "chunk_id": chunk.chunk_id,
-                                        "candidate_id": chunk.candidate_id,
-                                        "resume_version_id": rv.id if rv else "",
-                                        "section_type": chunk.section_name,
-                                        "chunk_text": chunk.text,
-                                        "vector": embeddings[i],
-                                        "start_offset": chunk.start_offset,
-                                        "end_offset": chunk.end_offset
-                                    })
-                                table.add(records)
+                        CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id if rv else "")
                     else:
                         reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
                 except Exception:
@@ -486,16 +384,7 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
         table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
         records = []
         for i, chunk in enumerate(chunks):
-            records.append({
-                "chunk_id": chunk.chunk_id,
-                "candidate_id": chunk.candidate_id,
-                "resume_version_id": rv.id,
-                "section_type": chunk.section_name,
-                "chunk_text": chunk.text,
-                "vector": embeddings[i],
-                "start_offset": chunk.start_offset,
-                "end_offset": chunk.end_offset
-            })
+            records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
         table.add(records)
 
     logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
@@ -621,16 +510,7 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                             table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
                             records = []
                             for i, chunk in enumerate(chunks):
-                                records.append({
-                                    "chunk_id": chunk.chunk_id,
-                                    "candidate_id": chunk.candidate_id,
-                                    "resume_version_id": rv.id,
-                                    "section_type": chunk.section_name,
-                                    "chunk_text": chunk.text,
-                                    "vector": embeddings[i],
-                                    "start_offset": chunk.start_offset,
-                                    "end_offset": chunk.end_offset
-                                })
+                                records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
                             table.add(records)
                     except Exception:
                         file_warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
@@ -654,36 +534,8 @@ def batch_delete_candidates(
 ):
     deleted_ids = []
     for candidate_id in payload.candidate_ids:
-        candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
-        if not candidate:
-            continue
-            
-        try:
-            db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-            db.execute(text("DELETE FROM claims_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-        except Exception:
-            pass
-
-        # Delete related child records
-        db.query(ResumeVersion).filter(ResumeVersion.candidate_id == candidate_id).delete()
-        db.query(CandidateClaim).filter(CandidateClaim.candidate_id == candidate_id).delete()
-        db.query(CandidateTimelineEvent).filter(CandidateTimelineEvent.candidate_id == candidate_id).delete()
-            
-        db.delete(candidate)
-        db.commit()
-        deleted_ids.append(candidate_id)
-
-        if vector_db:
-            if hasattr(vector_db, "delete_candidate_vectors"):
-                vector_db.delete_candidate_vectors(candidate_id)
-            else:
-                try:
-                    table_names = vector_db.table_names() if hasattr(vector_db, "table_names") else vector_db.list_tables()
-                    if "candidate_vectors" in table_names:
-                        table = vector_db.open_table("candidate_vectors")
-                        table.delete(f'candidate_id = "{candidate_id}"')
-                except Exception:
-                    pass
+        if CandidateService.delete_candidate(db, candidate_id, vector_db):
+            deleted_ids.append(candidate_id)
 
     return {
         "status": "success",
@@ -746,56 +598,15 @@ async def batch_reprocess_candidate_stream(
                 # 3. Refresh FTS
                 yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings})}\n\n"
                 try:
-                    db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
-                    db.execute(
-                        text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
-                        {
-                            "cid": candidate_id,
-                            "fname": candidate_name,
-                            "title": candidate.current_title or "",
-                            "company": candidate.current_company or "",
-                            "content": raw_text
-                        }
-                    )
-                    db.commit()
+                    CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
                 except Exception:
                     reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
                 # 4. Refresh Vectors
                 yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating vector embeddings', 'warnings': reprocess_warnings})}\n\n"
                 if vector_db:
-                    if hasattr(vector_db, "delete_candidate_vectors"):
-                        vector_db.delete_candidate_vectors(candidate_id)
-                    else:
-                        try:
-                            tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
-                            if "candidate_vectors" in tables:
-                                table = vector_db.open_table("candidate_vectors")
-                                table.delete(f'candidate_id = "{candidate_id}"')
-                        except Exception:
-                            pass
-                    
                     try:
-                        doc = ParsedDocument(text=raw_text, pages=1)
-                        chunks = chunk_document(doc, candidate_id, "SUMMARY")
-                        if chunks:
-                            texts = [c.text for c in chunks]
-                            embeddings = generate_embeddings(texts)
-                            if hasattr(vector_db, "create_table"):
-                                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                                records = []
-                                for i_chunk, chunk in enumerate(chunks):
-                                    records.append({
-                                        "chunk_id": chunk.chunk_id,
-                                        "candidate_id": chunk.candidate_id,
-                                        "resume_version_id": rv.id,
-                                        "section_type": chunk.section_name,
-                                        "chunk_text": chunk.text,
-                                        "vector": embeddings[i_chunk],
-                                        "start_offset": chunk.start_offset,
-                                        "end_offset": chunk.end_offset
-                                    })
-                                table.add(records)
+                        CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id)
                     except Exception:
                         reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
                 else:
