@@ -1,20 +1,5 @@
 # Task Tracker
 
-- [ ] Ticket 01: Missing Unit & Edge-Case Test Coverage
-  - [ ] Test `get_recent_logs(limit=N)` verifies truncation when buffer has more items than limit (`config/logging.py:15`).
-  - [ ] Test `memory_buffer_processor` verifies log entries are prepended with buffer lock acquired (`config/logging.py:10`).
-  - [ ] Test `extract_inferences` mocks `ollama.chat` to return malformed JSON / throw exception, asserting empty list returned and warning emitted (`local_llm_fallback.py:42`).
-  - [ ] Test `parse_query_to_sql` handles free-text queries without `location:` or `yoe >=` filters (`ast_parser.py:3`).
-  - [ ] Test `fetch_candidate_documents` short-circuits to empty list when `candidate_ids` is empty (`hybrid_searcher.py:72`).
-  - [ ] Test database engine connect event ignores non-sqlite DBAPI connections without executing PRAGMAs (`config/database.py:12`).
-  - [ ] Test `execute_vector_search` handles missing `candidate_vectors` table gracefully by recording warning and returning empty dict (`hybrid_searcher.py:37`).
-  - [ ] `uv run pytest tests/` passes with all new tests green.
-
-- [ ] Ticket 02: Algorithmic & In-Memory Performance Optimization
-  - [ ] Add `@functools.lru_cache(maxsize=1024)` to single-query embedding generation in `embeddings.py:6`.
-  - [ ] Convert `candidate_ids` to `set` in `execute_vector_search` in `hybrid_searcher.py:64` for O(1) membership checks.
-  - [ ] Precompile `KNOWN_SKILLS` regular expressions at module level in `deterministic_ner.py:47`.
-  - [ ] Convert `rrf_results` into dictionary lookup in `search_candidates` in `hybrid_searcher.py:137`.
 - [x] Ticket 01: Missing Unit & Edge-Case Test Coverage
   - [x] Test `get_recent_logs(limit=N)` verifies truncation when buffer has more items than limit (`config/logging.py:15`).
   - [x] Test `memory_buffer_processor` verifies log entries are prepended with buffer lock acquired (`config/logging.py:10`).
