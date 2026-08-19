@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from storage.db_models import Base, Candidate, CandidateTimelineEvent
-from crm.state_machine import CandidateStateMachine, InvalidStateTransition
+from crm.state_machine import CandidateStateMachine, InvalidStateTransition, TransitionContext
 import uuid
 
 @pytest.fixture
@@ -26,13 +26,14 @@ def test_transition_state_success(db_session: Session):
     sm = CandidateStateMachine()
     
     # Transition to PLACED
-    sm.transition_state(
+    context = TransitionContext(
         session=db_session,
         candidate_id=candidate_id,
         new_status="PLACED",
         recruiter_name="recruiter_bob",
         reason="Offer accepted"
     )
+    sm.transition_state(context)
 
     # Check state updated
     db_session.refresh(candidate)
@@ -62,9 +63,10 @@ def test_invalid_state_transition(db_session: Session):
     
     # Invalid transition
     with pytest.raises(InvalidStateTransition):
-        sm.transition_state(
+        context = TransitionContext(
             session=db_session,
             candidate_id=candidate_id,
             new_status="UNKNOWN_STATUS",
             recruiter_name="recruiter_bob"
         )
+        sm.transition_state(context)
