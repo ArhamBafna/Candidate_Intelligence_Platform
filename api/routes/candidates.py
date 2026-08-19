@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from api.dependencies import get_db
+from api.dependencies import get_db, get_vector_db, get_settings
+from config.settings import Settings
 from api.schemas.candidates import (
     CandidateResponse, 
     CandidateStatusUpdate, 
@@ -117,10 +117,9 @@ def update_candidate(candidate_id: str, update_data: CandidateUpdate, db: Sessio
     return candidate
 
 @router.get("/{candidate_id}/file")
-def get_candidate_file(candidate_id: str, db: Session = Depends(get_db)):
+def get_candidate_file(candidate_id: str, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
     from fastapi.responses import FileResponse
     from storage.cas import CASManager
-    from config.settings import Settings
     from pathlib import Path
     
     rv = db.query(ResumeVersion).filter(
@@ -131,7 +130,7 @@ def get_candidate_file(candidate_id: str, db: Session = Depends(get_db)):
     if not rv:
         raise HTTPException(status_code=404, detail="Primary resume not found")
         
-    cas_mgr = CASManager(Settings().cas_root_dir)
+    cas_mgr = CASManager(settings.cas_root_dir)
     ext = f".{rv.file_type.lower()}"
     shard1 = rv.cas_file_hash[:2]
     shard2 = rv.cas_file_hash[2:4]
@@ -310,9 +309,14 @@ from config.settings import Settings
 from storage.db_models import ResumeVersion
 
 @router.post("/upload")
-async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_resume(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    settings: Settings = Depends(get_settings),
+    vector_db = Depends(get_vector_db)
+):
     content = await file.read()
-    cas_mgr = CASManager(Settings().cas_root_dir)
+    cas_mgr = CASManager(settings.cas_root_dir)
     ext = Path(file.filename).suffix if file.filename else ".txt"
     file_hash, cas_path = cas_mgr.store(content, extension=ext)
     
@@ -391,21 +395,26 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     # Vector Insertion
     doc = ParsedDocument(text=raw_text, pages=1)
     chunks = chunk_document(doc, cand_id, "SUMMARY")
-    if chunks:
+    if chunks and vector_db:
         texts = [c.text for c in chunks]
         embeddings = generate_embeddings(texts)
-        vector_db = get_vector_db()
-        table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-        records = []
-        for i, chunk in enumerate(chunks):
-            records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
-        table.add(records)
+        if hasattr(vector_db, "create_table"):
+            table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+            records = []
+            for i, chunk in enumerate(chunks):
+                records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
+            table.add(records)
 
     logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
     return {"status": "success", "candidate_id": cand_id, "first_name": cand.first_name, "last_name": cand.last_name, "warnings": upload_warnings}
 
 @router.post("/upload-stream")
-async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+async def upload_stream_resumes(
+    files: List[UploadFile] = File(...), 
+    db: Session = Depends(get_db), 
+    settings: Settings = Depends(get_settings),
+    vector_db = Depends(get_vector_db)
+):
     async def stream_generator():
         for file in files:
             file_warnings = []
@@ -413,7 +422,7 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 # 1. Hashing
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'IN_PROGRESS', 'progress': 10})}\n\n"
                 content = await file.read()
-                cas_mgr = CASManager(Settings().cas_root_dir)
+                cas_mgr = CASManager(settings.cas_root_dir)
                 ext = Path(file.filename).suffix if file.filename else ".txt"
                 
                 def check_existing_rv(h):
@@ -521,14 +530,13 @@ async def upload_stream_resumes(files: List[UploadFile] = File(...), db: Session
                 await asyncio.to_thread(do_fts_insertion)
 
                 # Vector Insertion (use pre-computed chunks but fix candidate_id)
-                if chunks:
+                if chunks and vector_db:
                     try:
                         for c in chunks:
                             c.candidate_id = cand_id
                         texts = [c.text for c in chunks]
                         embeddings = generate_embeddings(texts)
-                        vector_db = get_vector_db()
-                        if vector_db:
+                        if hasattr(vector_db, "create_table"):
                             table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
                             records = []
                             for i, chunk in enumerate(chunks):

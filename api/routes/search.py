@@ -60,11 +60,9 @@ def _format_search_results(raw_results: list, candidate_map: dict) -> list[Searc
 router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("", response_model=SearchResponse)
-def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
+def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db = Depends(get_vector_db)):
     full_query = _build_search_query(request)
 
-    vector_db = get_vector_db()
-    
     t0 = time.perf_counter()
     if full_query:
         for stage, progress, msg, data in search_candidates(full_query, db, vector_db, return_warnings=True):
@@ -101,11 +99,10 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
     return response
 
 @router.post("/stream")
-def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db)):
+def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db = Depends(get_vector_db)):
     def event_generator():
         try:
             full_query = _build_search_query(request)
-            vector_db = get_vector_db()
             
             t0 = time.perf_counter()
             if full_query:

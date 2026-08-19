@@ -95,21 +95,14 @@ def test_update_candidate(client: TestClient, db_session: Session):
     assert len(timeline_data) == 1
     assert timeline_data[0]["event_type"] == "PROFILE_UPDATED"
 
-def test_get_candidate_file(client: TestClient, db_session: Session, tmp_path, monkeypatch):
-    original_settings = settings.Settings
-    def mock_settings(*args, **kwargs):
-        s = original_settings(*args, **kwargs)
-        s.cas_root_dir = str(tmp_path)
-        return s
-    monkeypatch.setattr(settings, "Settings", mock_settings)
-
+def test_get_candidate_file(client: TestClient, db_session: Session, test_settings):
     c_id = str(uuid.uuid4())
     c = Candidate(id=c_id, first_name="Jane", last_name="Doe", availability_status="ACTIVE")
     db_session.add(c)
     db_session.commit()
 
     content = b"PDF dummy content"
-    cas_mgr = CASManager(tmp_path)
+    cas_mgr = CASManager(test_settings.cas_root_dir)
     file_hash, cas_path = cas_mgr.store(content, extension=".pdf")
 
     rv = ResumeVersion(

@@ -2,13 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 import structlog
 from structlog.testing import LogCapture
-from api.main import app
-
-client = TestClient(app)
-
 import json
 
-def test_search_emits_wide_event(capsys):
+def test_search_emits_wide_event(capsys, client: TestClient):
     response = client.post("/search", json={"query_text": "test query"})
     assert response.status_code == 200, response.text
     
@@ -33,5 +29,3 @@ def test_search_emits_wide_event(capsys):
     assert "db_retrieval_duration_ms" in event
     assert "total_duration_ms" in event
     assert event["query"] == "test query"
-
-

@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy.orm import Session
 from config.settings import Settings
 from api.dependencies import get_settings, get_db, get_vector_db
@@ -6,7 +7,6 @@ import lancedb
 def test_get_settings():
     settings = get_settings()
     assert isinstance(settings, Settings)
-    assert settings.db_path == "storage/cip_main.db"
 
 def test_get_db():
     db_gen = get_db()

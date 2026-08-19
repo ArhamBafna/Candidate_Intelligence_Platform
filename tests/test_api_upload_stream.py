@@ -2,16 +2,7 @@ import pytest
 import json
 from fastapi.testclient import TestClient
 
-def test_upload_stream_multi_resume(client: TestClient, tmp_path, monkeypatch):
-    from config.settings import Settings
-    def mock_settings():
-        return Settings(
-            cas_root_dir=str(tmp_path / "cas"),
-            db_path=":memory:",
-            vector_db_path=str(tmp_path / "vector")
-        )
-    monkeypatch.setattr("api.routes.candidates.Settings", mock_settings)
-
+def test_upload_stream_multi_resume(client: TestClient):
     files = [
         ("files", ("resume1.txt", b"John Doe\nSoftware Engineer\nPython, React", "text/plain")),
         ("files", ("resume2.txt", b"Jane Smith\nData Scientist\nPython, SQL", "text/plain"))
@@ -38,12 +29,7 @@ def test_upload_stream_multi_resume(client: TestClient, tmp_path, monkeypatch):
     assert "John Doe" in names
     assert "Jane Smith" in names
 
-def test_upload_stream_duplicate_resume(client: TestClient, tmp_path, monkeypatch):
-    from config.settings import Settings
-    def mock_settings():
-        return Settings(cas_root_dir=str(tmp_path / "cas"), db_path=":memory:", vector_db_path=str(tmp_path / "vector"))
-    monkeypatch.setattr("api.routes.candidates.Settings", mock_settings)
-
+def test_upload_stream_duplicate_resume(client: TestClient):
     files = [("files", ("resume1.txt", b"John Doe\nSoftware Engineer\nPython, React", "text/plain"))]
     client.post("/candidates/upload-stream", files=files)
 

@@ -50,21 +50,7 @@ def test_search_candidates(mock_search, client: TestClient, db_session: Session)
     assert data["results"][0]["rrf_score"] == 0.0328
     assert data["results"][0]["candidate_info"]["first_name"] == "Search"
 
-def test_upload_and_search_exact_keyword_integration(client: TestClient, tmp_path, monkeypatch):
-    from config.settings import Settings
-    def mock_settings():
-        return Settings(
-            cas_root_dir=str(tmp_path / "cas"),
-            db_path=":memory:",
-            vector_db_path=str(tmp_path / "vector")
-        )
-    monkeypatch.setattr("api.routes.candidates.Settings", mock_settings)
-
-    vec_path = str(tmp_path / "vector")
-    monkeypatch.setattr("api.dependencies._settings", mock_settings())
-    monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: get_lancedb_connection(vec_path))
-    monkeypatch.setattr("api.routes.search.get_vector_db", lambda: get_lancedb_connection(vec_path))
-
+def test_upload_and_search_exact_keyword_integration(client: TestClient):
     # 1. Upload Java resume
     resume_bytes = b"Java Developer\nSenior Software Engineer\nExperienced in Java, Spring Boot, microservices architecture."
     upload_res = client.post(
