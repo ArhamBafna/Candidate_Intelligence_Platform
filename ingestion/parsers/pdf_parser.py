@@ -41,7 +41,24 @@ def parse_pdf(path: Path) -> ParsedDocument:
                 page_text = _extract_with_pdfplumber(path, page.number)
                 if page_text:
                     full_text_parts.append(page_text)
-                # TODO: Tesseract OCR fallback when pytesseract is available
+                else:
+                    # Tesseract OCR fallback for scanned images
+                    try:
+                        import pytesseract
+                        import io
+                        from PIL import Image
+                        pix = page.get_pixmap()
+                        img_bytes = pix.tobytes("png")
+                        img = Image.open(io.BytesIO(img_bytes))
+                        ocr_text = pytesseract.image_to_string(img)
+                        if ocr_text.strip():
+                            full_text_parts.append(ocr_text.strip())
+                    except ImportError:
+                        pass
+                    except Exception as e:
+                        import structlog
+                        logger = structlog.get_logger(__name__)
+                        logger.warning("ocr_fallback_failed", page=page.number, error=str(e))
 
     return ParsedDocument(
         text="\n".join(full_text_parts),

@@ -116,3 +116,31 @@ def test_parse_pdf_metadata_contains_source_path(tmp_path: Path):
 
     assert "source_path" in result.metadata
     assert str(pdf_file) in result.metadata["source_path"]
+
+def test_parse_pdf_ocr_fallback(tmp_path: Path, monkeypatch):
+    """parse_pdf must fall back to OCR if get_text and pdfplumber return empty."""
+    import fitz
+    from ingestion.parsers import pdf_parser
+    
+    # Mock PyMuPDF to return empty text
+    original_get_text = fitz.Page.get_text
+    def mock_get_text(self, *args, **kwargs):
+        return ""
+    monkeypatch.setattr(fitz.Page, "get_text", mock_get_text)
+    
+    # Mock pdfplumber to return empty text
+    monkeypatch.setattr(pdf_parser, "_extract_with_pdfplumber", lambda p, n: "")
+    
+    # Mock pytesseract
+    try:
+        import pytesseract
+        monkeypatch.setattr(pytesseract, "image_to_string", lambda img: "Mocked OCR Text")
+    except ImportError:
+        pytest.skip("pytesseract not installed")
+        
+    pdf_file = tmp_path / "resume.pdf"
+    pdf_file.write_bytes(_make_minimal_pdf("Hidden text"))
+    
+    result = pdf_parser.parse_pdf(pdf_file)
+    
+    assert "Mocked OCR Text" in result.text

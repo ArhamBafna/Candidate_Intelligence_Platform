@@ -5,11 +5,11 @@ from candidate_intelligence_platform.extraction.local_llm_fallback import extrac
 
 def test_vector_search_failure_logs_ai_warning(monkeypatch):
     with structlog.testing.capture_logs() as cap_logs:
-        # Pass an invalid vector_db or force exception in generate_embeddings
-        def mock_embeddings(texts):
+        # Pass an invalid vector_db or force exception in generate_single_embedding
+        def mock_embeddings(text):
             raise RuntimeError("Embedding model server timeout")
             
-        monkeypatch.setattr("candidate_intelligence_platform.search.hybrid_searcher.generate_embeddings", mock_embeddings)
+        monkeypatch.setattr("candidate_intelligence_platform.search.hybrid_searcher.generate_single_embedding", mock_embeddings)
         
         warnings = []
         ranks = execute_vector_search("python developer", ["cid-1"], vector_db=None, warnings=warnings)

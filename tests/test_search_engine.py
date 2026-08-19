@@ -57,8 +57,8 @@ def test_hybrid_search_candidates(monkeypatch):
     def mock_rerank(q, docs):
         return [0.9, 0.8]
 
-    def mock_explainer(cid, rank, score, **kwargs):
-        return {"candidate_id": cid, "rank": rank, "rrf_score": score, "match_percentage": 85.0, "match_scorecard": {}}
+    def mock_explainer(params):
+        return {"candidate_id": params.candidate_id, "rank": params.rank, "rrf_score": params.rrf_score, "match_percentage": 85.0, "match_scorecard": {}}
 
     import candidate_intelligence_platform.search.hybrid_searcher as hs
     monkeypatch.setattr(hs, "parse_query_to_sql", mock_parse)
@@ -74,3 +74,19 @@ def test_hybrid_search_candidates(monkeypatch):
     assert len(results) == 2
     assert results[0]["candidate_id"] == "cand_2"
     assert results[0]["rank"] == 1
+
+def test_fetch_candidate_documents_empty():
+    from candidate_intelligence_platform.search.hybrid_searcher import fetch_candidate_documents
+    docs = fetch_candidate_documents([], None)
+    assert docs == []
+
+def test_execute_vector_search_missing_table(monkeypatch):
+    from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
+    
+    class MockVectorDB:
+        def search(self, table_name):
+            raise Exception("Table candidate_vectors does not exist.")
+            
+    # Should handle gracefully and return empty dict
+    results = execute_vector_search("test query", {"cand_1"}, MockVectorDB())
+    assert results == {}

@@ -1,6 +1,6 @@
 import pytest
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
-from candidate_intelligence_platform.intelligence.explainer import build_match_rationale
+from candidate_intelligence_platform.intelligence.explainer import build_match_rationale, MatchParameters
 
 def test_generate_embeddings():
     texts = ["Hello world", "Machine learning engineer with 5 years experience"]
@@ -15,10 +15,10 @@ def test_build_match_rationale():
     candidate_id = "test-123"
     rank = 1
     rrf_score = 0.032786
-
+    
     # Case 1: RRF score fallback
-    rationale = build_match_rationale(candidate_id, rank, rrf_score)
-
+    rationale = build_match_rationale(MatchParameters(candidate_id=candidate_id, rank=rank, rrf_score=rrf_score))
+    
     assert rationale["candidate_id"] == "test-123"
     assert rationale["rank"] == 1
     assert rationale["rrf_score"] == rrf_score
@@ -26,12 +26,12 @@ def test_build_match_rationale():
     assert "match_scorecard" in rationale
 
     # Case 2: Cross-encoder rerank score (high match, score = 3.0 -> >95%)
-    rationale_rerank = build_match_rationale(candidate_id, rank, rrf_score, rerank_score=3.0)
+    rationale_rerank = build_match_rationale(MatchParameters(candidate_id=candidate_id, rank=rank, rrf_score=rrf_score, rerank_score=3.0))
     assert rationale_rerank["rerank_score"] == 3.0
     assert 90.0 < rationale_rerank["match_percentage"] <= 100.0
 
     # Case 3: Cross-encoder rerank score (low match, score = -3.0 -> <10%)
-    rationale_low = build_match_rationale(candidate_id, rank, rrf_score, rerank_score=-3.0)
+    rationale_low = build_match_rationale(MatchParameters(candidate_id=candidate_id, rank=rank, rrf_score=rrf_score, rerank_score=-3.0))
     assert 0.0 <= rationale_low["match_percentage"] < 10.0
 
 

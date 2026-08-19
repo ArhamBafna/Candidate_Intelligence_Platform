@@ -83,19 +83,7 @@ def calculate_tier1_confidence(facts: List[Dict[str, Any]], parsed_profile: Dict
 
     return min(1.0, round(score, 2))
 
-def extract_candidate_profile_hybrid(
-    text: str, 
-    confidence_threshold: float = 0.70, 
-    model_name: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Extract candidate profile using Tier 1 deterministic parsing first.
-    If Tier 1 confidence is below confidence_threshold (0.70) or if any of the key fields
-    (Name, Job Title, or Skills/Location) are missing, trigger Tier 2 local AI LLM extraction.
-    Applies Title Case normalization to candidate names and titles.
-    """
-    facts = extract_facts(text)
-    
+def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Dict[str, Any]:
     email = None
     phone = None
     name_from_ner = None
@@ -131,7 +119,6 @@ def extract_candidate_profile_hybrid(
                 first_name = normalize_name(parts[0])
                 last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
 
-    # Smart last name inference from email if missing
     if (last_name.lower() in ("candidate", "") or not last_name) and email:
         local_part = email.split("@")[0]
         if "." in local_part:
@@ -141,7 +128,6 @@ def extract_candidate_profile_hybrid(
                 if inferred_last and len(inferred_last) > 1:
                     last_name = normalize_name(inferred_last)
 
-    # Smart title extraction
     title = "Candidate"
     candidate_full_name = f"{first_name} {last_name}".strip().lower()
     for line in lines[1:]:
@@ -161,7 +147,7 @@ def extract_candidate_profile_hybrid(
         if title == "Candidate" and len(clean_l) <= 100 and not any(kw in lower_l for kw in ("http", "www", "github", "linkedin")):
             title = normalize_title(clean_l)
 
-    profile = {
+    return {
         "first_name": normalize_name(first_name[:50]),
         "last_name": normalize_name(last_name[:50]),
         "primary_email": email,
@@ -169,6 +155,51 @@ def extract_candidate_profile_hybrid(
         "current_title": normalize_title(title),
         "location": normalize_title(location) if location else None,
     }
+
+def _apply_llm_fallback(profile: Dict[str, Any], text: str, facts: List[Dict[str, Any]], model_name: Optional[str]) -> tuple[bool, List[str]]:
+    warnings = []
+    used_ai = False
+    ai_claims = extract_inferences(text, model_name=model_name)
+    if ai_claims:
+        used_ai = True
+        facts.extend(ai_claims)
+        
+        for claim in ai_claims:
+            cat = claim.get("claim_category")
+            val = claim.get("claim_value")
+            key = (claim.get("claim_key") or "").lower()
+            
+            if cat == "PERSON" and val and (profile["first_name"] == "Uploaded" or not profile["first_name"] or profile["first_name"] == "Candidate"):
+                parts = str(val).split()
+                profile["first_name"] = normalize_name(parts[0][:50])
+                profile["last_name"] = normalize_name(" ".join(parts[1:])[:50] if len(parts) > 1 else "Candidate")
+            elif cat == "CONTACT" and key in ("email", "contact") and val and "@" in str(val) and not profile["primary_email"]:
+                profile["primary_email"] = str(val).strip()
+            elif cat == "CONTACT" and key in ("phone", "tel") and val and not profile["primary_phone"]:
+                profile["primary_phone"] = str(val).strip()
+            elif cat == "EMPLOYMENT" and val and key in ("title", "job_title", "position", "role") and (profile["current_title"] in ("Candidate", "Summary", "SUMMARY") or not profile["current_title"]):
+                profile["current_title"] = normalize_title(str(val)[:100])
+            elif cat == "EMPLOYMENT" and val and (profile["current_title"] in ("Candidate", "Summary", "SUMMARY") or not profile["current_title"]):
+                if not re.search(r'\b(20\d\d|19\d\d|present)\b', str(val), re.IGNORECASE):
+                    profile["current_title"] = normalize_title(str(val)[:100])
+    else:
+        warnings.append("LLM fallback attempted but LLM service/model unavailable; continued using rule-based profile extraction.")
+        
+    return used_ai, warnings
+
+def extract_candidate_profile_hybrid(
+    text: str, 
+    confidence_threshold: float = 0.70, 
+    model_name: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Extract candidate profile using Tier 1 deterministic parsing first.
+    If Tier 1 confidence is below confidence_threshold (0.70) or if any of the key fields
+    (Name, Job Title, or Skills/Location) are missing, trigger Tier 2 local AI LLM extraction.
+    Applies Title Case normalization to candidate names and titles.
+    """
+    facts = extract_facts(text)
+    profile = _extract_deterministic_profile(text, facts)
 
     tier1_confidence = calculate_tier1_confidence(facts, profile)
     used_ai = False
@@ -187,31 +218,7 @@ def extract_candidate_profile_hybrid(
     )
 
     if tier1_confidence < confidence_threshold or missing_key_fields:
-        ai_claims = extract_inferences(text, model_name=model_name)
-        if ai_claims:
-            used_ai = True
-            facts.extend(ai_claims)
-            
-            for claim in ai_claims:
-                cat = claim.get("claim_category")
-                val = claim.get("claim_value")
-                key = (claim.get("claim_key") or "").lower()
-                
-                if cat == "PERSON" and val and (profile["first_name"] == "Uploaded" or not profile["first_name"] or profile["first_name"] == "Candidate"):
-                    parts = str(val).split()
-                    profile["first_name"] = normalize_name(parts[0][:50])
-                    profile["last_name"] = normalize_name(" ".join(parts[1:])[:50] if len(parts) > 1 else "Candidate")
-                elif cat == "CONTACT" and key in ("email", "contact") and val and "@" in str(val) and not profile["primary_email"]:
-                    profile["primary_email"] = str(val).strip()
-                elif cat == "CONTACT" and key in ("phone", "tel") and val and not profile["primary_phone"]:
-                    profile["primary_phone"] = str(val).strip()
-                elif cat == "EMPLOYMENT" and val and key in ("title", "job_title", "position", "role") and (profile["current_title"] in ("Candidate", "Summary", "SUMMARY") or not profile["current_title"]):
-                    profile["current_title"] = normalize_title(str(val)[:100])
-                elif cat == "EMPLOYMENT" and val and (profile["current_title"] in ("Candidate", "Summary", "SUMMARY") or not profile["current_title"]):
-                    if not re.search(r'\b(20\d\d|19\d\d|present)\b', str(val), re.IGNORECASE):
-                        profile["current_title"] = normalize_title(str(val)[:100])
-        else:
-            warnings.append("LLM fallback attempted but LLM service/model unavailable; continued using rule-based profile extraction.")
+        used_ai, warnings = _apply_llm_fallback(profile, text, facts, model_name)
 
     # Final normalization guarantee
     profile["first_name"] = normalize_name(profile["first_name"])

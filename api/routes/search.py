@@ -11,10 +11,7 @@ import time
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/search", tags=["search"])
-
-@router.post("", response_model=SearchResponse)
-def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
+def _build_search_query(request: SearchQueryRequest) -> str:
     query_parts = []
     if request.query_text and request.query_text.strip():
         query_parts.append(request.query_text.strip())
@@ -24,27 +21,20 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
         query_parts.append(f"yoe >= {request.min_yoe}")
     if request.title:
         query_parts.append(f"title:'{request.title}'")
+    return " AND ".join(query_parts) if query_parts else ""
 
-    full_query = " AND ".join(query_parts) if query_parts else ""
+def _hydrate_candidates(db: Session, raw_results: list) -> dict:
+    top_ids = [raw.get("candidate_id") for raw in raw_results if raw.get("candidate_id")]
+    candidates = db.query(Candidate).filter(Candidate.id.in_(top_ids)).all()
+    return {c.id: c for c in candidates}
 
-    vector_db = get_vector_db()
-    
-    t0 = time.perf_counter()
-    if full_query:
-        raw_results, warnings = search_candidates(full_query, db, vector_db, return_warnings=True)
-    else:
-        raw_results, warnings = [], []
-    
-    top_results = raw_results[:request.top_k]
-    vector_search_duration_ms = round((time.perf_counter() - t0) * 1000, 2)
-    
-    t1 = time.perf_counter()
+def _format_search_results(raw_results: list, candidate_map: dict) -> list[SearchResultItem]:
     items = []
-    for raw in top_results:
+    for raw in raw_results:
         cid = raw.get("candidate_id", "")
         c_info = None
         if cid:
-            candidate_obj = db.query(Candidate).filter(Candidate.id == cid).first()
+            candidate_obj = candidate_map.get(cid)
             if candidate_obj:
                 c_info = {
                     "first_name": candidate_obj.first_name,
@@ -65,6 +55,28 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
             candidate_info=c_info
         )
         items.append(item)
+    return items
+
+router = APIRouter(prefix="/search", tags=["search"])
+
+@router.post("", response_model=SearchResponse)
+def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db)):
+    full_query = _build_search_query(request)
+
+    vector_db = get_vector_db()
+    
+    t0 = time.perf_counter()
+    if full_query:
+        raw_results, warnings = search_candidates(full_query, db, vector_db, return_warnings=True)
+    else:
+        raw_results, warnings = [], []
+    
+    top_results = raw_results[:request.top_k]
+    vector_search_duration_ms = round((time.perf_counter() - t0) * 1000, 2)
+    
+    t1 = time.perf_counter()
+    candidate_map = _hydrate_candidates(db, top_results)
+    items = _format_search_results(top_results, candidate_map)
         
     response = SearchResponse(
         query=request.query_text,
@@ -104,17 +116,7 @@ def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get
         
     def worker():
         try:
-            query_parts = []
-            if request.query_text and request.query_text.strip():
-                query_parts.append(request.query_text.strip())
-            if request.city:
-                query_parts.append(f"location:'{request.city}'")
-            if request.min_yoe:
-                query_parts.append(f"yoe >= {request.min_yoe}")
-            if request.title:
-                query_parts.append(f"title:'{request.title}'")
-
-            full_query = " AND ".join(query_parts) if query_parts else ""
+            full_query = _build_search_query(request)
             vector_db = get_vector_db()
             
             t0 = time.perf_counter()
@@ -130,31 +132,8 @@ def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get
             top_results = raw_results[:request.top_k]
             
             # Hydrate candidate info
-            items = []
-            for raw in top_results:
-                cid = raw.get("candidate_id", "")
-                c_info = None
-                if cid:
-                    candidate_obj = db.query(Candidate).filter(Candidate.id == cid).first()
-                    if candidate_obj:
-                        c_info = {
-                            "first_name": candidate_obj.first_name,
-                            "last_name": candidate_obj.last_name,
-                            "current_title": candidate_obj.current_title,
-                            "current_company": candidate_obj.current_company,
-                            "current_city": candidate_obj.current_city,
-                            "availability_status": candidate_obj.availability_status,
-                        }
-                item = SearchResultItem(
-                    candidate_id=cid,
-                    rank=raw.get("rank", 1),
-                    rrf_score=raw.get("rrf_score", 0.0),
-                    rerank_score=raw.get("rerank_score"),
-                    match_percentage=raw.get("match_percentage", 0.0),
-                    match_scorecard=raw.get("match_scorecard", {}),
-                    candidate_info=c_info
-                )
-                items.append(item)
+            candidate_map = _hydrate_candidates(db, top_results)
+            items = _format_search_results(top_results, candidate_map)
                 
             response_data = SearchResponse(
                 query=request.query_text,

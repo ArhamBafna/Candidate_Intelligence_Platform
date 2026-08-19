@@ -1,14 +1,9 @@
 import pytest
-from fastapi.testclient import TestClient
 import structlog
 from structlog.testing import LogCapture
-from api.main import app
-
-client = TestClient(app)
-
 import json
 
-def test_upload_resume_emits_wide_event(capsys):
+def test_upload_resume_emits_wide_event(capsys, client):
     test_file_content = b"Mock PDF content"
     files = {"file": ("test_resume.pdf", test_file_content, "application/pdf")}
     

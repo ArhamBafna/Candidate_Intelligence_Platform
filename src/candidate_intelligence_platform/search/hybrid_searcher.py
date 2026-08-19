@@ -5,7 +5,7 @@ from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql
 from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_fusion
 from candidate_intelligence_platform.search.reranker import rerank_candidates
 from candidate_intelligence_platform.intelligence.explainer import build_match_rationale
-from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings, generate_single_embedding
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -24,8 +24,7 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
         return {}
     
     try:
-        embeddings = generate_embeddings([query_text])
-        query_vector = embeddings[0]
+        query_vector = generate_single_embedding(query_text)
     except Exception as e:
         logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
         if warnings is not None:
@@ -61,9 +60,11 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
     if not candidate_ids:
         return {}
         
+    candidate_ids_set = set(candidate_ids)
+        
     for r in results:
         cid = r.get("candidate_id")
-        if cid in candidate_ids and cid not in ranks:
+        if cid in candidate_ids_set and cid not in ranks:
             ranks[cid] = current_rank
             current_rank += 1
             
@@ -132,10 +133,14 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False, 
     
     reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
     
+    from candidate_intelligence_platform.intelligence.explainer import MatchParameters
+    
     results = []
+    rrf_dict = dict(rrf_results)
     for rank, (cid, score) in enumerate(reranked, start=1):
-        rrf = next((s for c, s in rrf_results if c == cid), 0.0)
-        rationale = build_match_rationale(cid, rank, rrf, rerank_score=score)
+        rrf = rrf_dict.get(cid, 0.0)
+        params = MatchParameters(candidate_id=cid, rank=rank, rrf_score=rrf, rerank_score=score)
+        rationale = build_match_rationale(params)
         results.append(rationale)
         
     if progress_callback:

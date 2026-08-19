@@ -16,7 +16,7 @@ class Candidate(Base):
     primary_email = Column(String, unique=True)
     primary_phone = Column(String)
     linkedin_url = Column(String, unique=True)
-    current_city = Column(String)
+    current_city = Column(String, index=True)
     current_country = Column(String)
     current_title = Column(String)
     current_company = Column(String)

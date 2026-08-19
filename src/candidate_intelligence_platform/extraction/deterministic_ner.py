@@ -11,6 +11,15 @@ PHONE_REGEX = re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\
 
 KNOWN_SKILLS = {"python", "c++", "java", "sql", "javascript", "react", "aws", "docker"}
 
+KNOWN_SKILLS_REGEXES = {}
+for skill in KNOWN_SKILLS:
+    escaped_skill = re.escape(skill)
+    if skill == "c++":
+        pattern = r'\b' + escaped_skill
+    else:
+        pattern = r'\b' + escaped_skill + r'\b'
+    KNOWN_SKILLS_REGEXES[skill] = re.compile(pattern)
+
 def extract_facts(text: str) -> list[dict]:
     """
     Extract deterministic facts (emails, phones, locations, names, skills) from text.
@@ -44,21 +53,11 @@ def extract_facts(text: str) -> list[dict]:
         
     # 2. Skill Extraction (Dictionary based)
     text_lower = text.lower()
-    for skill in KNOWN_SKILLS:
-        # Avoid partial word matches by using word boundaries
-        # Handle cases like c++ which contain regex special characters
-        escaped_skill = re.escape(skill)
-        # We need \b for word boundaries, but C++ doesn't have a word boundary after ++
-        if skill == "c++":
-            pattern = r'\b' + escaped_skill
-        else:
-            pattern = r'\b' + escaped_skill + r'\b'
-            
-        for match in re.finditer(pattern, text_lower):
+    for skill, pattern in KNOWN_SKILLS_REGEXES.items():
+        for match in pattern.finditer(text_lower):
             facts.append({
                 "source_type": "EXPLICIT_FACT",
-                "claim_category": "SKILL",
-                "claim_key": skill,
+                "claim_category": "SKILL",                "claim_key": skill,
                 "claim_value": skill.title(),
                 "source_char_offset_start": match.start(),
                 "source_char_offset_end": match.end(),
