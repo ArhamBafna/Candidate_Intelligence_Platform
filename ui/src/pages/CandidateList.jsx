@@ -744,36 +744,66 @@ function CandidateList() {
               {uploadQueue.map((item, idx) => (
                 <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <div className="font-medium text-slate-200 text-sm truncate max-w-[200px]" title={item.file_name}>
+                    <div className="font-medium text-slate-200 text-sm truncate max-w-[240px]" title={item.file_name}>
                       {item.file_name}
                     </div>
                     <div className="flex items-center gap-2 text-xs font-medium">
-                      {item.status === 'SUCCESS' && <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20"><CheckCircle2 size={14}/> Completed</span>}
+                      {item.status === 'SUCCESS' && (
+                        item.used_ai_fallback ? (
+                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/15 px-2.5 py-1 rounded border border-purple-500/30">
+                            <Sparkles size={13} className="text-purple-400"/> Ingested (AI Model: {item.model_name || 'llama3.2'})
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
+                            <CheckCircle2 size={13}/> Completed (Rule-based)
+                          </span>
+                        )
+                      )}
                       {item.status === 'FAILED' && <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-1 rounded border border-red-500/20"><AlertCircle size={14}/> Failed</span>}
                       {item.status === 'SKIPPED_DUPLICATE' && <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20"><RefreshCw size={14}/> Duplicate</span>}
-                      {item.status === 'IN_PROGRESS' && <span className="text-indigo-400 animate-pulse">{item.stage}...</span>}
+                      {item.status === 'IN_PROGRESS' && (
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? (
+                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded border border-purple-500/40 animate-pulse font-medium">
+                            <Sparkles size={13} className="text-purple-400 animate-spin" /> AI Model Extraction ({item.model_name || 'llama3.2'})
+                          </span>
+                        ) : (
+                          <span className="text-indigo-400 animate-pulse font-medium">{item.stage_detail || item.stage}...</span>
+                        )
+                      )}
                       {item.status === 'PENDING' && <span className="text-slate-500">Queued</span>}
                     </div>
                   </div>
                   
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
                     <div 
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                      className={`h-2 rounded-full transition-all duration-300 ${
                         item.status === 'FAILED' ? 'bg-red-500' : 
                         item.status === 'SKIPPED_DUPLICATE' ? 'bg-amber-500' : 
+                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                        item.status === 'SUCCESS' ? 'bg-emerald-500' :
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-purple-500/30 animate-pulse' :
                         'bg-indigo-500'
                       }`} 
                       style={{ width: `${item.progress}%` }}
                     ></div>
                   </div>
                   
-                  {item.message && (
-                    <div className="text-xs text-slate-500 mt-1">
-                      {item.message}
+                  {item.stage === 'AI_EXTRACTION' && (
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-200 text-xs shadow-inner">
+                      <Sparkles size={14} className="text-purple-400 shrink-0 animate-bounce" />
+                      <span>{item.message || `Extracting candidate facts using local AI model (${item.model_name || 'llama3.2'})...`}</span>
                     </div>
                   )}
+
+                  {item.stage !== 'AI_EXTRACTION' && item.message && (
+                    <div className="text-xs text-slate-400 flex items-center justify-between">
+                      <span>{item.message}</span>
+                      <span className="font-mono text-slate-500">{item.progress}%</span>
+                    </div>
+                  )}
+
                   {item.candidate_name && item.status === 'SUCCESS' && (
-                    <div className="text-xs text-emerald-500/70 mt-1">
+                    <div className="text-xs text-emerald-400/90 font-medium">
                       Candidate created: {item.candidate_name}
                     </div>
                   )}
@@ -868,9 +898,15 @@ function CandidateList() {
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium">
                   {reprocessState.status === 'SUCCESS' && (
-                    <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                      <CheckCircle2 size={14}/> Completed
-                    </span>
+                    reprocessState.used_ai_fallback ? (
+                      <span className="flex items-center gap-1 text-purple-300 bg-purple-500/15 px-2.5 py-1 rounded-full border border-purple-500/30">
+                        <Sparkles size={14} className="text-purple-400"/> AI Re-indexed ({reprocessState.model_name || 'llama3.2'})
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                        <CheckCircle2 size={14}/> Completed
+                      </span>
+                    )
                   )}
                   {reprocessState.status === 'FAILED' && (
                     <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20">
@@ -878,9 +914,15 @@ function CandidateList() {
                     </span>
                   )}
                   {reprocessState.status === 'IN_PROGRESS' && (
-                    <span className="text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20 animate-pulse">
-                      {reprocessState.stage}...
-                    </span>
+                    reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? (
+                      <span className="text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/40 animate-pulse flex items-center gap-1">
+                        <Sparkles size={13} className="text-purple-400 animate-spin"/> AI Model Active ({reprocessState.model_name || 'llama3.2'})
+                      </span>
+                    ) : (
+                      <span className="text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20 animate-pulse">
+                        {reprocessState.stage_detail || reprocessState.stage}...
+                      </span>
+                    )
                   )}
                 </div>
               </div>
@@ -894,7 +936,9 @@ function CandidateList() {
                   <div 
                     className={`h-2 rounded-full transition-all duration-300 ${
                       reprocessState.status === 'FAILED' ? 'bg-red-500' : 
+                      reprocessState.status === 'SUCCESS' && reprocessState.used_ai_fallback ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
                       reprocessState.status === 'SUCCESS' ? 'bg-emerald-500' : 
+                      reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse shadow-md shadow-purple-500/30' :
                       'bg-indigo-500'
                     }`} 
                     style={{ width: `${reprocessState.progress}%` }}
@@ -902,13 +946,20 @@ function CandidateList() {
                 </div>
               </div>
 
+              {reprocessState.stage === 'AI_EXTRACTION' && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/50 border border-purple-500/40 text-purple-200 text-xs shadow-inner animate-pulse">
+                  <Sparkles size={16} className="text-purple-400 shrink-0 animate-bounce" />
+                  <span><strong>AI Model Active:</strong> Extracting missing profile fields using local LLM ({reprocessState.model_name || 'llama3.2'})...</span>
+                </div>
+              )}
+
               {/* Stage Stepper Badges */}
               <div className="grid grid-cols-5 gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 text-center font-medium">
-                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'ENTITY_RESOLUTION', 'AI_EXTRACTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
                   1. Profile
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
-                  2. Entities
+                <div className={`p-1.5 rounded-lg border ${reprocessState.stage === 'AI_EXTRACTION' ? 'bg-purple-950/80 border-purple-500/60 text-purple-200 font-bold animate-pulse flex items-center justify-center gap-1' : ['ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                  {reprocessState.stage === 'AI_EXTRACTION' ? '2. AI Model' : '2. Entities'}
                 </div>
                 <div className={`p-1.5 rounded-lg border ${['UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
                   3. FTS Search
@@ -1069,9 +1120,15 @@ function CandidateList() {
                     </div>
                     <div className="flex items-center gap-2 text-xs font-medium">
                       {item.status === 'SUCCESS' && (
-                        <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          <CheckCircle2 size={13}/> Completed
-                        </span>
+                        item.used_ai_fallback ? (
+                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded border border-purple-500/30 text-[11px]">
+                            <Sparkles size={12} className="text-purple-400"/> AI Re-indexed ({item.model_name || 'llama3.2'})
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                            <CheckCircle2 size={13}/> Completed
+                          </span>
+                        )
                       )}
                       {item.status === 'FAILED' && (
                         <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
@@ -1084,9 +1141,15 @@ function CandidateList() {
                         </span>
                       )}
                       {item.status === 'IN_PROGRESS' && (
-                        <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 animate-pulse">
-                          {item.stage}...
-                        </span>
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? (
+                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/40 animate-pulse text-[11px]">
+                            <Sparkles size={12} className="text-purple-400 animate-spin"/> AI Model Active ({item.model_name || 'llama3.2'})
+                          </span>
+                        ) : (
+                          <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 animate-pulse">
+                            {item.stage_detail || item.stage}...
+                          </span>
+                        )
                       )}
                       {item.status === 'PENDING' && (
                         <span className="text-slate-500">Queued</span>
@@ -1098,13 +1161,22 @@ function CandidateList() {
                     <div 
                       className={`h-1.5 rounded-full transition-all duration-300 ${
                         item.status === 'FAILED' ? 'bg-red-500' : 
+                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
                         item.status === 'SUCCESS' ? 'bg-emerald-500' : 
                         item.status === 'SKIPPED' ? 'bg-amber-500' : 
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse shadow-sm shadow-purple-500/30' :
                         'bg-indigo-500'
                       }`}
                       style={{ width: `${item.progress}%` }}
                     ></div>
                   </div>
+
+                  {item.stage === 'AI_EXTRACTION' && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-purple-950/40 border border-purple-500/30 text-purple-300 text-[11px]">
+                      <Sparkles size={12} className="text-purple-400 shrink-0 animate-bounce" />
+                      <span>{item.message || `Running local AI Model (${item.model_name || 'llama3.2'})...`}</span>
+                    </div>
+                  )}
 
                   {item.warnings && item.warnings.length > 0 && (
                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 text-xs text-amber-300 mt-1">

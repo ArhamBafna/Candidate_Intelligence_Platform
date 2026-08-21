@@ -22,9 +22,12 @@ from api.dependencies import get_vector_db
 from storage.vector_store import CandidateSectionVector
 from candidate_intelligence_platform.extraction.hybrid_extractor import (
     extract_candidate_profile_hybrid,
+    calculate_tier1_confidence,
+    _extract_deterministic_profile,
     normalize_name,
     normalize_title
 )
+from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -209,6 +212,7 @@ def reprocess_candidate(
 async def reprocess_candidate_stream(
     candidate_id: str,
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
 ):
     async def stream_generator():
@@ -232,12 +236,31 @@ async def reprocess_candidate_stream(
             raw_text = rv.raw_text if (rv and rv.raw_text) else ""
 
             # 2. Entity Resolution
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities', 'warnings': reprocess_warnings})}\n\n"
-            await asyncio.sleep(0.05)
+            used_ai = False
             if raw_text:
+                facts = await asyncio.to_thread(extract_facts, raw_text)
+                profile = await asyncio.to_thread(_extract_deterministic_profile, raw_text, facts)
+                tier1_conf = calculate_tier1_confidence(facts, profile)
+                has_skills_or_loc = any(f.get("claim_category") in ("SKILL", "LOCATION") for f in facts)
+                needs_ai = (
+                    tier1_conf < 0.40
+                    or profile["first_name"] == "Uploaded"
+                    or profile["current_title"] in ("Candidate", "Summary")
+                    or not has_skills_or_loc
+                )
+                
+                if needs_ai:
+                    llm_model = settings.llm_model
+                    yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 30, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model, 'warnings': reprocess_warnings})}\n\n"
+                    await asyncio.sleep(0.02)
+                else:
+                    yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False, 'warnings': reprocess_warnings})}\n\n"
+                    await asyncio.sleep(0.02)
+
                 def do_extract():
                     return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
                 extracted = await asyncio.to_thread(do_extract)
+                used_ai = extracted.get("used_ai_fallback", False)
                 
                 if extracted.get("warnings"):
                     reprocess_warnings.extend(extracted["warnings"])
@@ -289,7 +312,8 @@ async def reprocess_candidate_stream(
             db.commit()
 
             # 6. Completed
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully', 'warnings': reprocess_warnings})}\n\n"
+            mode_str = "AI Model" if used_ai else "Rule-based NER"
+            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessing completed successfully ({mode_str})', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': reprocess_warnings})}\n\n"
         except Exception as e:
             db.rollback()
             yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e), 'warnings': reprocess_warnings})}\n\n"
@@ -469,12 +493,31 @@ async def upload_stream_resumes(
                 chunks = await asyncio.to_thread(do_chunking)
                 
                 # 4. Entity Resolution (simplified extraction)
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 70})}\n\n"
+                facts = await asyncio.to_thread(extract_facts, raw_text)
+                profile = await asyncio.to_thread(_extract_deterministic_profile, raw_text, facts)
+                tier1_conf = calculate_tier1_confidence(facts, profile)
+                has_skills_or_loc = any(f.get("claim_category") in ("SKILL", "LOCATION") for f in facts)
+                needs_ai = (
+                    tier1_conf < 0.40 
+                    or profile["first_name"] == "Uploaded" 
+                    or profile["current_title"] in ("Candidate", "Summary")
+                    or not has_skills_or_loc
+                )
+                
+                if needs_ai:
+                    llm_model = settings.llm_model
+                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 70, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model})}\n\n"
+                    await asyncio.sleep(0.02)
+                else:
+                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 70, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False})}\n\n"
+                    await asyncio.sleep(0.01)
+
                 def extract_profile():
                     return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
                 extracted = await asyncio.to_thread(extract_profile)
                 if extracted.get("warnings"):
                     file_warnings.extend(extracted["warnings"])
+                used_ai = extracted.get("used_ai_fallback", False)
 
                 cand_id = str(uuid.uuid4())
                 cand = Candidate(
@@ -546,7 +589,7 @@ async def upload_stream_resumes(
                         file_warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
                 
                 logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}', 'warnings': file_warnings})}\n\n"
+                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': file_warnings})}\n\n"
                 
             except Exception as e:
                 db.rollback()
@@ -578,6 +621,7 @@ def batch_delete_candidates(
 async def batch_reprocess_candidate_stream(
     payload: BatchReprocessRequest,
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
 ):
     async def batch_stream_generator():
@@ -612,12 +656,31 @@ async def batch_reprocess_candidate_stream(
                 raw_text = rv.raw_text
 
                 # 2. Entity Resolution
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities', 'warnings': reprocess_warnings})}\n\n"
-                
+                used_ai = False
                 try:
+                    facts = await asyncio.to_thread(extract_facts, raw_text)
+                    profile = await asyncio.to_thread(_extract_deterministic_profile, raw_text, facts)
+                    tier1_conf = calculate_tier1_confidence(facts, profile)
+                    has_skills_or_loc = any(f.get("claim_category") in ("SKILL", "LOCATION") for f in facts)
+                    needs_ai = (
+                        tier1_conf < 0.40
+                        or profile["first_name"] == "Uploaded"
+                        or profile["current_title"] in ("Candidate", "Summary")
+                        or not has_skills_or_loc
+                    )
+
+                    if needs_ai:
+                        llm_model = settings.llm_model
+                        yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 30, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model, 'warnings': reprocess_warnings})}\n\n"
+                        await asyncio.sleep(0.02)
+                    else:
+                        yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities (Rule-based)...', 'used_ai': False, 'warnings': reprocess_warnings})}\n\n"
+                        await asyncio.sleep(0.02)
+
                     def do_extract():
                         return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
                     extracted = await asyncio.to_thread(do_extract)
+                    used_ai = extracted.get("used_ai_fallback", False)
                     if extracted.get("warnings"):
                         reprocess_warnings.extend(extracted["warnings"])
                     
@@ -672,7 +735,8 @@ async def batch_reprocess_candidate_stream(
                     pass
 
                 # 6. Completed for candidate
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully', 'warnings': reprocess_warnings})}\n\n"
+                mode_str = "AI Model" if used_ai else "Rule-based"
+                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessed successfully ({mode_str})', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': reprocess_warnings})}\n\n"
 
             except Exception as e:
                 db.rollback()
