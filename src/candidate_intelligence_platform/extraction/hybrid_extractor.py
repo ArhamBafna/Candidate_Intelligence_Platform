@@ -138,6 +138,8 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
             if any(kw in clean_line.lower() for kw in ("http", "www", "github", "linkedin")):
                 continue
             parts = clean_line.split()
+            if any(w.lower().rstrip(".,") in TITLE_KEYWORDS for w in parts) or clean_line.lower() in TITLE_IGNORE_HEADINGS:
+                continue
             if 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts):
                 first_name = normalize_name(parts[0])
                 last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"

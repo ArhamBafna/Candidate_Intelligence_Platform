@@ -15,14 +15,10 @@ Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host "`n[1/4] Checking Python environment (uv sync)..." -ForegroundColor Yellow
 uv sync
 
-Write-Host "`n[2/4] Checking UI dependencies..." -ForegroundColor Yellow
-if (-not (Test-Path "$root\ui\node_modules")) {
-    Push-Location "$root\ui"
-    npm install
-    Pop-Location
-} else {
-    Write-Host "UI packages ready." -ForegroundColor Green
-}
+Write-Host "`n[2/4] Checking UI dependencies (npm install)..." -ForegroundColor Yellow
+Push-Location "$root\ui"
+npm install
+Pop-Location
 
 function Test-PortOpen([string]$hostName, [int]$port) {
     try {
