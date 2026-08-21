@@ -1,9 +1,12 @@
+import os
 from pydantic_settings import BaseSettings
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 class Settings(BaseSettings):
-    db_path: str = "storage/cip_main.db"
-    cas_root_dir: str = "storage/documents"
-    vector_db_path: str = "storage/lancedb"
+    db_path: str = os.path.join(BASE_DIR, "storage", "cip_main.db")
+    cas_root_dir: str = os.path.join(BASE_DIR, "storage", "documents")
+    vector_db_path: str = os.path.join(BASE_DIR, "storage", "lancedb")
     backup_dir: str = "backups_data"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     llm_model: str = "llama3.2"
