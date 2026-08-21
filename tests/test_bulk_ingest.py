@@ -60,8 +60,8 @@ def test_classify_document():
     assert cat == "VALID_RESUME"
 
 @patch("scripts.bulk_ingest.CASManager")
-@patch("scripts.bulk_ingest.SessionLocal")
-def test_bulk_ingest_dry_run(mock_session_local, mock_cas_mgr, tmp_path):
+@patch("scripts.bulk_ingest._get_sessionmaker")
+def test_bulk_ingest_dry_run(mock_sessionmaker, mock_cas_mgr, tmp_path):
     source_dir = tmp_path / "Resumes"
     source_dir.mkdir()
     
@@ -73,51 +73,99 @@ def test_bulk_ingest_dry_run(mock_session_local, mock_cas_mgr, tmp_path):
     (java_dir / "~$lock.docx").write_text("lock file")
     
     checkpoint_file = tmp_path / "checkpoint.json"
+    report_file = tmp_path / "report.json"
     unprocessed_log = tmp_path / "unprocessed.json"
     
     run_bulk_ingest(
         source_dir=str(source_dir),
         batch_size=500,
         checkpoint_file=str(checkpoint_file),
+        report_file=str(report_file),
         unprocessed_log=str(unprocessed_log),
         dry_run=True
     )
     
     assert not checkpoint_file.exists()
+    assert not report_file.exists()
     assert not unprocessed_log.exists()
 
 @patch("scripts.bulk_ingest.process_single_file")
 @patch("scripts.bulk_ingest.CASManager")
-@patch("scripts.bulk_ingest.SessionLocal")
-def test_bulk_ingest_unprocessed_logging(mock_session_local, mock_cas_mgr, mock_process, tmp_path):
+@patch("scripts.bulk_ingest._get_sessionmaker")
+def test_bulk_ingest_master_report_logging(mock_sessionmaker, mock_cas_mgr, mock_process, tmp_path):
     source_dir = tmp_path / "Resumes"
     source_dir.mkdir()
     
+    (source_dir / "valid_resume.docx").write_text("valid content")
     (source_dir / "contract.pdf").write_text("referral agreement terms")
     
-    mock_process.return_value = (False, "fakehash", {
-        "category": "NON_RESUME_LEGAL_CONTRACT",
-        "error": "Document identified as legal contract",
-        "trace": ""
-    })
+    # 1st file: success
+    # 2nd file: non-resume
+    mock_process.side_effect = [
+        (True, "hash1", {
+            "file_path": "valid_resume.docx",
+            "file_name": "valid_resume.docx",
+            "file_type": ".docx",
+            "candidate_name": "Jane Smith",
+            "candidate_id": "uuid-123",
+            "status": "SUCCESS",
+            "how_processed": "Docx_Parser",
+            "ai_used": False,
+            "confidence_score": 0.95,
+            "stages_succeeded": ["CAS_STORE", "TEXT_PARSING", "PROFILE_EXTRACTION", "DATABASE_INSERTION", "FTS_INDEXING", "VECTOR_INDEXING"],
+            "stages_failed": [],
+            "warnings": [],
+            "category": "VALID_RESUME",
+            "error": None,
+            "timestamp": "2026-08-21T14:00:00"
+        }),
+        (False, "hash2", {
+            "file_path": "contract.pdf",
+            "file_name": "contract.pdf",
+            "file_type": ".pdf",
+            "candidate_name": None,
+            "candidate_id": None,
+            "status": "SKIPPED_NON_RESUME",
+            "how_processed": "PyMuPDF_Parser",
+            "ai_used": False,
+            "confidence_score": 0.0,
+            "stages_succeeded": ["CAS_STORE", "TEXT_PARSING"],
+            "stages_failed": ["DOCUMENT_CLASSIFICATION"],
+            "warnings": [],
+            "category": "NON_RESUME_LEGAL_CONTRACT",
+            "error": "Document identified as legal contract",
+            "timestamp": "2026-08-21T14:00:01"
+        })
+    ]
     
     checkpoint_file = tmp_path / "checkpoint.json"
+    report_file = tmp_path / "report.json"
     unprocessed_log = tmp_path / "unprocessed.json"
     
     run_bulk_ingest(
         source_dir=str(source_dir),
         batch_size=10,
         checkpoint_file=str(checkpoint_file),
+        report_file=str(report_file),
         unprocessed_log=str(unprocessed_log),
         dry_run=False
     )
     
-    assert unprocessed_log.exists()
-    records = json.loads(unprocessed_log.read_text())
-    assert len(records) == 1
-    assert records[0]["category"] == "NON_RESUME_LEGAL_CONTRACT"
-    assert records[0]["path"] == "contract.pdf"
+    # Master report must contain BOTH records
+    assert report_file.exists()
+    reports = json.loads(report_file.read_text())
+    assert len(reports) == 2
+    assert reports[0]["candidate_name"] == "Jane Smith"
+    assert reports[0]["status"] == "SUCCESS"
+    assert reports[0]["how_processed"] == "Docx_Parser"
+    assert "VECTOR_INDEXING" in reports[0]["stages_succeeded"]
     
-    # Verify it is recorded in checkpoint
-    state = json.loads(checkpoint_file.read_text())
-    assert "contract.pdf" in state["processed_paths"]
+    assert reports[1]["status"] == "SKIPPED_NON_RESUME"
+    assert reports[1]["category"] == "NON_RESUME_LEGAL_CONTRACT"
+    assert "DOCUMENT_CLASSIFICATION" in reports[1]["stages_failed"]
+    
+    # Unprocessed log must contain only the non-resume
+    assert unprocessed_log.exists()
+    unprocessed = json.loads(unprocessed_log.read_text())
+    assert len(unprocessed) == 1
+    assert unprocessed[0]["category"] == "NON_RESUME_LEGAL_CONTRACT"

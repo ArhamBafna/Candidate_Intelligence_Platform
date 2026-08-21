@@ -1,0 +1,1713 @@
+[
+  {
+    "file_path": "H1 Approval.pdf",
+    "file_name": "H1 Approval.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "REFERRAL AGREEMENT.pdf",
+    "file_name": "REFERRAL AGREEMENT.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_LEGAL_CONTRACT",
+    "error": "Document identified as legal contract from filename (matched: 'agreement')"
+  },
+  {
+    "file_path": "Sonali's Docs.pdf",
+    "file_name": "Sonali's Docs.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "What are the Spring Boot key components.docx",
+    "file_name": "What are the Spring Boot key components.docx",
+    "file_type": ".docx",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_STUDY_OR_TEMPLATE",
+    "error": "Document identified as interview prep/template format (matched keyword: 'key components of spring')"
+  },
+  {
+    "file_path": "BA2-NJ_Skills.docx",
+    "file_name": "BA2-NJ_Skills.docx",
+    "file_type": ".docx",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": "Uploaded Candidate",
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "stages_failed": [
+      "PROFILE_EXTRACTION"
+    ],
+    "warnings": [
+      "LLM fallback attempted but LLM service/model unavailable; continued using rule-based profile extraction."
+    ],
+    "category": "AI_CLASSIFIED_NOT_RESUME",
+    "error": "No identifiable candidate name or contact information found in document"
+  },
+  {
+    "file_path": "State of Texas Submission Format _2025.docx",
+    "file_name": "State of Texas Submission Format _2025.docx",
+    "file_type": ".docx",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_STUDY_OR_TEMPLATE",
+    "error": "Document identified as interview prep/template format (matched keyword: 'submission format')"
+  },
+  {
+    "file_path": "455-26-26897_Mainframe z-OS Systems Programmer.docx",
+    "file_name": "455-26-26897_Mainframe z-OS Systems Programmer.docx",
+    "file_type": ".docx",
+    "folder_tag": "Uncategorized",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_STUDY_OR_TEMPLATE",
+    "error": "Document identified as interview prep/template format (matched keyword: 'client portal submission')"
+  },
+  {
+    "file_path": "Candidate details\\Tisha C 2024.pdf",
+    "file_name": "Tisha C 2024.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details",
+    "candidate_id": "0147be62-108d-41c4-a205-c4aa2bd25a2e",
+    "candidate_name": "Tisha Kanjilal",
+    "status": "SUCCESS",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 1.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Prerna_PO_USC_CA.pdf",
+    "file_name": "Prerna_PO_USC_CA.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details",
+    "candidate_id": "981b7352-30c3-480c-beeb-c43492588e54",
+    "candidate_name": "Anand Prerna",
+    "status": "SUCCESS",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 1.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Abhinay_dataengineer_H1B_VI.docx",
+    "file_name": "Abhinay_dataengineer_H1B_VI.docx",
+    "file_type": ".docx",
+    "folder_tag": "Candidate details",
+    "candidate_id": "f557257f-d66d-4419-b551-2720412620d9",
+    "candidate_name": "Abhinay Govindaraju",
+    "status": "SUCCESS",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 0.75,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Akhila GC (1).pdf",
+    "file_name": "Akhila GC (1).pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\PXL_20220524_000939696.jpg",
+    "file_name": "PXL_20220524_000939696.jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Jahnavi GC.jpg",
+    "file_name": "Jahnavi GC.jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\dl copy -arjav.jpeg",
+    "file_name": "dl copy -arjav.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Akshay\\h1bn.pdf",
+    "file_name": "h1bn.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Akshay",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Akshay\\IMG-1931 (1) (1).jpg",
+    "file_name": "IMG-1931 (1) (1).jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details\\Akshay",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Akshay\\UtilityBill (1).pdf",
+    "file_name": "UtilityBill (1).pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Akshay",
+    "candidate_id": "823ff7ba-2149-495c-9fdb-1b5f40b6cdcf",
+    "candidate_name": "Paid By Draft",
+    "status": "SUCCESS",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": true,
+    "confidence_score": 0.85,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Akshay\\082525 WellsFargo.pdf",
+    "file_name": "082525 WellsFargo.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Akshay",
+    "candidate_id": "b3166539-02b7-4398-8c3d-4ca16cdbb539",
+    "candidate_name": "Akshay Kumar Reddy Chamala",
+    "status": "SUCCESS",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": true,
+    "confidence_score": 0.85,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Akshay\\WhatsApp Image 2025-09-25 at 2.47.39 AM.jpeg",
+    "file_name": "WhatsApp Image 2025-09-25 at 2.47.39 AM.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Akshay",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Akshay\\WhatsApp Image 2025-09-25 at 2.47.37 AM.jpeg",
+    "file_name": "WhatsApp Image 2025-09-25 at 2.47.37 AM.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Akshay",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Aneef\\Aneef_DL.jpg",
+    "file_name": "Aneef_DL.jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details\\Aneef",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Anitha\\I797.pdf",
+    "file_name": "I797.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Anitha",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Anitha\\I94 - Official Website.pdf",
+    "file_name": "I94 - Official Website.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Anitha",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_IMMIGRATION_OR_ID",
+    "error": "Document identified as government/visa/ID document from text (matched: 'form i-94')"
+  },
+  {
+    "file_path": "Candidate details\\Anitha\\Passport Anitha.pdf",
+    "file_name": "Passport Anitha.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Anitha",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Anitha\\State Id.jpeg",
+    "file_name": "State Id.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Anitha",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Arun Architect\\I797_2026.pdf",
+    "file_name": "I797_2026.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Arun Architect",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Arun Architect\\USA_DL_12_16_2026.pdf",
+    "file_name": "USA_DL_12_16_2026.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Arun Architect",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Arvind Sr.Java\\Arvind ID - State ID.jpeg",
+    "file_name": "Arvind ID - State ID.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Arvind Sr.Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Arvind Sr.Java\\Arvind Sridharan -H1B - GP Technologies.pdf",
+    "file_name": "Arvind Sridharan -H1B - GP Technologies.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Arvind Sr.Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Bhargava_BA_GA\\Bhargav_DL.pdf",
+    "file_name": "Bhargav_DL.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Bhargava_BA_GA",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Bhargava_BA_GA\\EAD CARD (2)-1 (1).pdf",
+    "file_name": "EAD CARD (2)-1 (1).pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Bhargava_BA_GA",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Bhargavi\\Bhargavi Dl.pdf",
+    "file_name": "Bhargavi Dl.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Bhargavi",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Bhargavi\\Bhargavi submission details.docx",
+    "file_name": "Bhargavi submission details.docx",
+    "file_type": ".docx",
+    "folder_tag": "Candidate details\\Bhargavi",
+    "candidate_id": "5b7e245c-827f-4a74-8392-e036cecf84bd",
+    "candidate_name": "Full Name Bhargavi Sanjaykumar",
+    "status": "SUCCESS",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 1.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Bhargavi\\PATEL, BHARGAVI SANJAYKUMAR.pdf",
+    "file_name": "PATEL, BHARGAVI SANJAYKUMAR.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Bhargavi",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Chandra QA\\License.pdf",
+    "file_name": "License.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Chandra QA",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Chandra QA\\Visa.pdf",
+    "file_name": "Visa.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Chandra QA",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Eswar_Naveen_Java\\Eswar Naveen java full stack.docx",
+    "file_name": "Eswar Naveen java full stack.docx",
+    "file_type": ".docx",
+    "folder_tag": "Candidate details\\Eswar_Naveen_Java",
+    "candidate_id": "d525fee3-25d2-44e9-bf26-366b9b650277",
+    "candidate_name": "Sr. Full Stack Developer",
+    "status": "SUCCESS",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 0.75,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Eswar_Naveen_Java\\Eswar_DL.jpg",
+    "file_name": "Eswar_DL.jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details\\Eswar_Naveen_Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Eswar_Naveen_Java\\Eswar_H1B.pdf",
+    "file_name": "Eswar_H1B.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Eswar_Naveen_Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Eswar_Naveen_Java\\Outlook-4nkt5x4l.png",
+    "file_name": "Outlook-4nkt5x4l.png",
+    "file_type": ".png",
+    "folder_tag": "Candidate details\\Eswar_Naveen_Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.png) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Eswar_Naveen_Java\\Outlook-Image.png",
+    "file_name": "Outlook-Image.png",
+    "file_type": ".png",
+    "folder_tag": "Candidate details\\Eswar_Naveen_Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.png) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Eswar_Naveen_Java\\Outlook-x3i3iwuz.png",
+    "file_name": "Outlook-x3i3iwuz.png",
+    "file_type": ".png",
+    "folder_tag": "Candidate details\\Eswar_Naveen_Java",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.png) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Fozia\\Fozia DL copy.pdf",
+    "file_name": "Fozia DL copy.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Fozia",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Fozia\\Fozia Green Card.pdf",
+    "file_name": "Fozia Green Card.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Fozia",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Naga\\DL .pdf",
+    "file_name": "DL .pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Naga",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Naga\\VISA.pdf",
+    "file_name": "VISA.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Naga",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Pallavi\\DL-Pallavi.jpeg",
+    "file_name": "DL-Pallavi.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Pallavi",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Pallavi\\EAD.jpeg",
+    "file_name": "EAD.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Pallavi",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Praveen BIArch_CT_h1\\Praveen - DL.pdf",
+    "file_name": "Praveen - DL.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Praveen BIArch_CT_h1",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Praveen BIArch_CT_h1\\Praveen - H1B.pdf",
+    "file_name": "Praveen - H1B.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Praveen BIArch_CT_h1",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Praveen BIArch_CT_h1\\PraveenTippana_Power BI Architect_H1B_CT.docx",
+    "file_name": "PraveenTippana_Power BI Architect_H1B_CT.docx",
+    "file_type": ".docx",
+    "folder_tag": "Candidate details\\Praveen BIArch_CT_h1",
+    "candidate_id": "a24191d7-dcae-4b1f-92a7-10541cda1ecd",
+    "candidate_name": "Praveen Tippana",
+    "status": "SUCCESS",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 1.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Preetam\\Preetham - DL.pdf",
+    "file_name": "Preetham - DL.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Preetam",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Preetam\\PREETHAM DL NEW .pdf",
+    "file_name": "PREETHAM DL NEW .pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Preetam",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Preetam\\H1 Approval.pdf",
+    "file_name": "H1 Approval.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Preetam",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Preetam\\Preetham_SupraSoft I797A.pdf",
+    "file_name": "Preetham_SupraSoft I797A.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Preetam",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Preetam\\Preetham_DL.jpeg",
+    "file_name": "Preetham_DL.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Preetam",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Pruthvi Raj\\Prudhvi GC.pdf",
+    "file_name": "Prudhvi GC.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Pruthvi Raj",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Pruthvi Raj\\PRUDHVI RAJ ID.pdf",
+    "file_name": "PRUDHVI RAJ ID.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Pruthvi Raj",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Rajalakshmi\\Raji L2 Visa.pdf",
+    "file_name": "Raji L2 Visa.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Rajalakshmi",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Rajalakshmi\\Raji NJ Driving License.pdf",
+    "file_name": "Raji NJ Driving License.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Rajalakshmi",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_IMMIGRATION_OR_ID",
+    "error": "Document identified as government/visa/ID document from filename (matched: 'driving license')"
+  },
+  {
+    "file_path": "Candidate details\\Rajendra\\Rajendra DL.jpg",
+    "file_name": "Rajendra DL.jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details\\Rajendra",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Rajendra\\Rajendra PP.pdf",
+    "file_name": "Rajendra PP.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Rajendra",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Rajendra\\Rajendra_H1B.pdf",
+    "file_name": "Rajendra_H1B.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Rajendra",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Ramya\\RamyaID.jpeg",
+    "file_name": "RamyaID.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Ramya",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Ramya\\RamyaOPT Card.jpeg",
+    "file_name": "RamyaOPT Card.jpeg",
+    "file_type": ".jpeg",
+    "folder_tag": "Candidate details\\Ramya",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpeg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Sai kiran\\Sai_Kiran_Pothula_Full-Stack-Java-Developer (1).docx",
+    "file_name": "Sai_Kiran_Pothula_Full-Stack-Java-Developer (1).docx",
+    "file_type": ".docx",
+    "folder_tag": "Candidate details\\Sai kiran",
+    "candidate_id": "dec8aad0-ac87-4eb7-a058-ec62eee76e19",
+    "candidate_name": "Sai Kiran Pothula",
+    "status": "SUCCESS",
+    "how_processed": "Docx_Parser",
+    "ai_used": false,
+    "confidence_score": 1.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  },
+  {
+    "file_path": "Candidate details\\Sai kiran\\Trine-I-20.pdf",
+    "file_name": "Trine-I-20.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Sai kiran",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_IMMIGRATION_OR_ID",
+    "error": "Document identified as government/visa/ID document from text (matched: 'department of homeland security')"
+  },
+  {
+    "file_path": "Candidate details\\Sai kiran\\TX-RR-License.pdf",
+    "file_name": "TX-RR-License.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Sai kiran",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Sai kiran\\SEVIS_RTI (1).pdf",
+    "file_name": "SEVIS_RTI (1).pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Sai kiran",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "NON_RESUME_IMMIGRATION_OR_ID",
+    "error": "Document identified as government/visa/ID document from text (matched: 'department of homeland security')"
+  },
+  {
+    "file_path": "Candidate details\\Shiva_QA_USC_TX\\Shiva ID.jpg",
+    "file_name": "Shiva ID.jpg",
+    "file_type": ".jpg",
+    "folder_tag": "Candidate details\\Shiva_QA_USC_TX",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "None",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "STANDALONE_IMAGE",
+    "error": "Standalone image file (.jpg) requires OCR extraction pipeline"
+  },
+  {
+    "file_path": "Candidate details\\Shrey_PM_NJ\\H4-EAD_Shreya Arora.pdf",
+    "file_name": "H4-EAD_Shreya Arora.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Shrey_PM_NJ",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Shrey_PM_NJ\\NJ State ID_Shreya Arora.pdf",
+    "file_name": "NJ State ID_Shreya Arora.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Shrey_PM_NJ",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Supraja\\SUPRAJA_GC_1.pdf",
+    "file_name": "SUPRAJA_GC_1.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Supraja",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Supraja\\SUPRAJA_Texas .pdf",
+    "file_name": "SUPRAJA_Texas .pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Supraja",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Tamiz\\Driver's Licence (2).pdf",
+    "file_name": "Driver's Licence (2).pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Tamiz",
+    "candidate_id": null,
+    "candidate_name": null,
+    "status": "SKIPPED_NON_RESUME",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 0.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING"
+    ],
+    "stages_failed": [
+      "DOCUMENT_CLASSIFICATION"
+    ],
+    "warnings": [],
+    "category": "SCANNED_IMAGE_REQUIRES_OCR",
+    "error": "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
+  },
+  {
+    "file_path": "Candidate details\\Tamiz\\TAMIZHARASAN SENGUTTUVAN.pdf",
+    "file_name": "TAMIZHARASAN SENGUTTUVAN.pdf",
+    "file_type": ".pdf",
+    "folder_tag": "Candidate details\\Tamiz",
+    "candidate_id": "8a4b7dfe-6b80-4f44-b4ab-bcb620d2b952",
+    "candidate_name": "Tamizharasan Senguttuvan",
+    "status": "SUCCESS",
+    "how_processed": "PyMuPDF_Parser",
+    "ai_used": false,
+    "confidence_score": 1.0,
+    "stages_succeeded": [
+      "FILE_READ",
+      "CAS_STORE",
+      "TEXT_PARSING",
+      "DOCUMENT_CLASSIFICATION",
+      "PROFILE_EXTRACTION",
+      "CANDIDATE_CREATION",
+      "DATABASE_INSERTION",
+      "FTS_INDEXING",
+      "VECTOR_INDEXING"
+    ],
+    "stages_failed": [],
+    "warnings": [],
+    "category": "VALID_RESUME",
+    "error": null
+  }
+]

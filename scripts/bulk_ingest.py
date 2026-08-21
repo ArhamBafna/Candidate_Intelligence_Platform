@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Set, Dict, Any, Tuple, List, Optional
 
 from config.settings import Settings
-from api.dependencies import _SessionLocal as SessionLocal, get_vector_db
+from api.dependencies import _get_sessionmaker, get_vector_db
 from storage.cas import CASManager
 from storage.db_models import Candidate, ResumeVersion, CandidateTimelineEvent
 from candidate_intelligence_platform.extraction.hybrid_extractor import extract_candidate_profile_hybrid
@@ -120,82 +120,223 @@ def classify_document(text: str, filename: str) -> Tuple[bool, str, str]:
 
     return True, "VALID_RESUME", "Passed candidate resume verification"
 
+def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path: Path) -> None:
+    """
+    Generate a clean, structured, human-readable Markdown report summarizing the ingestion run.
+    """
+    ingested = [r for r in report_records if r.get("status") in ["SUCCESS", "PARTIAL_SUCCESS"]]
+    skipped_non_resumes = [r for r in report_records if r.get("status") == "SKIPPED_NON_RESUME"]
+    duplicates = [r for r in report_records if r.get("status") == "SKIPPED_DUPLICATE"]
+    failed = [r for r in report_records if r.get("status") == "FAILED"]
+
+    # Category counts for non-resumes
+    category_counts: Dict[str, int] = {}
+    for r in skipped_non_resumes:
+        cat = r.get("category", "UNKNOWN")
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+
+    md_lines = [
+        "# Bulk Resume Ingestion Summary Report",
+        "",
+        f"- **Total Files Evaluated:** {len(report_records)}",
+        f"- **Ingested (Valid Resumes):** {len(ingested)}",
+        f"- **Skipped (Non-Resumes & Docs):** {len(skipped_non_resumes)}",
+        f"- **Skipped (Duplicates):** {len(duplicates)}",
+        f"- **Failed / Ingestion Errors:** {len(failed)}",
+        "",
+        "---",
+        "",
+        "## 1. Ingested Resumes",
+        "",
+        "| # | Candidate Name | Parser Engine | AI Used | Folder | File Name |",
+        "|---|----------------|---------------|---------|--------|-----------|",
+    ]
+
+    for idx, r in enumerate(ingested, 1):
+        name = r.get("candidate_name") or "Unknown"
+        parser = r.get("how_processed") or "N/A"
+        ai_used = "Yes" if r.get("ai_used") else "No"
+        folder = r.get("folder_tag") or "Root"
+        fname = r.get("file_name") or ""
+        md_lines.append(f"| {idx} | **{name}** | `{parser}` | {ai_used} | `{folder}` | `{fname}` |")
+
+    if not ingested:
+        md_lines.append("| - | *No resumes ingested in this run* | - | - | - | - |")
+
+    md_lines.extend([
+        "",
+        "---",
+        "",
+        "## 2. Skipped Non-Resume Breakdown",
+        "",
+        "| Category | Count | Common Reason / Document Type |",
+        "|----------|-------|-------------------------------|",
+    ])
+
+    category_descriptions = {
+        "SCANNED_IMAGE_REQUIRES_OCR": "Scanned document / image PDF without OCR text layer (<50 chars)",
+        "STANDALONE_IMAGE": "Standalone image file (.jpg, .png, etc.) requiring OCR pipeline",
+        "NON_RESUME_IMMIGRATION_OR_ID": "Government ID, Driver's License, Visa, Passport, or H-1B notice",
+        "NON_RESUME_LEGAL_CONTRACT": "Legal contract, Referral Agreement, NDA, or Vendor Agreement",
+        "NON_RESUME_STUDY_OR_TEMPLATE": "Interview study guide, question bank, or submission template",
+        "AI_CLASSIFIED_NOT_RESUME": "No identifiable candidate name or contact information found",
+        "NON_RESUME_INSUFFICIENT_SIGNALS": "Document lacks standard resume sections (experience, education, skills)",
+    }
+
+    for cat, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True):
+        desc = category_descriptions.get(cat, "Non-resume document")
+        md_lines.append(f"| `{cat}` | **{count}** | {desc} |")
+
+    if not category_counts:
+        md_lines.append("| *None* | 0 | *No non-resumes encountered* |")
+
+    if failed:
+        md_lines.extend([
+            "",
+            "---",
+            "",
+            "## 3. Failed Ingestion Errors",
+            "",
+            "| File Name | Folder | Category | Error Reason |",
+            "|-----------|--------|----------|--------------|",
+        ])
+        for r in failed:
+            fname = r.get("file_name") or ""
+            folder = r.get("folder_tag") or ""
+            cat = r.get("category") or ""
+            err = r.get("error") or "Unknown error"
+            md_lines.append(f"| `{fname}` | `{folder}` | `{cat}` | {err} |")
+
+    md_lines.append("")
+    output_path.write_text("\n".join(md_lines), encoding="utf-8")
+
 def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager) -> Tuple[bool, str, Dict[str, Any]]:
-    """Process a single file. Returns (success, hash, details_or_error)"""
+    """
+    Process a single file through the full ingestion pipeline with fine-grained stage tracking.
+    Returns: (success: bool, hash: str, telemetry: Dict[str, Any])
+    """
     ext = filepath.suffix.lower()
+    rel_path = filepath.relative_to(base_dir)
+    rel_path_str = str(rel_path)
+    folder_tag = str(rel_path.parent) if str(rel_path.parent) != "." else "Uncategorized"
+
+    stages_succeeded: List[str] = []
+    stages_failed: List[str] = []
+    file_warnings: List[str] = []
     
+    telemetry: Dict[str, Any] = {
+        "file_path": rel_path_str,
+        "file_name": filepath.name,
+        "file_type": ext,
+        "folder_tag": folder_tag,
+        "candidate_id": None,
+        "candidate_name": None,
+        "status": "FAILED",
+        "how_processed": "None",
+        "ai_used": False,
+        "confidence_score": 0.0,
+        "stages_succeeded": stages_succeeded,
+        "stages_failed": stages_failed,
+        "warnings": file_warnings,
+        "category": "UNKNOWN",
+        "error": None
+    }
+
     try:
         content = filepath.read_bytes()
         file_hash = get_file_hash(filepath)
+        stages_succeeded.append("FILE_READ")
     except Exception as e:
-        return False, "", {
+        stages_failed.append("FILE_READ")
+        telemetry.update({
             "category": "CORRUPTED_OR_UNREADABLE",
-            "error": f"Failed to read file: {str(e)}",
-            "trace": traceback.format_exc()
-        }
+            "error": f"Failed to read file: {str(e)}"
+        })
+        return False, "", telemetry
 
     # 1. Deduplication via CAS Hash
     existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
     if existing_rv:
-        return True, file_hash, {"status": "skipped", "reason": "cas_duplicate"}
-
-    # Calculate taxonomy category tag
-    rel_path = filepath.relative_to(base_dir)
-    folder_tag = str(rel_path.parent) if str(rel_path.parent) != "." else "Uncategorized"
+        telemetry.update({
+            "status": "SKIPPED_DUPLICATE",
+            "candidate_id": existing_rv.candidate_id,
+            "category": "DUPLICATE_FILE",
+            "reason": "Exact CAS file hash already ingested in database"
+        })
+        return True, file_hash, telemetry
 
     # 2. Store in CAS
     try:
         _, cas_path = cas_mgr.store(content, extension=ext)
+        stages_succeeded.append("CAS_STORE")
     except Exception as e:
-        return False, file_hash, {
+        stages_failed.append("CAS_STORE")
+        telemetry.update({
             "category": "CAS_STORAGE_ERROR",
-            "error": f"CAS Storage failed: {str(e)}",
-            "trace": traceback.format_exc()
-        }
+            "error": f"CAS Storage failed: {str(e)}"
+        })
+        return False, file_hash, telemetry
 
     # 3. Parse Document
     raw_text = ""
-    file_warnings: List[str] = []
+    how_processed = "None"
     
     try:
         if ext == ".pdf":
             from ingestion.parsers.pdf_parser import parse_pdf
             doc = parse_pdf(Path(cas_path))
             raw_text = doc.text
+            how_processed = "PyMuPDF_Parser"
         elif ext == ".docx":
             from ingestion.parsers.docx_parser import parse_docx
             doc = parse_docx(Path(cas_path))
             raw_text = doc.text
+            how_processed = "Docx_Parser"
         elif ext in [".eml", ".msg"]:
             from ingestion.parsers.email_parser import parse_email
             doc = parse_email(Path(cas_path))
             raw_text = doc.text
+            how_processed = "Email_Parser"
         elif ext == ".doc":
             raw_text = content.decode("utf-8", errors="ignore")
+            how_processed = "Raw_Text_Fallback"
             file_warnings.append("Legacy .doc format extracted via raw text fallback.")
         else:
             raw_text = content.decode("utf-8", errors="ignore")
+            how_processed = "Raw_Text_Fallback"
+            
+        stages_succeeded.append("TEXT_PARSING")
     except Exception as e:
         if ext in [".pdf", ".docx", ".eml", ".msg"]:
             raw_text = content.decode("utf-8", errors="ignore")
+            how_processed = "Raw_Text_Fallback"
             file_warnings.append(f"Structured parser failed ({str(e)}), used raw text fallback.")
+            stages_succeeded.append("TEXT_PARSING")
         else:
-            return False, file_hash, {
+            stages_failed.append("TEXT_PARSING")
+            telemetry.update({
+                "how_processed": how_processed,
                 "category": "PARSING_FAILED",
-                "error": f"Parsing failed: {str(e)}",
-                "trace": traceback.format_exc()
-            }
+                "error": f"Parsing failed: {str(e)}"
+            })
+            return False, file_hash, telemetry
+
+    telemetry["how_processed"] = how_processed
 
     # 4. Classify Resume vs Non-Resume
     is_resume, category, reason = classify_document(raw_text, filepath.name)
     if not is_resume:
-        return False, file_hash, {
+        stages_failed.append("DOCUMENT_CLASSIFICATION")
+        telemetry.update({
+            "status": "SKIPPED_NON_RESUME",
             "category": category,
-            "error": reason,
-            "trace": ""
-        }
+            "error": reason
+        })
+        return False, file_hash, telemetry
 
-    # 5. Entity Extraction & Validation
+    stages_succeeded.append("DOCUMENT_CLASSIFICATION")
+
+    # 5. Entity Extraction & Profile Extraction
     try:
         extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
         if extracted.get("warnings"):
@@ -206,15 +347,23 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
         email = extracted.get("primary_email")
         phone = extracted.get("primary_phone")
         full_name = f"{first_name} {last_name}".strip()
+        
+        telemetry["candidate_name"] = full_name
+        telemetry["ai_used"] = extracted.get("used_ai_fallback", False)
+        telemetry["confidence_score"] = extracted.get("confidence_score", 0.0)
 
         # Reject dummy names with no contact details
         is_dummy_name = (first_name.lower() in ["uploaded", ""] and last_name.lower() in ["candidate", ""])
         if is_dummy_name and not email and not phone:
-            return False, file_hash, {
+            stages_failed.append("PROFILE_EXTRACTION")
+            telemetry.update({
+                "status": "SKIPPED_NON_RESUME",
                 "category": "AI_CLASSIFIED_NOT_RESUME",
-                "error": "No identifiable candidate name or contact information found in document",
-                "trace": ""
-            }
+                "error": "No identifiable candidate name or contact information found in document"
+            })
+            return False, file_hash, telemetry
+
+        stages_succeeded.append("PROFILE_EXTRACTION")
 
         cand_id = None
         cand = None
@@ -240,6 +389,7 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
             resolution = resolve(incoming_identifiers, existing_identifiers)
             if resolution.action == ResolutionAction.MERGE and resolution.matched_id:
                 cand_id = resolution.matched_id
+                stages_succeeded.append("ENTITY_MERGE")
                 db.query(ResumeVersion).filter(
                     ResumeVersion.candidate_id == cand_id,
                     ResumeVersion.is_primary == True
@@ -257,6 +407,9 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
                 current_title=extracted.get("current_title", "Candidate")
             )
             db.add(cand)
+            stages_succeeded.append("CANDIDATE_CREATION")
+
+        telemetry["candidate_id"] = cand_id
 
         layout_metadata = {"source_folder": folder_tag}
         
@@ -296,15 +449,19 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
         )
 
         db.flush()
+        stages_succeeded.append("DATABASE_INSERTION")
+        stages_succeeded.append("FTS_INDEXING")
         
     except Exception as e:
-        return False, file_hash, {
+        stages_failed.append("DATABASE_INSERTION")
+        telemetry.update({
             "category": "DATABASE_ERROR",
-            "error": f"Database insertion failed: {str(e)}",
-            "trace": traceback.format_exc()
-        }
+            "error": f"Database insertion failed: {str(e)}"
+        })
+        return False, file_hash, telemetry
 
     # 7. Vector Store (LanceDB)
+    vector_succeeded = False
     try:
         from ingestion.parsers.models import ParsedDocument
         doc_model = ParsedDocument(text=raw_text, pages=1)
@@ -329,16 +486,27 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
                         "end_offset": chunk.end_offset
                     })
                 table.add(records)
+                stages_succeeded.append("VECTOR_INDEXING")
+                vector_succeeded = True
     except Exception as e:
+        stages_failed.append("VECTOR_INDEXING")
         file_warnings.append(f"Vector indexing skipped: {str(e)}")
 
-    return True, file_hash, {"status": "success", "candidate_id": cand_id, "warnings": file_warnings}
+    if file_warnings or not vector_succeeded:
+        telemetry["status"] = "PARTIAL_SUCCESS"
+    else:
+        telemetry["status"] = "SUCCESS"
+
+    telemetry["category"] = "VALID_RESUME"
+    return True, file_hash, telemetry
 
 def run_bulk_ingest(
     source_dir: str,
     batch_size: int,
     checkpoint_file: str,
+    report_file: str,
     unprocessed_log: str,
+    summary_file: str = "bulk_ingest_summary.md",
     dry_run: bool = False
 ):
     base_dir = Path(source_dir)
@@ -347,17 +515,26 @@ def run_bulk_ingest(
         return
 
     checkpoint_path = Path(checkpoint_file)
+    report_path = Path(report_file)
     unprocessed_path = Path(unprocessed_log)
+    summary_path = Path(summary_file)
     
     processed_files: Set[str] = set()
     if checkpoint_path.exists():
         try:
             state = json.loads(checkpoint_path.read_text())
             processed_files = set(state.get("processed_paths", []))
-            logger.info("Loaded checkpoint", count=len(processed_files))
+            print(f"[*] Loaded checkpoint: {len(processed_files)} previously evaluated files.")
         except Exception as e:
             logger.error("Failed to load checkpoint", error=str(e))
     
+    report_records: List[Dict[str, Any]] = []
+    if report_path.exists():
+        try:
+            report_records = json.loads(report_path.read_text())
+        except Exception:
+            pass
+
     unprocessed_records: List[Dict[str, Any]] = []
     if unprocessed_path.exists():
         try:
@@ -366,13 +543,23 @@ def run_bulk_ingest(
             pass
 
     cas_mgr = CASManager(Settings().cas_root_dir)
+    SessionLocal = _get_sessionmaker(Settings().db_path)
     db = SessionLocal()
     
-    processed_this_run = 0
-    skipped_this_run = 0
-    unprocessed_this_run = 0
+    scanned_count = 0
+    success_count = 0
+    partial_count = 0
+    duplicate_count = 0
+    unprocessed_count = 0
+    failed_count = 0
 
-    print(f"Scanning directory: {base_dir}")
+    print(f"\n=======================================================")
+    print(f"  CIP Bulk Ingestion Engine")
+    print(f"  Source Directory: {base_dir}")
+    print(f"  Batch Size Limit: {batch_size}")
+    print(f"  Master Report:   {report_path}")
+    print(f"  Summary Report:  {summary_path}")
+    print(f"=======================================================\n")
     
     # Generator-based traversal
     for root, _, files in os.walk(base_dir):
@@ -389,85 +576,118 @@ def run_bulk_ingest(
             if rel_path_str in processed_files:
                 continue
 
+            scanned_count += 1
+
             # Log non-supported extensions (e.g. standalone images, .zip, etc.)
             if ext in IMAGE_EXTENSIONS:
                 if not dry_run:
-                    unprocessed_this_run += 1
+                    unprocessed_count += 1
                     processed_files.add(rel_path_str)
-                    unprocessed_records.append({
-                        "path": rel_path_str,
+                    img_telemetry = {
+                        "file_path": rel_path_str,
+                        "file_name": filepath.name,
+                        "file_type": ext,
+                        "folder_tag": str(filepath.relative_to(base_dir).parent),
+                        "candidate_id": None,
+                        "candidate_name": None,
+                        "status": "SKIPPED_NON_RESUME",
+                        "how_processed": "None",
+                        "ai_used": False,
+                        "confidence_score": 0.0,
+                        "stages_succeeded": [],
+                        "stages_failed": ["DOCUMENT_CLASSIFICATION"],
+                        "warnings": [],
                         "category": "STANDALONE_IMAGE",
-                        "reason": f"Standalone image file ({ext}) requires OCR extraction pipeline",
-                        "file_size": filepath.stat().st_size if filepath.exists() else 0,
-                        "timestamp": datetime.now().isoformat()
-                    })
+                        "error": f"Standalone image file ({ext}) requires OCR extraction pipeline"
+                    }
+                    report_records.append(img_telemetry)
+                    unprocessed_records.append(img_telemetry)
+                    print(f"[  -  ] (File #{scanned_count:3d}) [SKIP] Standalone Image (Needs OCR): {filepath.name}")
                     checkpoint_path.write_text(json.dumps({"processed_paths": list(processed_files)}, indent=2))
+                    report_path.write_text(json.dumps(report_records, indent=2))
                     unprocessed_path.write_text(json.dumps(unprocessed_records, indent=2))
+                    generate_markdown_summary(report_records, summary_path)
                 continue
 
             if ext not in SUPPORTED_EXTENSIONS:
                 continue
 
             if dry_run:
-                print(f"[DRY RUN] Would evaluate: {rel_path_str}")
-                processed_this_run += 1
-                if processed_this_run >= batch_size:
-                    print("Dry run batch limit reached.")
+                print(f"[DRY RUN {success_count + 1:2d}/{batch_size}] (File #{scanned_count:3d}) Would evaluate: {rel_path_str}")
+                success_count += 1
+                if success_count >= batch_size:
+                    print(f"\n[DRY RUN] Batch limit of {batch_size} reached. Simulation completed.")
                     return
                 continue
 
             # Process inside a savepoint transaction
-            success, file_hash, details = process_single_file(filepath, base_dir, db, cas_mgr)
+            success, file_hash, telemetry = process_single_file(filepath, base_dir, db, cas_mgr)
             
-            if success:
-                if details.get("status") == "skipped":
-                    skipped_this_run += 1
-                    logger.info("File skipped", path=rel_path_str, reason=details.get("reason"))
-                else:
-                    processed_this_run += 1
-                    logger.info("Processed resume", path=rel_path_str, candidate_id=details.get("candidate_id"))
-                    
-                processed_files.add(rel_path_str)
-                db.commit() # Commit successful transaction
-            else:
-                db.rollback() # Rollback on failure / non-resume
-                unprocessed_this_run += 1
-                processed_files.add(rel_path_str) # Mark as handled so we don't re-attempt
-                
-                cat = details.get("category", "NON_RESUME_OR_ERROR")
-                err_msg = details.get("error", "Unknown error")
-                logger.info("File not ingested as resume", path=rel_path_str, category=cat, reason=err_msg)
-                
-                unprocessed_records.append({
-                    "path": rel_path_str,
-                    "category": cat,
-                    "reason": err_msg,
-                    "hash": file_hash,
-                    "file_size": filepath.stat().st_size if filepath.exists() else 0,
-                    "timestamp": datetime.now().isoformat(),
-                    "trace": details.get("trace", "")
-                })
+            # Update telemetry master log & unprocessed log
+            report_records.append(telemetry)
+            processed_files.add(rel_path_str)
             
-            # Update Checkpoint & Unprocessed Logs
-            checkpoint_path.write_text(json.dumps({"processed_paths": list(processed_files)}, indent=2))
-            unprocessed_path.write_text(json.dumps(unprocessed_records, indent=2))
+            status = telemetry.get("status")
+            cand_name = telemetry.get("candidate_name") or "N/A"
+            how_proc = telemetry.get("how_processed")
+            ai_flag = "Ollama" if telemetry.get("ai_used") else "Deterministic"
 
-            if processed_this_run >= batch_size:
-                logger.info(
-                    "Batch limit reached",
-                    resumes_ingested=processed_this_run,
-                    skipped_duplicates=skipped_this_run,
-                    unprocessed_non_resumes=unprocessed_this_run
-                )
+            if success:
+                if status == "SKIPPED_DUPLICATE":
+                    duplicate_count += 1
+                    print(f"[  -  ] (File #{scanned_count:3d}) [SKIP] Duplicate File: {filepath.name}")
+                elif status == "PARTIAL_SUCCESS":
+                    partial_count += 1
+                    db.commit()
+                    curr = success_count + partial_count
+                    print(f"[{curr:2d}/{batch_size}] (File #{scanned_count:3d}) [OK]   Ingested Resume (Partial): '{cand_name}' | {how_proc} | {rel_path_str}")
+                else:
+                    success_count += 1
+                    db.commit()
+                    curr = success_count + partial_count
+                    print(f"[{curr:2d}/{batch_size}] (File #{scanned_count:3d}) [OK]   Ingested Resume: '{cand_name}' | {how_proc} ({ai_flag}) | {rel_path_str}")
+            else:
+                db.rollback()
+                if status == "SKIPPED_NON_RESUME":
+                    unprocessed_count += 1
+                    unprocessed_records.append(telemetry)
+                    print(f"[  -  ] (File #{scanned_count:3d}) [SKIP] Non-Resume [{telemetry.get('category')}]: {filepath.name}")
+                else:
+                    failed_count += 1
+                    unprocessed_records.append(telemetry)
+                    print(f"[  -  ] (File #{scanned_count:3d}) [FAIL] Ingestion Error [{telemetry.get('category')}]: {filepath.name} ({telemetry.get('error')})")
+            
+            # Write out persisted checkpoints, JSON logs, and Markdown summary
+            checkpoint_path.write_text(json.dumps({"processed_paths": list(processed_files)}, indent=2))
+            report_path.write_text(json.dumps(report_records, indent=2))
+            unprocessed_path.write_text(json.dumps(unprocessed_records, indent=2))
+            generate_markdown_summary(report_records, summary_path)
+
+            if success_count + partial_count >= batch_size:
+                print(f"\n=======================================================")
+                print(f"  Batch Ingestion Limit ({batch_size}) Reached!")
+                print(f"  - Ingested (Full Success):    {success_count}")
+                print(f"  - Ingested (Partial Success): {partial_count}")
+                print(f"  - Skipped Duplicates:         {duplicate_count}")
+                print(f"  - Skipped Non-Resumes:        {unprocessed_count}")
+                print(f"  - Failed / Errors:            {failed_count}")
+                print(f"  - Master Audit Log:           {report_path}")
+                print(f"  - Markdown Summary:           {summary_path}")
+                print(f"=======================================================\n")
                 db.close()
                 return
 
-    logger.info(
-        "Ingestion complete. No more files to process.",
-        resumes_ingested=processed_this_run,
-        skipped_duplicates=skipped_this_run,
-        unprocessed_non_resumes=unprocessed_this_run
-    )
+    print(f"\n=======================================================")
+    print(f"  Ingestion Complete! No more files to process.")
+    print(f"  - Ingested (Full Success):    {success_count}")
+    print(f"  - Ingested (Partial Success): {partial_count}")
+    print(f"  - Skipped Duplicates:         {duplicate_count}")
+    print(f"  - Skipped Non-Resumes:        {unprocessed_count}")
+    print(f"  - Failed / Errors:            {failed_count}")
+    print(f"  - Master Audit Log:           {report_path}")
+    print(f"  - Markdown Summary:           {summary_path}")
+    print(f"=======================================================")
+    print()
     db.close()
 
 if __name__ == "__main__":
@@ -475,7 +695,9 @@ if __name__ == "__main__":
     parser.add_argument("--source-dir", type=str, default=r"G:\My Drive\intellect_iSolutons\All_Resumes\Resumes", help="Path to resumes folder")
     parser.add_argument("--batch-size", type=int, default=500, help="Number of valid resumes to ingest in this run")
     parser.add_argument("--checkpoint-file", type=str, default="bulk_ingest_checkpoint.json", help="Path to checkpoint JSON file")
+    parser.add_argument("--report-file", type=str, default="bulk_ingest_report.json", help="Path to complete master audit JSON report")
     parser.add_argument("--unprocessed-log", type=str, default="bulk_ingest_unprocessed.json", help="Path to unprocessed non-resume log JSON file")
+    parser.add_argument("--summary-file", type=str, default="bulk_ingest_summary.md", help="Path to generated Markdown summary report")
     parser.add_argument("--dry-run", action="store_true", help="Scan and list files without processing")
     
     args = parser.parse_args()
@@ -484,6 +706,8 @@ if __name__ == "__main__":
         source_dir=args.source_dir,
         batch_size=args.batch_size,
         checkpoint_file=args.checkpoint_file,
+        report_file=args.report_file,
         unprocessed_log=args.unprocessed_log,
+        summary_file=args.summary_file,
         dry_run=args.dry_run
     )
