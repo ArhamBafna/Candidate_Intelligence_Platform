@@ -30,8 +30,14 @@ pip install -e .
 `pytest` uses `pythonpath = ["."]` in `pyproject.toml`.
 
 ```powershell
-# Backend & UI Build tests
+# Fast test suite (skips live Ollama test, ~10s)
 uv run pytest
+
+# Include live Ollama integration test
+uv run pytest --run-ollama
+
+# Run ONLY live Ollama integration test
+uv run pytest -m ollama --run-ollama
 ```
 
 ## Layout
