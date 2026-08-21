@@ -73,13 +73,11 @@ def mock_vector_db() -> MockVectorStore:
     return MockVectorStore()
 
 @pytest.fixture
-def db_engine():
-    """Provides an isolated SQLite in-memory database engine configured with FTS5 tables."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
+def db_engine(tmp_path):
+    """Provides an isolated SQLite file-based database engine configured with WAL mode and FTS5 tables."""
+    db_file = str(tmp_path / "cip_test.db")
+    from config.database import get_engine
+    engine = get_engine(f"sqlite:///{db_file}")
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
         conn.execute(text("""
@@ -103,6 +101,7 @@ def db_engine():
             );
         """))
     yield engine
+    engine.dispose()
 
 @pytest.fixture
 def db_session(db_engine):
@@ -116,7 +115,7 @@ def db_session(db_engine):
 def test_settings(tmp_path):
     """Provides isolated settings for tests."""
     return Settings(
-        db_path=":memory:",
+        db_path=str(tmp_path / "cip_test.db"),
         cas_root_dir=str(tmp_path / "cas"),
         vector_db_path=str(tmp_path / "vector")
     )
@@ -142,9 +141,21 @@ def client(db_engine, mock_vector_db, test_settings):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_vector_db] = override_get_vector_db
     app.dependency_overrides[get_settings] = override_get_settings
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
+
+    import api.routes.candidates as cand_routes
+    import api.dependencies as deps
+    orig_cand_sm = cand_routes._get_sessionmaker
+    orig_deps_sm = deps._get_sessionmaker
+    cand_routes._get_sessionmaker = lambda *args, **kwargs: TestingSessionLocal
+    deps._get_sessionmaker = lambda *args, **kwargs: TestingSessionLocal
+
+    try:
+        with TestClient(app) as c:
+            yield c
+    finally:
+        cand_routes._get_sessionmaker = orig_cand_sm
+        deps._get_sessionmaker = orig_deps_sm
+        app.dependency_overrides.clear()
 
 def pytest_addoption(parser):
     parser.addoption(

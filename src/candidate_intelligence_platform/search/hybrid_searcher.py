@@ -21,16 +21,8 @@ def execute_fts_query(sql: str, params: dict, db: Session) -> Dict[str, int]:
     return ranks
 
 def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], vector_db: Any, warnings: Optional[List[str]] = None) -> Dict[str, int]:
-    """Execute vector search with early termination optimizations."""
-    # EARLY TERMINATION: Skip if no query text
+    """Execute vector search."""
     if not query_text:
-        return {}
-    
-    # EARLY TERMINATION: If candidate_ids was provided (from FTS filters) but is empty,
-    # it means no candidates matched the hard filters. In this case, we skip vector search.
-    # Note: search_candidates passes None if FTS matched everything or if FTS was skipped,
-    # which means we search against ALL candidates.
-    if candidate_ids is not None and not candidate_ids:
         return {}
     
     # Compute embedding (needed for error logging even if vector_db unavailable)
@@ -42,7 +34,6 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], v
             warnings.append("Semantic vector search skipped (embedding model unavailable); showing keyword matches.")
         return {}
     
-    # EARLY TERMINATION: Skip if vector DB unavailable
     if vector_db is None:
         if warnings is not None:
             warnings.append("Semantic vector search skipped (LanceDB connection unavailable); showing keyword matches.")
@@ -57,8 +48,6 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], v
         return {}
         
     try:
-        # Optimization: if we have a specific set of candidate IDs, we could potentially
-        # push that filter down to LanceDB, but for now we filter in memory after the search.
         results = table.search(query_vector).limit(100).to_list()
     except Exception as e:
         logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
@@ -104,23 +93,11 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     fts_query = params.get("fts_query", query)
     
     fts_ranks = execute_fts_query(sql, params, db)
-    
-    # We want to search within the filtered set if filters were applied.
-    # If no results from FTS, we still want to try vector search on all candidates
-    # UNLESS there were hard filters (like location/yoe) that yielded 0 matches.
-    
-    # Check if there were hard filters in the query
-    has_hard_filters = "location" in params or "yoe" in params
     filtered_ids = list(fts_ranks.keys())
     
-    # If there are hard filters and no one matched them, skip vector search.
-    # Otherwise, if it's just a text query and FTS failed, or if some matched, proceed.
-    if has_hard_filters and not filtered_ids:
-        vector_ranks = {}
-    else:
-        yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
-        # If no filtered_ids (but no hard filters), we search against ALL candidates by passing None
-        vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db, warnings=warnings)
+    yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
+    # If no filtered_ids, search across all candidates in vector index
+    vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db, warnings=warnings)
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         

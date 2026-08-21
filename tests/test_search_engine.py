@@ -27,7 +27,13 @@ def test_reciprocal_rank_fusion():
     assert results[1][0] == "cand_1"
     assert results[2][0] == "cand_2"
 
-def test_rerank_candidates():
+def test_rerank_candidates(monkeypatch):
+    class MockReranker:
+        def rerank(self, query, documents):
+            return [0.2, 0.9]
+
+    monkeypatch.setattr("candidate_intelligence_platform.search.reranker._get_reranker", lambda: MockReranker())
+
     query = "Looking for a Python developer"
     candidates_texts = [
         "Experienced Java developer",
@@ -48,7 +54,7 @@ def test_hybrid_search_candidates(monkeypatch):
     def mock_db_fts(sql, params, db):
         return {"cand_1": 1, "cand_2": 2}
 
-    def mock_vector_search(query_text, candidate_ids, vector_db):
+    def mock_vector_search(query_text, candidate_ids, vector_db, warnings=None):
         return {"cand_2": 1, "cand_1": 2}
 
     def mock_fusion(fts, vec):

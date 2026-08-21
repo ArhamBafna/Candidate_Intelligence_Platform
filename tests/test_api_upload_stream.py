@@ -35,7 +35,12 @@ def test_upload_stream_multi_resume(client: TestClient, monkeypatch):
     assert "John Doe" in names
     assert "Jane Smith" in names
 
-def test_upload_stream_duplicate_resume(client: TestClient):
+def test_upload_stream_duplicate_resume(client: TestClient, monkeypatch):
+    import api.routes.candidates as routes
+    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {
+        "first_name": "John", "last_name": "Doe", "primary_email": "john@example.com", 
+        "primary_phone": "", "current_title": "Software Engineer", "warnings": []
+    })
     files = [("files", ("resume1.txt", b"John Doe\nSoftware Engineer\nPython, React", "text/plain"))]
     client.post("/candidates/upload-stream", files=files)
 

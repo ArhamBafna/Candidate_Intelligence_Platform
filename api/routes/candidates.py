@@ -1,7 +1,8 @@
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from api.dependencies import get_db, get_vector_db, get_settings, _get_sessionmaker
 from config.settings import Settings
+from storage.cas import CASManager
 from api.schemas.candidates import (
     CandidateResponse, 
     CandidateStatusUpdate, 
@@ -580,6 +581,7 @@ async def upload_stream_resumes(
                 await asyncio.to_thread(do_fts_insertion)
 
                 # 6. Chunking & Vector Insertion
+                await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'CHUNKING', 'status': 'IN_PROGRESS', 'progress': 95}))
                 doc = ParsedDocument(text=raw_text, pages=1)
                 def do_chunking():
                     return chunk_document(doc, cand_id, "SUMMARY")

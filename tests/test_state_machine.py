@@ -34,6 +34,7 @@ def test_transition_state_success(db_session: Session):
         reason="Offer accepted"
     )
     sm.transition_state(context)
+    db_session.commit()
 
     # Check state updated
     db_session.refresh(candidate)

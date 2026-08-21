@@ -163,7 +163,9 @@ def test_reprocess_candidate(client: TestClient, db_session: Session, monkeypatc
 
 def test_reprocess_candidate_stream(client: TestClient, db_session: Session, monkeypatch):
     import api.routes.candidates as routes
+    from api.services.candidate_service import CandidateService
     monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Stream", "last_name": "Reprocess", "primary_email": "", "primary_phone": "", "current_title": "Data Scientist", "warnings": []})
+    monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: None)
 
     c_id = str(uuid.uuid4())
     c = Candidate(id=c_id, first_name="Stream", last_name="Reprocess", availability_status="ACTIVE", current_title="Data Scientist")
@@ -279,7 +281,9 @@ def test_batch_delete_candidates(client: TestClient, db_session: Session, monkey
 def test_batch_reprocess_stream(client: TestClient, db_session: Session, monkeypatch) -> None:
     mock_vector_db = MockVectorStore()
     from api.dependencies import get_vector_db
+    from api.services.candidate_service import CandidateService
     monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: mock_vector_db)
+    monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: None)
     
     import api.routes.candidates as routes
     monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Stream", "last_name": "Tester", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []})
