@@ -19,15 +19,10 @@ def execute_fts_query(sql: str, params: dict, db) -> dict[str, int]:
         ranks[row[0]] = rank
     return ranks
 
-def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, warnings: list[str] = None) -> dict[str, int]:
+def execute_vector_search(query_text: str, candidate_ids: Optional[list[str]], vector_db, warnings: list[str] = None) -> dict[str, int]:
     """Execute vector search with early termination optimizations."""
     # EARLY TERMINATION: Skip if no query text
     if not query_text:
-        return {}
-    
-    # EARLY TERMINATION: Skip if no candidates to search against
-    # This avoids computing the embedding unnecessarily
-    if not candidate_ids:
         return {}
     
     # Compute embedding (needed for error logging even if vector_db unavailable)
@@ -63,11 +58,13 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
     
     ranks = {}
     current_rank = 1
-    candidate_ids_set = set(candidate_ids)
+    
+    # If candidate_ids is provided, filter results. If None, return all.
+    candidate_ids_set = set(candidate_ids) if candidate_ids is not None else None
         
     for r in results:
         cid = r.get("candidate_id")
-        if cid in candidate_ids_set and cid not in ranks:
+        if (candidate_ids_set is None or cid in candidate_ids_set) and cid not in ranks:
             ranks[cid] = current_rank
             current_rank += 1
             
@@ -98,18 +95,25 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
     
     fts_ranks = execute_fts_query(sql, params, db)
     
+    # We want to search within the filtered set if filters were applied.
+    # If no results from FTS, we still want to try vector search on all candidates
+    # UNLESS there were hard filters (like location/yoe) that yielded 0 matches.
+    
+    # Check if there were hard filters in the query
+    has_hard_filters = "location" in params or "yoe" in params
     filtered_ids = list(fts_ranks.keys())
     
-    # EARLY TERMINATION: Skip vector search if FTS returned no results
-    # This avoids computing embeddings for empty result sets
-    if not filtered_ids:
+    # If there are hard filters and no one matched them, skip vector search.
+    # Otherwise, if it's just a text query and FTS failed, or if some matched, proceed.
+    if has_hard_filters and not filtered_ids:
         vector_ranks = {}
     else:
         yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
+        # If no filtered_ids (but no hard filters), we search against ALL candidates by passing None
         try:
-            vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db, warnings=warnings)
+            vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db, warnings=warnings)
         except TypeError:
-            vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db)
+            vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db)
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         

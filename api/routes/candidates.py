@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from api.dependencies import get_db, get_vector_db, get_settings
+from api.dependencies import get_db, get_vector_db, get_settings, _get_sessionmaker
 from config.settings import Settings
 from api.schemas.candidates import (
     CandidateResponse, 
@@ -451,13 +451,20 @@ async def upload_stream_resumes(
 ):
     # Bounded semaphore to limit concurrent file processing
     upload_semaphore = asyncio.Semaphore(4)
+    event_queue = asyncio.Queue()
     
-    async def stream_generator():
-        for file in files:
+    # Get sessionmaker for creating new sessions per task
+    SessionLocal = _get_sessionmaker(settings.db_path)
+
+    async def process_file(file: UploadFile):
+        async with upload_semaphore:
             file_warnings = []
+            # Create a dedicated session for this file to ensure thread safety
+            # when using asyncio.to_thread with DB operations
+            task_db = SessionLocal()
             try:
                 # 1. Hashing
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'IN_PROGRESS', 'progress': 10})}\n\n"
+                await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'IN_PROGRESS', 'progress': 10}))
                 content = await file.read()
                 cas_mgr = CASManager(settings.cas_root_dir)
                 ext = Path(file.filename).suffix if file.filename else ".txt"
@@ -467,17 +474,17 @@ async def upload_stream_resumes(
                 
                 # Check for duplicate on thread pool (DB read)
                 def check_existing_rv(h):
-                    return db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == h).first()
+                    return task_db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == h).first()
                 existing_rv = await asyncio.to_thread(check_existing_rv, file_hash)
                 if existing_rv:
                     logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", file_hash=file_hash)
-                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'SKIPPED_DUPLICATE', 'message': 'File already exists', 'progress': 100, 'warnings': []})}\n\n"
-                    continue
+                    await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'SKIPPED_DUPLICATE', 'message': 'File already exists', 'progress': 100, 'warnings': []}))
+                    return
                 
                 _, cas_path = cas_mgr.store(content, extension=ext)
                 
                 # 2. Parsing (CPU-bound: run on thread pool)
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'PARSING', 'status': 'IN_PROGRESS', 'progress': 30})}\n\n"
+                await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'PARSING', 'status': 'IN_PROGRESS', 'progress': 30}))
                 
                 def parse_file():
                     raw_text = ""
@@ -501,26 +508,20 @@ async def upload_stream_resumes(
                 
                 raw_text = await asyncio.to_thread(parse_file)
                     
-                # 3. Chunking (CPU-bound: run on thread pool)
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'CHUNKING', 'status': 'IN_PROGRESS', 'progress': 50})}\n\n"
-                doc = ParsedDocument(text=raw_text, pages=1)
-                def do_chunking():
-                    return chunk_document(doc, cand_id if 'cand_id' in locals() else "tmp", "SUMMARY")
-                chunks = await asyncio.to_thread(do_chunking)
-                
-                # 4. Entity Resolution (compute facts ONCE, reuse for assessment and extraction)
+                # 3. Entity Resolution
+                # Compute facts ONCE
                 facts = await asyncio.to_thread(extract_facts, raw_text)
-                profile, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
+                
+                # assess_tier1 is fast, but we need its output to decide the stage message
+                profile_preview, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
                 
                 if needs_ai:
                     llm_model = settings.llm_model
-                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 70, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model})}\n\n"
-                    await asyncio.sleep(0.02)
+                    await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 70, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model}))
                 else:
-                    yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 70, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False})}\n\n"
-                    await asyncio.sleep(0.01)
+                    await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 70, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False}))
 
-                # Pass precomputed facts to avoid re-running spaCy NER
+                # 4. Hybrid Extraction
                 def extract_profile():
                     return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
                 extracted = await asyncio.to_thread(extract_profile)
@@ -540,8 +541,8 @@ async def upload_stream_resumes(
                 )
                 
                 # 5. Saving
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'SAVING', 'status': 'IN_PROGRESS', 'progress': 90})}\n\n"
-                db.add(cand)
+                await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'SAVING', 'status': 'IN_PROGRESS', 'progress': 90}))
+                task_db.add(cand)
                 
                 rv = ResumeVersion(
                     id=str(uuid.uuid4()),
@@ -553,11 +554,11 @@ async def upload_stream_resumes(
                     layout_metadata={},
                     is_primary=True
                 )
-                db.add(rv)
+                task_db.add(rv)
                 
                 ledger = TimelineLedger()
                 ledger.log_event(
-                    session=db,
+                    session=task_db,
                     candidate_id=cand_id,
                     event_type="RESUME_INGESTED",
                     title="Resume Ingested",
@@ -565,10 +566,10 @@ async def upload_stream_resumes(
                     metadata={},
                     created_by="Recruiter"
                 )
-                db.commit()
+                task_db.commit()
 
                 def do_fts_insertion():
-                    db.execute(
+                    task_db.execute(
                         text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
                         {
                             "cid": cand_id,
@@ -578,15 +579,17 @@ async def upload_stream_resumes(
                             "content": raw_text
                         }
                     )
-                    db.commit()
+                    task_db.commit()
                 await asyncio.to_thread(do_fts_insertion)
 
-                # Vector Insertion (CPU-bound embedding + vector store: run on thread pool)
+                # 6. Chunking & Vector Insertion
+                doc = ParsedDocument(text=raw_text, pages=1)
+                def do_chunking():
+                    return chunk_document(doc, cand_id, "SUMMARY")
+                chunks = await asyncio.to_thread(do_chunking)
+                
                 if chunks and vector_db:
                     try:
-                        for c in chunks:
-                            c.candidate_id = cand_id
-                        
                         def embed_and_store():
                             texts = [c.text for c in chunks]
                             embeddings = generate_embeddings(texts)
@@ -602,12 +605,31 @@ async def upload_stream_resumes(
                         file_warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
                 
                 logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': file_warnings})}\n\n"
+                await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'candidate_id': cand_id, 'candidate_name': f'{cand.first_name} {cand.last_name}', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': file_warnings}))
                 
             except Exception as e:
-                db.rollback()
+                task_db.rollback()
                 logger.error("resume_upload_complete", status="failed", file_hash=file_hash if 'file_hash' in locals() else None, error=str(e))
-                yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100, 'warnings': file_warnings})}\n\n"
+                await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100, 'warnings': file_warnings}))
+            finally:
+                task_db.close()
+
+    # Launch all tasks
+    tasks = [asyncio.create_task(process_file(f)) for f in files]
+    
+    # Helper to close the queue when all tasks finish
+    async def closer():
+        await asyncio.gather(*tasks)
+        await event_queue.put(None)
+    
+    asyncio.create_task(closer())
+
+    async def stream_generator():
+        while True:
+            event = await event_queue.get()
+            if event is None:
+                break
+            yield f"data: {event}\n\n"
                 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
@@ -642,25 +664,33 @@ async def batch_reprocess_candidate_stream(
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
 ):
-    async def batch_stream_generator():
-        total_candidates = len(payload.candidate_ids)
-        for idx, candidate_id in enumerate(payload.candidate_ids):
-            reprocess_warnings = []
-            def fetch_candidate():
-                return db.query(Candidate).filter(Candidate.id == candidate_id).first()
-            candidate = await asyncio.to_thread(fetch_candidate)
-            if not candidate:
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': 'Unknown Candidate', 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': 'Candidate not found', 'warnings': []})}\n\n"
-                continue
+    # Bounded semaphore to limit concurrent processing
+    process_semaphore = asyncio.Semaphore(4)
+    event_queue = asyncio.Queue()
+    
+    # Get sessionmaker for creating new sessions per task
+    SessionLocal = _get_sessionmaker(settings.db_path)
 
-            candidate_name = f"{candidate.first_name} {candidate.last_name}"
-            
+    async def process_candidate(idx: int, candidate_id: str, total_candidates: int):
+        async with process_semaphore:
+            reprocess_warnings = []
+            # Create a dedicated session for this candidate to ensure thread safety
+            task_db = SessionLocal()
             try:
+                def fetch_candidate():
+                    return task_db.query(Candidate).filter(Candidate.id == candidate_id).first()
+                candidate = await asyncio.to_thread(fetch_candidate)
+                if not candidate:
+                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': 'Unknown Candidate', 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': 'Candidate not found', 'warnings': []}))
+                    return
+
+                candidate_name = f"{candidate.first_name} {candidate.last_name}"
+                
                 # 1. Fetch resume
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 10, 'message': f'Fetching primary resume for {candidate_name}', 'warnings': reprocess_warnings})}\n\n"
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 10, 'message': f'Fetching primary resume for {candidate_name}', 'warnings': reprocess_warnings}))
                 
                 def fetch_rv():
-                    return db.query(ResumeVersion).filter(
+                    return task_db.query(ResumeVersion).filter(
                         ResumeVersion.candidate_id == candidate_id,
                         ResumeVersion.is_primary == True
                     ).first()
@@ -668,54 +698,50 @@ async def batch_reprocess_candidate_stream(
                 
                 if not rv or not rv.raw_text:
                     reprocess_warnings.append("No primary resume text available for entity resolution.")
-                    yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SKIPPED', 'progress': 100, 'message': 'No raw resume text available', 'warnings': reprocess_warnings})}\n\n"
-                    continue
+                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SKIPPED', 'progress': 100, 'message': 'No raw resume text available', 'warnings': reprocess_warnings}))
+                    return
                 
                 raw_text = rv.raw_text
 
-                # 2. Entity Resolution (compute facts ONCE, reuse for assessment and extraction)
+                # 2. Entity Resolution
                 used_ai = False
-                try:
-                    facts = await asyncio.to_thread(extract_facts, raw_text)
-                    profile, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
+                facts = await asyncio.to_thread(extract_facts, raw_text)
+                profile_preview, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
 
-                    if needs_ai:
-                        llm_model = settings.llm_model
-                        yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 30, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model, 'warnings': reprocess_warnings})}\n\n"
-                        await asyncio.sleep(0.02)
-                    else:
-                        yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities (Rule-based)...', 'used_ai': False, 'warnings': reprocess_warnings})}\n\n"
-                        await asyncio.sleep(0.02)
+                if needs_ai:
+                    llm_model = settings.llm_model
+                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 30, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model, 'warnings': reprocess_warnings}))
+                else:
+                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities (Rule-based)...', 'used_ai': False, 'warnings': reprocess_warnings}))
 
-                    # Pass precomputed facts to avoid re-running spaCy NER
-                    def do_extract():
-                        return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
-                    extracted = await asyncio.to_thread(do_extract)
-                    used_ai = extracted.get("used_ai_fallback", False)
-                    if extracted.get("warnings"):
-                        reprocess_warnings.extend(extracted["warnings"])
-                    
-                    candidate.first_name = extracted.get("first_name", candidate.first_name)
-                    candidate.last_name = extracted.get("last_name", candidate.last_name)
-                    if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
-                    if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
-                    if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
-                    db.commit()
-                    candidate_name = f"{candidate.first_name} {candidate.last_name}"
-                except Exception as e:
-                    reprocess_warnings.append(f"Entity extraction warning: {str(e)}")
+                # 3. Hybrid Extraction
+                def do_extract():
+                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
+                extracted = await asyncio.to_thread(do_extract)
+                used_ai = extracted.get("used_ai_fallback", False)
+                if extracted.get("warnings"):
+                    reprocess_warnings.extend(extracted["warnings"])
+                
+                candidate.first_name = extracted.get("first_name", candidate.first_name)
+                candidate.last_name = extracted.get("last_name", candidate.last_name)
+                if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
+                if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
+                if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
+                task_db.commit()
+                candidate_name = f"{candidate.first_name} {candidate.last_name}"
 
-                # 3. Refresh FTS
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings})}\n\n"
+                # 4. Refresh FTS
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings}))
                 try:
                     def do_fts_update():
-                        CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
+                        CandidateService.update_fts_index(task_db, candidate_id, candidate_name, candidate, raw_text)
+                        task_db.commit()
                     await asyncio.to_thread(do_fts_update)
                 except Exception:
                     reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
-                # 4. Refresh Vectors
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating vector embeddings', 'warnings': reprocess_warnings})}\n\n"
+                # 5. Refresh Vectors
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating vector embeddings', 'warnings': reprocess_warnings}))
                 if vector_db:
                     try:
                         def do_vector_update():
@@ -726,13 +752,13 @@ async def batch_reprocess_candidate_stream(
                 else:
                     reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
 
-                # 5. Timeline Audit Log
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
+                # 6. Timeline Audit Log
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings}))
                 try:
                     def log_timeline():
                         ledger = TimelineLedger()
                         ledger.log_event(
-                            session=db,
+                            session=task_db,
                             candidate_id=candidate_id,
                             event_type="REPROCESS_TRIGGERED",
                             title="Reprocessing Triggered",
@@ -740,18 +766,38 @@ async def batch_reprocess_candidate_stream(
                             metadata={},
                             created_by="Recruiter"
                         )
-                        db.commit()
+                        task_db.commit()
                     await asyncio.to_thread(log_timeline)
                 except Exception:
                     pass
 
-                # 6. Completed for candidate
+                # 7. Completed for candidate
                 mode_str = "AI Model" if used_ai else "Rule-based"
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessed successfully ({mode_str})', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': reprocess_warnings})}\n\n"
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessed successfully ({mode_str})', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': reprocess_warnings}))
 
             except Exception as e:
-                db.rollback()
-                yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e), 'warnings': reprocess_warnings})}\n\n"
+                task_db.rollback()
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e), 'warnings': reprocess_warnings}))
+            finally:
+                task_db.close()
+
+    # Launch all tasks
+    total_candidates = len(payload.candidate_ids)
+    tasks = [asyncio.create_task(process_candidate(idx, cid, total_candidates)) for idx, cid in enumerate(payload.candidate_ids)]
+    
+    # Helper to close the queue when all tasks finish
+    async def closer():
+        await asyncio.gather(*tasks)
+        await event_queue.put(None)
+    
+    asyncio.create_task(closer())
+
+    async def batch_stream_generator():
+        while True:
+            event = await event_queue.get()
+            if event is None:
+                break
+            yield f"data: {event}\n\n"
 
     return StreamingResponse(batch_stream_generator(), media_type="text/event-stream")
 
