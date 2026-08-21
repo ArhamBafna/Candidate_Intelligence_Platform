@@ -141,6 +141,7 @@ def test_bulk_ingest_master_report_logging(mock_sessionmaker, mock_cas_mgr, mock
     checkpoint_file = tmp_path / "checkpoint.json"
     report_file = tmp_path / "report.json"
     unprocessed_log = tmp_path / "unprocessed.json"
+    summary_file = tmp_path / "summary.md"
     
     run_bulk_ingest(
         source_dir=str(source_dir),
@@ -148,6 +149,7 @@ def test_bulk_ingest_master_report_logging(mock_sessionmaker, mock_cas_mgr, mock
         checkpoint_file=str(checkpoint_file),
         report_file=str(report_file),
         unprocessed_log=str(unprocessed_log),
+        summary_file=str(summary_file),
         dry_run=False
     )
     

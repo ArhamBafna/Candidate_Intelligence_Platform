@@ -50,7 +50,17 @@ def test_search_candidates(mock_search, client: TestClient, db_session: Session)
     assert data["results"][0]["rrf_score"] == 0.0328
     assert data["results"][0]["candidate_info"]["first_name"] == "Search"
 
-def test_upload_and_search_exact_keyword_integration(client: TestClient):
+def test_upload_and_search_exact_keyword_integration(client: TestClient, monkeypatch):
+    import api.routes.candidates as cand_routes
+    monkeypatch.setattr(cand_routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {
+        "first_name": "Java",
+        "last_name": "Developer",
+        "primary_email": "java@example.com",
+        "primary_phone": "",
+        "current_title": "Java Developer",
+        "warnings": []
+    })
+
     # 1. Upload Java resume
     resume_bytes = b"Java Developer\nSenior Software Engineer\nExperienced in Java, Spring Boot, microservices architecture."
     upload_res = client.post(
