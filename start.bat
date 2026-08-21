@@ -76,3 +76,21 @@ Write-Host " - Frontend UI: http://localhost:5173" -ForegroundColor Green
 Write-Host " - Backend API: http://127.0.0.1:8000" -ForegroundColor Green
 Write-Host "=======================================================" -ForegroundColor Green
 Start-Sleep -Seconds 1
+
+$parentsToKill = @()
+$currentPid = $PID
+for ($i = 0; $i -lt 5; $i++) {
+    $proc = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -eq $currentPid }
+    if (-not $proc -or -not $proc.ParentProcessId) { break }
+    $parentId = $proc.ParentProcessId
+    $parentProc = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -eq $parentId }
+    if (-not $parentProc) { break }
+    if ($parentProc.Name -match "explorer|Antigravity|code|devenv") { break }
+    if ($parentProc.Name -match "^(cmd|powershell|pwsh|OpenConsole|conhost)\.exe$") {
+        $parentsToKill += $parentProc.ProcessId
+    }
+    $currentPid = $parentId
+}
+
+$parentsToKill | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+Stop-Process -Id $PID -Force
