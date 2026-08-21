@@ -2,7 +2,13 @@ import pytest
 import json
 from fastapi.testclient import TestClient
 
-def test_upload_stream_multi_resume(client: TestClient):
+def test_upload_stream_multi_resume(client: TestClient, monkeypatch):
+    import api.routes.candidates as routes
+    def mock_extract(text, **kwargs):
+        if "Jane" in text:
+            return {"first_name": "Jane", "last_name": "Smith", "primary_email": "jane@example.com", "primary_phone": "", "current_title": "Data Scientist", "warnings": []}
+        return {"first_name": "John", "last_name": "Doe", "primary_email": "john@example.com", "primary_phone": "", "current_title": "Software Engineer", "warnings": []}
+    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", mock_extract)
     files = [
         ("files", ("resume1.txt", b"John Doe\nSoftware Engineer\nPython, React", "text/plain")),
         ("files", ("resume2.txt", b"Jane Smith\nData Scientist\nPython, SQL", "text/plain"))
@@ -45,7 +51,9 @@ def test_upload_stream_duplicate_resume(client: TestClient):
     assert len(skipped_events) == 1
     assert skipped_events[0].get("file_name") == "resume1.txt"
 
-def test_upload_stream_transparency_events(client: TestClient):
+def test_upload_stream_transparency_events(client: TestClient, monkeypatch):
+    import api.routes.candidates as routes
+    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Sparse", "last_name": "Resume", "primary_email": "", "primary_phone": "", "current_title": "", "warnings": [{"level": "warning", "event": "ai_llm_extraction_failed", "action": "skipping_ai_extraction"}], "used_ai_fallback": True})
     files = [("files", ("sparse_resume.txt", b"Random text without clear structure", "text/plain"))]
     response = client.post("/candidates/upload-stream", files=files)
     assert response.status_code == 200

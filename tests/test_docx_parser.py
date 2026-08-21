@@ -43,53 +43,21 @@ def _make_docx(tmp_path: Path, paragraphs: list[str], table_data: list[list[str]
 # Tests
 # ---------------------------------------------------------------------------
 
-def test_parse_docx_returns_parsed_document(tmp_path: Path):
-    """parse_docx must return a ParsedDocument instance."""
-    docx_path = _make_docx(tmp_path, ["Alice Johnson", "Product Manager"])
-
-    result = parse_docx(docx_path)
-
-    assert isinstance(result, ParsedDocument)
-
-
-def test_parse_docx_extracts_paragraph_text(tmp_path: Path):
-    """parse_docx must include paragraph text in the result."""
-    docx_path = _make_docx(tmp_path, ["Alice Johnson", "Product Manager at Acme Corp"])
-
-    result = parse_docx(docx_path)
-
-    assert "Alice Johnson" in result.text
-    assert "Product Manager" in result.text
-
-
-def test_parse_docx_default_page_count(tmp_path: Path):
-    """parse_docx must set pages to 1 (DOCX has no native page count)."""
-    docx_path = _make_docx(tmp_path, ["Text"])
-
-    result = parse_docx(docx_path)
-
-    assert result.pages == 1
-
-
-def test_parse_docx_metadata_contains_source_path(tmp_path: Path):
-    """parse_docx must include source_path in metadata."""
-    docx_path = _make_docx(tmp_path, ["Text"])
-
-    result = parse_docx(docx_path)
-
-    assert "source_path" in result.metadata
-    assert str(docx_path) in result.metadata["source_path"]
-
-
-def test_parse_docx_extracts_table_text(tmp_path: Path):
-    """parse_docx must include text from tables in the result."""
+def test_parse_docx_functional_flow(tmp_path: Path):
+    """parse_docx must return ParsedDocument, extract text, tables, have correct pages, and metadata."""
     docx_path = _make_docx(
         tmp_path,
-        paragraphs=["Skills"],
+        paragraphs=["Alice Johnson", "Product Manager at Acme Corp", "Skills"],
         table_data=[["Python", "5 years"], ["SQL", "3 years"]],
     )
 
     result = parse_docx(docx_path)
 
+    assert isinstance(result, ParsedDocument)
+    assert "Alice Johnson" in result.text
+    assert "Product Manager" in result.text
     assert "Python" in result.text
     assert "SQL" in result.text
+    assert result.pages == 1
+    assert "source_path" in result.metadata
+    assert str(docx_path) in result.metadata["source_path"]

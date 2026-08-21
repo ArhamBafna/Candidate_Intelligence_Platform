@@ -40,40 +40,17 @@ def _make_eml(tmp_path: Path, subject: str = "Resume", body: str = "Dear Recruit
 # Tests
 # ---------------------------------------------------------------------------
 
-def test_parse_email_returns_parsed_document(tmp_path: Path):
-    """parse_email must return a ParsedDocument instance."""
-    eml_path = _make_eml(tmp_path)
+def test_parse_email_functional_flow(tmp_path: Path):
+    """parse_email must return ParsedDocument, extract body text, pages, and metadata headers."""
+    body = "Please find my resume attached. I have 7 years of Python experience."
+    eml_path = _make_eml(tmp_path, subject="Application for SWE Role", body=body)
 
     result = parse_email(eml_path)
 
     assert isinstance(result, ParsedDocument)
-
-
-def test_parse_email_extracts_body_text(tmp_path: Path):
-    """parse_email must include the email body in the result text."""
-    body = "Please find my resume attached. I have 7 years of Python experience."
-    eml_path = _make_eml(tmp_path, body=body)
-
-    result = parse_email(eml_path)
-
     assert "resume attached" in result.text
-
-
-def test_parse_email_page_count_is_one(tmp_path: Path):
-    """parse_email must set pages to 1."""
-    eml_path = _make_eml(tmp_path)
-
-    result = parse_email(eml_path)
-
+    assert "Python experience" in result.text
     assert result.pages == 1
-
-
-def test_parse_email_metadata_headers(tmp_path: Path):
-    """parse_email must populate subject, from, to, and source_path in metadata."""
-    eml_path = _make_eml(tmp_path, subject="Application for SWE Role")
-
-    result = parse_email(eml_path)
-
     assert "subject" in result.metadata
     assert "Application for SWE Role" in result.metadata["subject"]
     assert "from" in result.metadata

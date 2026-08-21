@@ -75,45 +75,17 @@ def _make_minimal_pdf(text: str = "John Doe\nSoftware Engineer") -> bytes:
 # Tests
 # ---------------------------------------------------------------------------
 
-def test_parse_pdf_returns_parsed_document(tmp_path: Path):
-    """parse_pdf must return a ParsedDocument instance."""
-    pdf_file = tmp_path / "resume.pdf"
-    pdf_file.write_bytes(_make_minimal_pdf())
-
-    result = parse_pdf(pdf_file)
-
-    assert isinstance(result, ParsedDocument)
-
-
-def test_parse_pdf_extracts_text(tmp_path: Path):
-    """parse_pdf must return non-empty text from a PDF with a text layer."""
+def test_parse_pdf_functional_flow(tmp_path: Path):
+    """parse_pdf must return ParsedDocument, extract text, have correct pages, and metadata."""
     content = "Jane Smith Senior Developer"
     pdf_file = tmp_path / "resume.pdf"
     pdf_file.write_bytes(_make_minimal_pdf(content))
 
     result = parse_pdf(pdf_file)
 
-    # The full text must contain the key phrase (whitespace may differ)
+    assert isinstance(result, ParsedDocument)
     assert "Jane Smith" in result.text
-
-
-def test_parse_pdf_correct_page_count(tmp_path: Path):
-    """parse_pdf must set pages to the actual page count."""
-    pdf_file = tmp_path / "resume.pdf"
-    pdf_file.write_bytes(_make_minimal_pdf())  # 1-page PDF
-
-    result = parse_pdf(pdf_file)
-
     assert result.pages == 1
-
-
-def test_parse_pdf_metadata_contains_source_path(tmp_path: Path):
-    """parse_pdf must include source_path in metadata."""
-    pdf_file = tmp_path / "resume.pdf"
-    pdf_file.write_bytes(_make_minimal_pdf())
-
-    result = parse_pdf(pdf_file)
-
     assert "source_path" in result.metadata
     assert str(pdf_file) in result.metadata["source_path"]
 

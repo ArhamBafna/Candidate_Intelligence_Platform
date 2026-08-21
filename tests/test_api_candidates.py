@@ -21,22 +21,23 @@ def test_list_candidates(client: TestClient, db_session: Session):
     assert data[0]["first_name"] == "John"
     assert data[0]["last_name"] == "Doe"
 
-def test_get_candidate(client: TestClient, db_session: Session):
-    c_id = str(uuid.uuid4())
-    c = Candidate(id=c_id, first_name="Jane", last_name="Smith", availability_status="PLACED")
-    db_session.add(c)
-    db_session.commit()
+@pytest.mark.parametrize("scenario", ["found", "not_found"])
+def test_get_candidate_scenarios(client: TestClient, db_session: Session, scenario: str):
+    if scenario == "found":
+        c_id = str(uuid.uuid4())
+        c = Candidate(id=c_id, first_name="Jane", last_name="Smith", availability_status="PLACED")
+        db_session.add(c)
+        db_session.commit()
 
-    response = client.get(f"/candidates/{c_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == c_id
-    assert data["first_name"] == "Jane"
-    assert data["availability_status"] == "PLACED"
-
-def test_get_candidate_not_found(client: TestClient):
-    response = client.get("/candidates/unknown-id")
-    assert response.status_code == 404
+        response = client.get(f"/candidates/{c_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == c_id
+        assert data["first_name"] == "Jane"
+        assert data["availability_status"] == "PLACED"
+    else:
+        response = client.get("/candidates/unknown-id")
+        assert response.status_code == 404
 
 def test_update_candidate_status(client: TestClient, db_session: Session):
     c_id = str(uuid.uuid4())
@@ -123,7 +124,9 @@ def test_get_candidate_file(client: TestClient, db_session: Session, test_settin
     assert response.content == content
     assert response.headers["content-type"] == "application/pdf"
 
-def test_reprocess_candidate(client: TestClient, db_session: Session):
+def test_reprocess_candidate(client: TestClient, db_session: Session, monkeypatch):
+    import api.routes.candidates as routes
+    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Reprocess", "last_name": "Test", "primary_email": "", "primary_phone": "", "current_title": "Software Engineer", "warnings": []})
     c_id = str(uuid.uuid4())
     c = Candidate(id=c_id, first_name="Reprocess", last_name="Test", availability_status="ACTIVE", current_title="Software Engineer")
     db_session.add(c)
