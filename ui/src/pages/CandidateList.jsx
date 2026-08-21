@@ -530,7 +530,7 @@ function CandidateList() {
         </div>
       )}
 
-      {/* Batch Actions & Master Select */}
+      {/* Master Select */}
       <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
         <div className="flex items-center gap-3">
           <button
@@ -555,29 +555,6 @@ function CandidateList() {
             </span>
           )}
         </div>
-        
-        {selectedIds.length > 0 && (
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleBatchDownloadResumes}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
-            >
-              <Download size={14} /> Download
-            </button>
-            <button
-              onClick={handleBatchReprocess}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
-            >
-              <RefreshCw size={14} /> Reprocess
-            </button>
-            <button
-              onClick={() => setShowBatchDeleteModal(true)}
-              className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/30 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
-            >
-              <Trash2 size={14} /> Delete
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Candidate List Grid */}
