@@ -20,9 +20,17 @@ def execute_fts_query(sql: str, params: dict, db) -> dict[str, int]:
     return ranks
 
 def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, warnings: list[str] = None) -> dict[str, int]:
+    """Execute vector search with early termination optimizations."""
+    # EARLY TERMINATION: Skip if no query text
     if not query_text:
         return {}
     
+    # EARLY TERMINATION: Skip if no candidates to search against
+    # This avoids computing the embedding unnecessarily
+    if not candidate_ids:
+        return {}
+    
+    # Compute embedding (needed for error logging even if vector_db unavailable)
     try:
         query_vector = list(generate_single_embedding(query_text))
     except Exception as e:
@@ -31,11 +39,12 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
             warnings.append("Semantic vector search skipped (embedding model unavailable); showing keyword matches.")
         return {}
     
+    # EARLY TERMINATION: Skip if vector DB unavailable
     if vector_db is None:
         if warnings is not None:
             warnings.append("Semantic vector search skipped (LanceDB connection unavailable); showing keyword matches.")
         return {}
-
+    
     try:
         table = vector_db.open_table("candidate_vectors")
     except Exception:
@@ -54,12 +63,6 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
     
     ranks = {}
     current_rank = 1
-    # candidate_ids contains the pre-filtered IDs (e.g. from FTS or AST filters)
-    # If candidate_ids is empty, it means no candidates matched the FTS/AST filters,
-    # so we shouldn't return anything.
-    if not candidate_ids:
-        return {}
-        
     candidate_ids_set = set(candidate_ids)
         
     for r in results:
@@ -97,11 +100,16 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
     
     filtered_ids = list(fts_ranks.keys())
     
-    yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
-    try:
-        vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db, warnings=warnings)
-    except TypeError:
-        vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db)
+    # EARLY TERMINATION: Skip vector search if FTS returned no results
+    # This avoids computing embeddings for empty result sets
+    if not filtered_ids:
+        vector_ranks = {}
+    else:
+        yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
+        try:
+            vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db, warnings=warnings)
+        except TypeError:
+            vector_ranks = execute_vector_search(fts_query, filtered_ids, vector_db)
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
