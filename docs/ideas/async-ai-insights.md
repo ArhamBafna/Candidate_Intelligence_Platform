@@ -36,3 +36,9 @@ Return search results immediately using fast keyword/vector ranking. Trigger ind
 - Not blocking search results waiting for the LLM — destroys search latency and UX.
 - Not using WebSockets — SSE is simpler, unidirectional, and natively handles streaming text.
 - Not altering core search ranking logic — maintains strict isolation of the AI explanation layer.
+
+## Recommended Implementation Skills
+- **`tdd`**: Test-driven development for SSE streaming endpoint, mock Ollama responses, and cancellation triggers before implementation.
+- **`python-performance-optimization`**: Ensure async event loop non-blocking behavior, fast memory cleanup, and immediate Ollama socket abort.
+- **`code-review`**: Final review pass against repository standards and specifications.
+
