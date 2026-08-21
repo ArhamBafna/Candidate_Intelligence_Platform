@@ -1,10 +1,9 @@
-<# :
 @echo off
 title Candidate Intelligence Platform Launcher
 cd /d "%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Expression ([System.IO.File]::ReadAllText('%~f0'))"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create((Get-Content -Path '%~f0' | Select-Object -Skip 6 | Out-String)))"
 exit /b %ERRORLEVEL%
-#>
+rem --- PURE POWERSHELL CODE STARTS BELOW ---
 
 $ErrorActionPreference = "Stop"
 $root = (Get-Location).Path
