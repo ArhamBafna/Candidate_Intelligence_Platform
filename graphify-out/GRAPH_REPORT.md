@@ -1,16 +1,16 @@
 # Graph Report - Candidate_Intelligence_Platform  (2026-08-21)
 
 ## Corpus Check
-- 105 files · ~44,026 words
+- 106 files · ~45,116 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 660 nodes · 1163 edges · 61 communities (48 shown, 13 thin omitted)
-- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 128 edges (avg confidence: 0.92)
+- 674 nodes · 1186 edges · 66 communities (52 shown, 14 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 131 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `850a7671`
+- Built from commit: `9f7f0f0e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -23,13 +23,13 @@
 - devDependencies
 - search_candidates
 - parse_pdf
-- TimelineLedger
+- extract_inferences
 - Advanced optimization
 - Changes Summary
 - App.jsx
 - BackupManager
 - Optimization patterns
-- test_logging.py
+- main.py
 - chunk_document
 - models.py
 - Issue tracker: GitHub
@@ -44,7 +44,7 @@
 - test_ui_build
 - backups/__init__.py
 - crm/__init__.py
-- extract_facts
+- conftest.py
 - Domain Docs
 - Python Performance Optimization Skill
 - Autonomous Agentic Retrieval System
@@ -61,15 +61,20 @@
 - read docs\handoffs\h…
 - Recruiter UI
 - test_api_search_stream.py
+- get_engine
+- routes/search.py
+- Async AI Candidate Insights
+- structlog_middleware
+- .update_vector_index
 
 ## God Nodes (most connected - your core abstractions)
-1. `Candidate` - 38 edges
+1. `Candidate` - 40 edges
 2. `ParsedDocument` - 26 edges
-3. `CandidateService` - 20 edges
-4. `Settings` - 20 edges
-5. `TimelineLedger` - 19 edges
-6. `resolve()` - 19 edges
-7. `ResumeVersion` - 19 edges
+3. `Settings` - 21 edges
+4. `ResumeVersion` - 21 edges
+5. `CandidateService` - 20 edges
+6. `TimelineLedger` - 19 edges
+7. `resolve()` - 19 edges
 8. `chunk_document()` - 16 edges
 9. `CandidateTimelineEvent` - 15 edges
 10. `_make()` - 15 edges
@@ -79,33 +84,33 @@
   tests/test_ai_failure_logging.py → src/candidate_intelligence_platform/search/hybrid_searcher.py
 - `Hero Image` --conceptually_related_to--> `Architecture Design Document (ADD)`  [INFERRED]
   ui/src/assets/hero.png → docs/architecture_design_document.md
-- `get_candidate_timeline()` --uses--> `TimelineLedger`  [INFERRED]
-  api/routes/candidates.py → crm/timeline_ledger.py
-- `get_candidate_timeline()` --uses--> `CandidateTimelineEvent`  [INFERRED]
-  api/routes/candidates.py → storage/db_models.py
-- `update_candidate()` --uses--> `TimelineLedger`  [INFERRED]
-  api/routes/candidates.py → crm/timeline_ledger.py
+- `lifespan()` --uses--> `Settings`  [INFERRED]
+  api/main.py → config/settings.py
+- `update_candidate()` --calls--> `normalize_name()`  [INFERRED]
+  api/routes/candidates.py → src/candidate_intelligence_platform/extraction/hybrid_extractor.py
+- `update_candidate()` --calls--> `normalize_title()`  [INFERRED]
+  api/routes/candidates.py → src/candidate_intelligence_platform/extraction/hybrid_extractor.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (61 total, 13 thin omitted)
+## Communities (66 total, 14 thin omitted)
 
 ### Community 0 - "routes/candidates.py"
-Cohesion: 0.09
-Nodes (53): _get_sessionmaker(), batch_delete_candidates(), batch_reprocess_candidate_stream(), delete_candidate(), get_candidate(), get_candidate_file(), get_candidate_timeline(), list_candidates() (+45 more)
+Cohesion: 0.06
+Nodes (84): batch_delete_candidates(), batch_reprocess_candidate_stream(), delete_candidate(), get_candidate(), get_candidate_file(), get_candidate_insight(), get_candidate_timeline(), list_candidates() (+76 more)
 
 ### Community 1 - "Settings"
-Cohesion: 0.06
-Nodes (52): get_db(), get_settings(), get_vector_db(), Session, health_check(), lifespan(), get, structlog_middleware() (+44 more)
+Cohesion: 0.24
+Nodes (12): get_db(), _get_sessionmaker(), get_settings(), get_vector_db(), Session, BaseSettings, Settings, test_get_db() (+4 more)
 
 ### Community 2 - "CandidateSectionVector"
-Cohesion: 0.15
-Nodes (15): DBConnection, LanceModel, CandidateSectionVector, get_lancedb_connection(), Helper to create a vector dictionary record from a chunk and embedding., Connect to the embedded LanceDB instance at the specified path., patch, Session (+7 more)
+Cohesion: 0.18
+Nodes (14): DBConnection, LanceModel, CandidateSectionVector, get_lancedb_connection(), Connect to the embedded LanceDB instance at the specified path., patch, Session, TestClient (+6 more)
 
 ### Community 3 - "extract_candidate_profile_hybrid"
-Cohesion: 0.08
-Nodes (35): update_candidate(), ollama, put, _apply_llm_fallback(), assess_tier1(), calculate_tier1_confidence(), extract_candidate_profile_hybrid(), _extract_deterministic_profile() (+27 more)
+Cohesion: 0.11
+Nodes (30): skipif, extract_facts(), Extract deterministic facts (emails, phones, locations, names, skills) from…, _apply_llm_fallback(), assess_tier1(), calculate_tier1_confidence(), extract_candidate_profile_hybrid(), _extract_deterministic_profile() (+22 more)
 
 ### Community 4 - "resolve"
 Cohesion: 0.10
@@ -123,9 +128,9 @@ Nodes (41): _check_gpu_available(), generate_embeddings(), generate_single_embed
 Cohesion: 0.19
 Nodes (14): _extract_with_pdfplumber(), parse_pdf(), Path, PDF parser using PyMuPDF (primary) + pdfplumber (fallback for complex layouts).…, Extract text and metadata from a PDF file. Strategy: 1. Open with PyMuPDF…, Extract text from a single page using pdfplumber. Used as a fallback when…, _make_minimal_pdf(), Path (+6 more)
 
-### Community 8 - "TimelineLedger"
-Cohesion: 0.11
-Nodes (28): patch, update_candidate_status(), CandidateStateMachine, InvalidStateTransition, Transitions the candidate to a new status and logs the event., TransitionContext, Any, Session (+20 more)
+### Community 8 - "extract_inferences"
+Cohesion: 0.16
+Nodes (12): ollama, extract_inferences(), Extract AI inferences from text using a local LLM via Ollama. Defaults to…, Test when LLM returns null claim_value and entity in claim_key., test_llm_claim_value_null_logs_warning_and_repairs(), test_llm_extraction_failure_logs_ai_warning(), test_vector_search_failure_logs_ai_warning(), Live integration test against running Ollama instance. (+4 more)
 
 ### Community 9 - "Advanced optimization"
 Cohesion: 0.11
@@ -147,9 +152,9 @@ Nodes (10): BackupManager, Executes a live hot backup using sqlite3.backup API.,
 Cohesion: 0.14
 Nodes (13): Optimization patterns, Pattern 10: Function Call Overhead, Pattern 1: cProfile — CPU profiling, Pattern 2: line_profiler — line-by-line profiling, Pattern 3: memory_profiler — memory usage, Pattern 4: py-spy — running-process profiling, Pattern 5: List Comprehensions vs Loops, Pattern 6: Generator Expressions for Memory (+5 more)
 
-### Community 14 - "test_logging.py"
-Cohesion: 0.35
-Nodes (8): fetch_system_logs(), get, get_recent_logs(), memory_buffer_processor(), setup_logging(), test_get_recent_logs_truncation(), test_memory_buffer_processor(), test_setup_logging_configures_structlog()
+### Community 14 - "main.py"
+Cohesion: 0.23
+Nodes (12): health_check(), lifespan(), get, fetch_system_logs(), get, get_recent_logs(), memory_buffer_processor(), setup_logging() (+4 more)
 
 ### Community 15 - "chunk_document"
 Cohesion: 0.16
@@ -179,9 +184,9 @@ Nodes (4): TestClient, test_404_handler(), test_cors_headers(), test_health_chec
 Cohesion: 0.60
 Nodes (4): TestClient, test_upload_stream_duplicate_resume(), test_upload_stream_multi_resume(), test_upload_stream_transparency_events()
 
-### Community 30 - "extract_facts"
-Cohesion: 0.29
-Nodes (9): skipif, extract_facts(), Extract deterministic facts (emails, phones, locations, names, skills) from…, test_extract_email(), test_extract_location(), test_extract_name(), test_extract_phone(), test_extract_skills() (+1 more)
+### Community 30 - "conftest.py"
+Cohesion: 0.18
+Nodes (12): client(), db_engine(), db_session(), isolate_test_environment(), mock_vector_db(), fixture, Provides a clean database session for tests., Provides isolated settings for tests. (+4 more)
 
 ### Community 31 - "Domain Docs"
 Cohesion: 0.40
@@ -223,25 +228,41 @@ Nodes (5): 1. Where is the "Strict Syntax" coming from?, 2. Why "Early Terminati
 Cohesion: 0.40
 Nodes (5): TestClient, Test that the search stream yields the expected stage events., Test that the POST /search/stream endpoint exists and accepts valid requests., test_search_stream_emits_progress_events(), test_search_stream_endpoint_exists()
 
+### Community 61 - "get_engine"
+Cohesion: 0.21
+Nodes (11): get_engine(), Engine, Create a SQLAlchemy engine configured for SQLite with WAL mode., init_db(), Engine, Creates all declarative tables, FTS5 virtual tables, and performance indexes., Verify that the database engine connects and sets WAL mode correctly., test_engine_connect_event_non_sqlite() (+3 more)
+
+### Community 62 - "routes/search.py"
+Cohesion: 0.37
+Nodes (11): _build_search_query(), _format_search_results(), _hydrate_candidates(), perform_search(), perform_search_stream(), post, Session, BaseModel (+3 more)
+
+### Community 63 - "Async AI Candidate Insights"
+Cohesion: 0.18
+Nodes (10): 1. API & Transport Design, 2. Cancellation Lifecycle, Architecture & Technical Decisions, Async AI Candidate Insights, CRITICAL: IMPLEMENTATION SKILLS TO USE, Key Assumptions to Validate, MVP Scope, Not Doing (and Why) (+2 more)
+
+### Community 64 - "structlog_middleware"
+Cohesion: 0.67
+Nodes (3): structlog_middleware(), middleware, Request
+
 ## Knowledge Gaps
-- **103 isolated node(s):** `path`, `fs`, `candidate-intelligence-platform`, `$schema`, `oxc` (+98 more)
+- **111 isolated node(s):** `path`, `fs`, `candidate-intelligence-platform`, `$schema`, `oxc` (+106 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ParsedDocument` connect `ParsedDocument` to `routes/candidates.py`, `parse_pdf`, `TimelineLedger`, `chunk_document`, `models.py`, `test_email_parser.py`?**
-  _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `ResumeVersion` connect `routes/candidates.py` to `TimelineLedger`, `search_candidates`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `Settings` connect `Settings` to `routes/candidates.py`, `extract_candidate_profile_hybrid`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
-- **Are the 12 inferred relationships involving `Candidate` (e.g. with `batch_reprocess_candidate_stream()` and `get_candidate()`) actually correct?**
-  _`Candidate` has 12 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `ParsedDocument` connect `ParsedDocument` to `routes/candidates.py`, `.update_vector_index`, `parse_pdf`, `chunk_document`, `models.py`, `test_email_parser.py`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+- **Why does `ResumeVersion` connect `routes/candidates.py` to `search_candidates`?**
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `Settings` connect `Settings` to `routes/candidates.py`, `extract_inferences`, `main.py`, `conftest.py`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+- **Are the 13 inferred relationships involving `Candidate` (e.g. with `batch_reprocess_candidate_stream()` and `get_candidate()`) actually correct?**
+  _`Candidate` has 13 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `ParsedDocument` (e.g. with `upload_resume()` and `upload_stream_resumes()`) actually correct?**
   _`ParsedDocument` has 8 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 14 inferred relationships involving `CandidateService` (e.g. with `batch_delete_candidates()` and `batch_reprocess_candidate_stream()`) actually correct?**
-  _`CandidateService` has 14 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 8 inferred relationships involving `Settings` (e.g. with `lifespan()` and `batch_reprocess_candidate_stream()`) actually correct?**
-  _`Settings` has 8 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 9 inferred relationships involving `Settings` (e.g. with `lifespan()` and `batch_reprocess_candidate_stream()`) actually correct?**
+  _`Settings` has 9 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 9 inferred relationships involving `ResumeVersion` (e.g. with `batch_reprocess_candidate_stream()` and `get_candidate_file()`) actually correct?**
+  _`ResumeVersion` has 9 INFERRED edges - model-reasoned connections that need verification._

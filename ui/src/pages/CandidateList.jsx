@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, Check, X } from '@phosphor-icons/react';
+import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function CandidateList() {
@@ -15,6 +15,7 @@ function CandidateList() {
   // Search & Warnings State
   const [searchWarnings, setSearchWarnings] = useState([]);
   const [searchProgress, setSearchProgress] = useState(null);
+  const [insights, setInsights] = useState({});
   
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
@@ -46,6 +47,72 @@ function CandidateList() {
 
   const clearSelection = () => {
     setSelectedIds([]);
+  };
+
+  const generateInsight = async (candidateId, searchQuery) => {
+    const controller = new AbortController();
+    setInsights(prev => ({
+      ...prev,
+      [candidateId]: { text: '', status: 'loading', controller }
+    }));
+    
+    try {
+      const response = await fetch(`/api/candidates/${candidateId}/insight?query=${encodeURIComponent(searchQuery)}`, {
+        signal: controller.signal
+      });
+      if (!response.body) throw new Error('ReadableStream not supported.');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const block of lines) {
+          for (const line of block.split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.substring(6));
+                if (event.token) {
+                  setInsights(prev => ({
+                    ...prev,
+                    [candidateId]: { 
+                      ...prev[candidateId], 
+                      text: prev[candidateId].text + event.token 
+                    }
+                  }));
+                }
+              } catch (err) {
+                console.error('Error parsing insight token:', err);
+              }
+            }
+          }
+        }
+      }
+      setInsights(prev => ({
+        ...prev,
+        [candidateId]: { ...prev[candidateId], status: 'done' }
+      }));
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        setInsights(prev => ({
+          ...prev,
+          [candidateId]: { ...prev[candidateId], status: 'cancelled' }
+        }));
+      } else {
+        console.error('Insight generation failed:', err);
+        setInsights(prev => ({
+          ...prev,
+          [candidateId]: { ...prev[candidateId], status: 'error' }
+        }));
+      }
+    }
   };
 
   const handleBatchDownloadResumes = async () => {
@@ -317,6 +384,11 @@ function CandidateList() {
                         };
                       });
                       setCandidates(mapped);
+                      
+                      // Trigger AI insights for top 3 candidates
+                      mapped.slice(0, 3).forEach(c => {
+                        generateInsight(c.id, query);
+                      });
                     }
                   }
                   
@@ -675,6 +747,50 @@ function CandidateList() {
                   </div>
                 )}
               </div>
+              
+              {/* AI Insight Box */}
+              {query.trim().length > 0 && (
+                <div className="mt-4 border-t border-slate-800 pt-4" onClick={e => e.stopPropagation()}>
+                  {insights[candidate.id] ? (
+                    <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-3 text-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-indigo-300 font-semibold flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                          AI Rationale
+                        </span>
+                        {insights[candidate.id].status === 'loading' ? (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); insights[candidate.id].controller?.abort(); }}
+                            className="text-slate-400 hover:text-red-400 text-xs px-2 py-1 rounded transition-colors"
+                          >
+                            Cancel AI Note
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, query); }}
+                            className="text-indigo-400 hover:text-indigo-300 text-xs px-2 py-1 rounded transition-colors"
+                          >
+                            Regenerate
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-slate-300 leading-relaxed text-sm max-h-32 overflow-y-auto">
+                        {insights[candidate.id].text}
+                        {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-indigo-400 animate-pulse"></span>}
+                        {insights[candidate.id].status === 'cancelled' && <span className="text-slate-500 italic block mt-1 text-xs">Generation cancelled.</span>}
+                        {insights[candidate.id].status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">Generation failed.</span>}
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, query); }}
+                      className="w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                    >
+                      Generate AI Note
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="mt-6 pt-4 border-t border-slate-700/50 flex justify-end">

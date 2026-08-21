@@ -801,3 +801,43 @@ async def batch_reprocess_candidate_stream(
     return StreamingResponse(batch_stream_generator(), media_type="text/event-stream")
 
 
+async def stream_ollama_generate(prompt: str, model_name: str, **kwargs):
+    import ollama
+    client = ollama.AsyncClient()
+    try:
+        async for chunk in await client.generate(model=model_name, prompt=prompt, stream=True, **kwargs):
+            yield chunk['response']
+    except asyncio.CancelledError:
+        logger.info("Ollama streaming cancelled by client disconnect")
+        raise
+
+@router.get("/{candidate_id}/insight")
+async def get_candidate_insight(
+    candidate_id: str,
+    query: str,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings)
+) -> StreamingResponse:
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    rv = db.query(ResumeVersion).filter(
+        ResumeVersion.candidate_id == candidate_id,
+        ResumeVersion.is_primary == True
+    ).first()
+    
+    raw_text = rv.raw_text if rv and rv.raw_text else ""
+    
+    prompt = f"Given the candidate profile and resume text:\n{raw_text}\n\nExplain why this candidate is a good match for the search query: '{query}'. Provide a concise match rationale."
+
+    async def event_generator():
+        try:
+            async for token in stream_ollama_generate(prompt=prompt, model_name=settings.llm_model):
+                yield f"data: {json.dumps({'token': token})}\n\n"
+        except asyncio.CancelledError:
+            logger.info("SSE connection closed by client")
+            raise
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+

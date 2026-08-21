@@ -310,3 +310,40 @@ def test_batch_reprocess_stream(client: TestClient, db_session: Session, monkeyp
     assert "text/event-stream" in response.headers.get("content-type", "")
     assert "COMPLETED" in response.text
 
+
+def test_get_candidate_insight_stream(client: TestClient, db_session: Session, monkeypatch) -> None:
+    # 1. Setup candidate and resume
+    c_id = str(uuid.uuid4())
+    candidate = Candidate(id=c_id, first_name="Insight", last_name="Tester")
+    db_session.add(candidate)
+    
+    rv = ResumeVersion(
+        id=str(uuid.uuid4()),
+        candidate_id=c_id,
+        cas_file_hash="hash_insight",
+        original_filename="resume_insight.pdf",
+        file_type="pdf",
+        is_primary=True,
+        raw_text="Insight Software Engineer",
+        layout_metadata={}
+    )
+    db_session.add(rv)
+    db_session.commit()
+
+    # Mock Ollama generator
+    async def mock_generate(prompt, **kwargs):
+        yield "This "
+        yield "is "
+        yield "a "
+        yield "match."
+
+    monkeypatch.setattr("api.routes.candidates.stream_ollama_generate", mock_generate)
+    
+    response = client.get(f"/candidates/{c_id}/insight?query=Software Engineer")
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers.get("content-type", "")
+    
+    text_content = response.text
+    assert "This" in text_content
+    assert "match." in text_content
+
