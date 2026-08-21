@@ -557,22 +557,22 @@ function CandidateList() {
         </div>
         
         {selectedIds.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleBatchDownloadResumes}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
             >
               <Download size={14} /> Download
             </button>
             <button
               onClick={handleBatchReprocess}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
             >
               <RefreshCw size={14} /> Reprocess
             </button>
             <button
               onClick={() => setShowBatchDeleteModal(true)}
-              className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/30 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/30 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0"
             >
               <Trash2 size={14} /> Delete
             </button>
@@ -992,45 +992,45 @@ function CandidateList() {
 
       {/* Floating Action Bar for Multi-Selection */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[50] bg-slate-900/90 border border-indigo-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300">
-          <div className="flex items-center gap-3 border-r border-slate-700/80 pr-5">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[50] bg-slate-900/90 border border-indigo-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300 whitespace-nowrap max-w-fit">
+          <div className="flex items-center gap-3 border-r border-slate-700/80 pr-5 shrink-0">
             <button 
               onClick={toggleSelectAll}
-              className="text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+              className="text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors whitespace-nowrap shrink-0"
             >
               {selectedIds.length === candidates.length && candidates.length > 0 ? (
-                <> <CheckSquare size={15} className="text-indigo-400" /> Deselect All </>
+                <> <CheckSquare size={15} className="text-indigo-400 shrink-0" /> Deselect All </>
               ) : (
-                <> <Square size={15} className="text-slate-400" /> Select All </>
+                <> <Square size={15} className="text-slate-400 shrink-0" /> Select All </>
               )}
             </button>
-            <span className="text-sm font-semibold text-indigo-300">
+            <span className="text-sm font-semibold text-indigo-300 whitespace-nowrap shrink-0">
               {selectedIds.length} candidate{selectedIds.length > 1 ? 's' : ''} selected
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={handleBatchReprocess}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-indigo-900/30 border border-indigo-400/30"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-indigo-900/30 border border-indigo-400/30 whitespace-nowrap shrink-0"
             >
-              <RefreshCw size={16} /> Re-process ({selectedIds.length})
+              <RefreshCw size={16} className="shrink-0" /> Re-process ({selectedIds.length})
             </button>
             <button
               onClick={handleBatchDownloadResumes}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors border border-slate-700"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors border border-slate-700 whitespace-nowrap shrink-0"
             >
-              <Download size={16} /> Download Resumes
+              <Download size={16} className="shrink-0" /> Download Resumes
             </button>
             <button
               onClick={() => setShowBatchDeleteModal(true)}
-              className="bg-red-600/90 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-red-950/30 border border-red-500/30"
+              className="bg-red-600/90 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-red-950/30 border border-red-500/30 whitespace-nowrap shrink-0"
             >
-              <Trash2 size={16} /> Delete ({selectedIds.length})
+              <Trash2 size={16} className="shrink-0" /> Delete ({selectedIds.length})
             </button>
             <button
               onClick={clearSelection}
-              className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors ml-1"
+              className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors ml-1 shrink-0"
               title="Clear selection"
             >
               <X size={18} />
