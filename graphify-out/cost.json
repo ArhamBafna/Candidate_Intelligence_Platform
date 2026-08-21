@@ -1,0 +1,40 @@
+{
+  "runs": [
+    {
+      "date": "2026-08-20T23:49:50.110387+00:00",
+      "input_tokens": 48586,
+      "output_tokens": 2653,
+      "files": 110
+    },
+    {
+      "date": "2026-08-21T00:04:25.467278+00:00",
+      "label": "option_a_small_chunks",
+      "input_tokens": 34046,
+      "output_tokens": 1506,
+      "files": 13
+    },
+    {
+      "date": "2026-08-21T00:04:25.467296+00:00",
+      "label": "option_b_deep_mode",
+      "input_tokens": 48641,
+      "output_tokens": 1710,
+      "files": 23
+    },
+    {
+      "date": "2026-08-21T00:04:25.467300+00:00",
+      "label": "option_c_gemini_2_5_pro_unavailable",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 23
+    },
+    {
+      "date": "2026-08-21T00:04:25.467303+00:00",
+      "label": "option_c_gemini_3_1_pro_quota_blocked",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 23
+    }
+  ],
+  "total_input_tokens": 131273,
+  "total_output_tokens": 5869
+}

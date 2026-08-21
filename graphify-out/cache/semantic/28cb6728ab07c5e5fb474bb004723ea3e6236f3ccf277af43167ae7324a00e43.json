@@ -1,0 +1,1 @@
+{"nodes": [{"id": "agentic_retrieval_md", "label": "Autonomous Agentic Retrieval System", "file_type": "concept", "source_file": "docs/ideas/agentic-retrieval.md", "rationale": "Proposed multi-step agentic search pipeline for nuanced candidate retrieval."}], "edges": [], "hyperedges": []}

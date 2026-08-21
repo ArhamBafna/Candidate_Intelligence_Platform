@@ -1,0 +1,1 @@
+{"nodes": [{"id": "ui_test_report_md", "label": "End-to-End UI Test Report", "file_type": "document", "source_file": "docs/tests/end-to-end/ui_test_report.md", "rationale": "Verification results for core recruiter journeys in the UI."}], "edges": [], "hyperedges": [], "partial": true}

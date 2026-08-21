@@ -1,0 +1,1 @@
+{"nodes": [{"id": "ui_root", "label": "Recruiter UI", "file_type": "code", "source_file": "ui/index.html", "rationale": "Vite + React + Tailwind CSS dashboard for recruiters.", "verification": "unverified"}], "edges": [], "hyperedges": [], "partial": true}

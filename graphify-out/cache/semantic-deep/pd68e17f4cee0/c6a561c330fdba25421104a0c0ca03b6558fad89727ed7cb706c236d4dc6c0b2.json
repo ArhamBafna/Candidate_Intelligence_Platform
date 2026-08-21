@@ -1,0 +1,1 @@
+{"nodes": [{"id": "handoff_md", "label": "Session Handoff", "file_type": "document", "source_file": "docs/handoff.md", "rationale": "Summary of recent optimizations and thread-safety hardening."}], "edges": [], "hyperedges": []}

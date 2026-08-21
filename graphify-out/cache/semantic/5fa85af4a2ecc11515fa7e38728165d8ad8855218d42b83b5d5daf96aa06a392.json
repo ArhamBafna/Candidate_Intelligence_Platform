@@ -1,0 +1,1 @@
+{"nodes": [{"id": "architecture_design_document_md", "label": "Architecture Design Document (ADD)", "file_type": "document", "source_file": "docs/architecture_design_document.md", "rationale": "Detailed technical specification of the system, including data models, ingestion flow, and search ranking."}], "edges": [], "hyperedges": []}
