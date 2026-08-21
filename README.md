@@ -162,7 +162,7 @@ pytest
 
 ## 🗺️ Status & Roadmap
 
-Tracked in [`docs/task.md`](file:///c:/Users/Kamlesh/Desktop/arham-projects/Candidate_Intelligence_Platform/docs/task.md):
+Tracked in [`docs/task.md`](docs/task.md):
 
 - [x] **Setup & Virtualenv** (`pyproject.toml`)
 - [x] **Storage & Data Layer** (`SQLite WAL`, `CAS SHA-256`, `LanceDB`)

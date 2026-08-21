@@ -1,10 +1,12 @@
-# Python Performance Optimization — Advanced Reference
+# Python Performance Optimization — advanced reference
 
-Advanced optimization techniques including NumPy vectorization, caching, memory management, parallelization, async I/O, database optimization, and benchmarking tools.
+Read only when profiling identifies one of these branches. Measure before and after; examples do not guarantee a speedup.
 
-## Advanced Optimization
+## Advanced optimization
 
-### Pattern 11: NumPy for Numerical Operations
+### Pattern 11: NumPy for numerical operations
+
+Use only for large numeric workloads where NumPy is an approved dependency. Include array allocation and conversion costs in the benchmark.
 
 ```python
 import timeit
@@ -50,6 +52,8 @@ print(f"Speedup: {py_time/np_time:.2f}x")
 
 ### Pattern 12: Caching with functools.lru_cache
 
+Use only when arguments are hashable and cached values remain valid for the cache lifetime. Bound caches when inputs can grow without limit.
+
 ```python
 from functools import lru_cache
 import timeit
@@ -80,7 +84,9 @@ print(f"With cache (1000 runs): {fast_time:.4f}s")
 print(f"Cache info: {fibonacci_fast.cache_info()}")
 ```
 
-### Pattern 13: Using __slots__ for Memory
+### Pattern 13: Using __slots__ for memory
+
+Measure object counts and total memory before adopting this tradeoff; `__slots__` changes instance behavior.
 
 ```python
 import sys
@@ -116,7 +122,9 @@ print(f"\nMemory for 10000 regular objects: ~{sys.getsizeof(regular) * 10000} by
 print(f"Memory for 10000 slotted objects: ~{sys.getsizeof(slotted) * 10000} bytes")
 ```
 
-### Pattern 14: Multiprocessing for CPU-Bound Tasks
+### Pattern 14: Multiprocessing for CPU-bound tasks
+
+Use only after measuring CPU saturation and accounting for process startup, serialization, platform behavior, and shutdown.
 
 ```python
 import multiprocessing as mp
@@ -150,7 +158,9 @@ if __name__ == "__main__":
     print(f"Speedup: {seq_time/par_time:.2f}x")
 ```
 
-### Pattern 15: Async I/O for I/O-Bound Tasks
+### Pattern 15: Async I/O for I/O-bound tasks
+
+Use only when the surrounding application is async and its HTTP/client dependencies are approved. Keep external endpoints out of local-first production paths.
 
 ```python
 import asyncio
@@ -198,9 +208,11 @@ print(f"Asynchronous: {async_time:.2f}s")
 print(f"Speedup: {sync_time/async_time:.2f}x")
 ```
 
-## Database Optimization
+## Database optimization
 
-### Pattern 16: Batch Database Operations
+### Pattern 16: Batch database operations
+
+Keep transactions bounded and preserve rollback/error behavior.
 
 ```python
 import sqlite3
@@ -244,7 +256,9 @@ print(f"Batch insert: {fast_time:.4f}s")
 print(f"Speedup: {slow_time/fast_time:.2f}x")
 ```
 
-### Pattern 17: Query Optimization
+### Pattern 17: Query optimization
+
+Inspect query plans and add indexes only for measured access patterns; verify write and storage costs.
 
 ```python
 # Use indexes for frequently queried columns
@@ -272,9 +286,9 @@ print(cursor.fetchall())
 # Fast: SELECT id, name
 ```
 
-## Memory Optimization
+## Memory optimization
 
-### Pattern 18: Detecting Memory Leaks
+### Pattern 18: Detecting memory leaks
 
 ```python
 import tracemalloc
@@ -319,7 +333,7 @@ track_memory_usage()
 gc.collect()
 ```
 
-### Pattern 19: Iterators vs Lists
+### Pattern 19: Iterators vs lists
 
 ```python
 import sys
@@ -339,7 +353,9 @@ def process_file_iterator(filename):
 # List loads entire file into memory
 ```
 
-### Pattern 20: Weakref for Caches
+### Pattern 20: Weak references for caches
+
+Weak references do not retain values. Callers need another strong reference while using a cached resource, or the value may be collected immediately.
 
 ```python
 import weakref
@@ -372,9 +388,9 @@ def get_resource_weak(key):
 # When no strong references exist, objects can be GC'd
 ```
 
-## Benchmarking Tools
+## Benchmarking tools
 
-### Custom Benchmark Decorator
+### Custom benchmark decorator
 
 ```python
 import time
@@ -400,7 +416,9 @@ def slow_function():
 result = slow_function()
 ```
 
-### Performance Testing with pytest-benchmark
+### Performance testing with pytest-benchmark
+
+Use only when the project already provides this dependency; otherwise use its existing test and benchmark tooling.
 
 ```python
 # Install: pip install pytest-benchmark

@@ -1,8 +1,10 @@
-# python-performance-optimization — detailed patterns and worked examples
+# Python Performance Optimization — standard reference
 
-## Profiling Tools
+Use these examples after profiling identifies a matching branch. Timings are workload-dependent; benchmark in the target environment before claiming a speedup.
 
-### Pattern 1: cProfile - CPU Profiling
+## Profiling tools
+
+### Pattern 1: cProfile — CPU profiling
 
 ```python
 import cProfile
@@ -57,7 +59,7 @@ python -m pstats output.prof
 # stats 10
 ```
 
-### Pattern 2: line_profiler - Line-by-Line Profiling
+### Pattern 2: line_profiler — line-by-line profiling
 
 ```python
 # Install: pip install line-profiler
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     lp.print_stats()
 ```
 
-### Pattern 3: memory_profiler - Memory Usage
+### Pattern 3: memory_profiler — memory usage
 
 ```python
 # Install: pip install memory-profiler
@@ -129,7 +131,7 @@ if __name__ == "__main__":
 # python -m memory_profiler script.py
 ```
 
-### Pattern 4: py-spy - Production Profiling
+### Pattern 4: py-spy — running-process profiling
 
 ```bash
 # Install: pip install py-spy
@@ -147,7 +149,7 @@ py-spy record -o profile.svg -- python script.py
 py-spy dump --pid 12345
 ```
 
-## Optimization Patterns
+## Optimization patterns
 
 ### Pattern 5: List Comprehensions vs Loops
 
@@ -177,7 +179,7 @@ print(f"Loop: {slow_time:.4f}s")
 print(f"Comprehension: {fast_time:.4f}s")
 print(f"Speedup: {slow_time/fast_time:.2f}x")
 
-# Even faster for simple operations: map
+# Benchmark simple operations before replacing a clear comprehension with map.
 def faster_squares(n):
     """Use map for even better performance."""
     return list(map(lambda x: x**2, range(n)))
@@ -205,7 +207,7 @@ gen_data = (i for i in range(1000000))
 print(f"List size: {sys.getsizeof(list_data)} bytes")
 print(f"Generator size: {sys.getsizeof(gen_data)} bytes")
 
-# Generators use constant memory regardless of size
+# Generator storage stays bounded, but downstream operations may still materialize data.
 ```
 
 ### Pattern 7: String Concatenation

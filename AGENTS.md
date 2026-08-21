@@ -1,23 +1,30 @@
 # AGENTS.md
 
-## Overview
-Candidate Intelligence Platform (CIP): privacy-first, local-first intelligence & candidate retrieval system (résumés, CVs, emails, profiles). No external cloud APIs.
+## Mission
 
-- **Storage**: SQLite (WAL mode) via SQLAlchemy 2.0 ORM.
-- **CAS**: SHA-256 binary hash storage, deduplicate before parse.
-- **Vector**: LanceDB embedded index.
-- **Ingestion**: Multi-format parse (PDF: PyMuPDF/pdfplumber, DOCX: python-docx, MSG: extract-msg) + section-aware chunker.
-- **Entity Resolution**: Tier 1 deterministic exact match (email/phone), Tier 2 probabilistic Jaro-Winkler (name).
+CIP is a privacy-first, local-first candidate intelligence and retrieval system for résumés, CVs, emails, and profiles. Preserve local-only behavior: request approval before adding any remote API or cloud dependency.
 
-## Stack & Deps
-- Python `>=3.14`
-- `uv` (`uv_build`)
-- SQLAlchemy `^2.0`, SQLite (WAL mode), LanceDB `^0.36`
-- Pydantic `^2.13`, `pydantic-settings` `^2.15`
-- PyMuPDF `^1.28`, pdfplumber `^0.11`, python-docx `^1.2`, extract-msg `^0.56`
-- `pytest` `^9.1`
+## Working sequence
 
-## Setup & Commands
+1. **Orient.** Read `docs/agents/domain.md` before exploring domain behavior. Read relevant ADRs in `docs/adr/` and any context file they identify.
+2. **Change.** Follow existing module boundaries and types. Keep CAS deduplication before parsing, SQLite WAL behavior, and immutable SHA-256 CAS files.
+3. **Verify.** Run the smallest relevant existing test, then `uv run pytest` unless the user gives another scope. Work is complete only when changed behavior is covered and the selected tests pass.
+4. **Track.** Update the matching unchecked item in `docs/task.md` only when the change completes that item. Work is complete only when the task entry reflects the delivered state.
+
+## Implementation rules
+
+- Add explicit type annotations for every argument and return value.
+- Validate ingestion data with Pydantic v2 schemas.
+- Use SQLAlchemy 2.0 models in `storage/db_models.py`.
+- Check hashes through `storage/cas.py` before parsing.
+- Add tests for changed behavior; ingestion, storage, and config modules require corresponding `tests/test_<module>.py` coverage.
+- Keep SQLite WAL pragmas mandatory.
+- Keep all candidate data and processing local unless the user approves an exception.
+
+## Environment
+
+Use `pyproject.toml` and the repository layout as sources of truth for versions and dependencies.
+
 ```powershell
 uv sync
 # Or
@@ -26,31 +33,23 @@ python -m venv .venv
 pip install -e .
 ```
 
-## Testing & Verification
-`pytest` uses `pythonpath = ["."]` in `pyproject.toml`.
+`pytest` uses `pythonpath = ["."]` from `pyproject.toml`.
 
 ```powershell
-# Fast test suite (skips live Ollama test, ~10s) - DEFAULT UNLESS USER STATES OTHERWISE
+# Default: skips live Ollama integration
 uv run pytest
 
-# Include live Ollama integration test
+# Include live Ollama integration
 uv run pytest --run-ollama
 
-# Run ONLY live Ollama integration test
+# Run only live Ollama integration
 uv run pytest -m ollama --run-ollama
 ```
 
-## Code Rules
-- **Type Annotations**: Explicit Python type hints for all args + returns.
-- **Validation**: Pydantic v2 schemas for all ingestion data.
-- **ORM**: Use SQLAlchemy 2.0 models in `storage/db_models.py`.
-- **Deduplication**: Check hash with `storage/cas.py` before parsing.
-- **Testing & Verification**: Every module in `ingestion/`, `storage/`, `config/` requires test in `tests/test_<module>.py`. Run `uv run pytest` before declaring complete.
-- **Task Tracking**: Update `docs/task.md` `[ ]` -> `[x]`.
-- **Commit, Push**: after minor change to move towards a greater big change, commit. after big changes, push.
+## Agent-facing references
 
+- GitHub issue and PR operations: `docs/agents/issue-tracker.md`
+- Domain exploration, context files, and ADRs: `docs/agents/domain.md`
+- Product direction for agentic retrieval: `docs/ideas/agentic-retrieval.md`
 
-## Security & Ops
-- **Privacy**: Local-first. No remote API call or cloud dep without approval.
-- **DB**: SQLite WAL pragmas mandatory.
-- **CAS**: SHA-256 files immutable once written.
+Create commits or push only when the user requests it or the task explicitly requires it.

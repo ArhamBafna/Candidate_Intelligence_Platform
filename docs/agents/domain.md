@@ -1,18 +1,21 @@
 # Domain Docs
 
-How the engineering skills should consume this repo's domain documentation when exploring the codebase.
+Use this routing before exploring domain behavior.
 
-## Before exploring, read these
+## Exploration gate
 
-- **`CONTEXT.md`** at the repo root, or
-- **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+1. Read root `CONTEXT.md` when present.
+2. If root `CONTEXT-MAP.md` exists, follow it and read every `CONTEXT.md` relevant to the topic.
+3. Read ADRs in `docs/adr/` that touch the target area. In multi-context repos, also read `src/<context>/docs/adr/`.
+4. Use glossary terms from the applicable context document in issue titles, refactor proposals, hypotheses, and tests.
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+Exploration is ready only when every applicable context document and ADR has been checked.
+
+When a referenced file is unavailable, continue with available context. The `/domain-modeling` skill creates missing context documents lazily when terms or decisions are resolved.
 
 ## File structure
 
-Single-context repo (most repos):
+Single-context repo:
 
 ```
 /
@@ -23,7 +26,7 @@ Single-context repo (most repos):
 └── src/
 ```
 
-Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
+Multi-context repo:
 
 ```
 /
@@ -38,14 +41,10 @@ Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
         └── docs/adr/
 ```
 
-## Use the glossary's vocabulary
-
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
-
-If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
+If a needed concept is absent from the glossary, treat it as a possible domain gap and note it for `/domain-modeling`; do not silently invent competing terminology.
 
 ## Flag ADR conflicts
 
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
+If proposed work contradicts an ADR, surface it explicitly rather than silently overriding:
 
 > _Contradicts ADR-0007 (event-sourced orders) — but worth reopening because…_
