@@ -67,18 +67,8 @@ for ($i = 0; $i -lt 15; $i++) {
 }
 Start-Sleep -Seconds 1
 
-$appTitle = "Candidate Intelligence Platform"
-$wshell = New-Object -ComObject WScript.Shell
-$activated = $wshell.AppActivate($appTitle)
-
-if ($activated) {
-    Write-Host "`nExisting browser tab/window found ($appTitle). Reloading..." -ForegroundColor Cyan
-    Start-Sleep -Milliseconds 300
-    $wshell.SendKeys("{F5}")
-} else {
-    Write-Host "`nOpening http://localhost:5173 in browser..." -ForegroundColor Cyan
-    Start-Process "http://localhost:5173"
-}
+Write-Host "`nOpening http://localhost:5173 in browser..." -ForegroundColor Cyan
+Start-Process "http://localhost:5173"
 
 Write-Host "`n=======================================================" -ForegroundColor Green
 Write-Host " Candidate Intelligence Platform is now running!" -ForegroundColor Green
