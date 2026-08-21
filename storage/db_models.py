@@ -1,83 +1,87 @@
+from datetime import date, datetime
+from typing import Dict, Any, Optional
+
 from sqlalchemy import (
-    Column, String, Boolean, Float, Integer, Date, 
+    String, Boolean, Float, Integer, Date, 
     DateTime, ForeignKey, JSON, text
 )
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 from sqlalchemy.engine import Engine
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class Candidate(Base):
     __tablename__ = 'candidates'
-    id = Column(String, primary_key=True)
-    first_name = Column(String, nullable=False)
-    last_name = Column(String, nullable=False)
-    primary_email = Column(String, unique=True)
-    primary_phone = Column(String)
-    linkedin_url = Column(String, unique=True)
-    current_city = Column(String, index=True)
-    current_country = Column(String)
-    current_title = Column(String)
-    current_company = Column(String)
-    total_yoe = Column(Float, default=0.0)
-    desired_salary_min = Column(Integer)
-    desired_salary_max = Column(Integer)
-    currency = Column(String, default='USD')
-    availability_status = Column(String, default='ACTIVE')
-    custom_attributes = Column(JSON, default=dict)
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    first_name: Mapped[str] = mapped_column(String, nullable=False)
+    last_name: Mapped[str] = mapped_column(String, nullable=False)
+    primary_email: Mapped[Optional[str]] = mapped_column(String, unique=True)
+    primary_phone: Mapped[Optional[str]] = mapped_column(String)
+    linkedin_url: Mapped[Optional[str]] = mapped_column(String, unique=True)
+    current_city: Mapped[Optional[str]] = mapped_column(String, index=True)
+    current_country: Mapped[Optional[str]] = mapped_column(String)
+    current_title: Mapped[Optional[str]] = mapped_column(String)
+    current_company: Mapped[Optional[str]] = mapped_column(String)
+    total_yoe: Mapped[float] = mapped_column(Float, default=0.0)
+    desired_salary_min: Mapped[Optional[int]] = mapped_column(Integer)
+    desired_salary_max: Mapped[Optional[int]] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String, default='USD')
+    availability_status: Mapped[str] = mapped_column(String, default='ACTIVE')
+    custom_attributes: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
 class ResumeVersion(Base):
     __tablename__ = 'resume_versions'
-    id = Column(String, primary_key=True)
-    candidate_id = Column(String, ForeignKey('candidates.id', ondelete='CASCADE'), nullable=False)
-    cas_file_hash = Column(String, nullable=False)
-    original_filename = Column(String, nullable=False)
-    file_type = Column(String, nullable=False)
-    raw_text = Column(String, nullable=False)
-    layout_metadata = Column(JSON, nullable=False)
-    is_primary = Column(Boolean, default=False)
-    ingested_at = Column(DateTime, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    candidate_id: Mapped[str] = mapped_column(String, ForeignKey('candidates.id', ondelete='CASCADE'), nullable=False)
+    cas_file_hash: Mapped[str] = mapped_column(String, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String, nullable=False)
+    file_type: Mapped[str] = mapped_column(String, nullable=False)
+    raw_text: Mapped[str] = mapped_column(String, nullable=False)
+    layout_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
 class CandidateClaim(Base):
     __tablename__ = 'candidate_claims'
-    id = Column(String, primary_key=True)
-    candidate_id = Column(String, ForeignKey('candidates.id', ondelete='CASCADE'), nullable=False)
-    resume_version_id = Column(String, ForeignKey('resume_versions.id', ondelete='SET NULL'))
-    source_type = Column(String, nullable=False)
-    claim_category = Column(String, nullable=False)
-    claim_key = Column(String, nullable=False)
-    claim_value = Column(String, nullable=False)
-    start_date = Column(Date)
-    end_date = Column(Date)
-    confidence_score = Column(Float, default=1.0)
-    source_char_offset_start = Column(Integer)
-    source_char_offset_end = Column(Integer)
-    extracted_by = Column(String, nullable=False)
-    created_at = Column(DateTime, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    candidate_id: Mapped[str] = mapped_column(String, ForeignKey('candidates.id', ondelete='CASCADE'), nullable=False)
+    resume_version_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('resume_versions.id', ondelete='SET NULL'))
+    source_type: Mapped[str] = mapped_column(String, nullable=False)
+    claim_category: Mapped[str] = mapped_column(String, nullable=False)
+    claim_key: Mapped[str] = mapped_column(String, nullable=False)
+    claim_value: Mapped[str] = mapped_column(String, nullable=False)
+    start_date: Mapped[Optional[date]] = mapped_column(Date)
+    end_date: Mapped[Optional[date]] = mapped_column(Date)
+    confidence_score: Mapped[float] = mapped_column(Float, default=1.0)
+    source_char_offset_start: Mapped[Optional[int]] = mapped_column(Integer)
+    source_char_offset_end: Mapped[Optional[int]] = mapped_column(Integer)
+    extracted_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
 class CandidateTimelineEvent(Base):
     __tablename__ = 'candidate_timeline_events'
-    id = Column(String, primary_key=True)
-    candidate_id = Column(String, ForeignKey('candidates.id', ondelete='CASCADE'), nullable=False)
-    event_type = Column(String, nullable=False)
-    title = Column(String, nullable=False)
-    description = Column(String)
-    event_metadata = Column(JSON, default=dict)
-    created_by = Column(String, nullable=False)
-    created_at = Column(DateTime, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    candidate_id: Mapped[str] = mapped_column(String, ForeignKey('candidates.id', ondelete='CASCADE'), nullable=False)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String)
+    event_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
 class EntityResolutionAudit(Base):
     __tablename__ = 'entity_resolution_audit'
-    id = Column(String, primary_key=True)
-    primary_candidate_id = Column(String, nullable=False)
-    merged_candidate_id = Column(String, nullable=False)
-    resolution_type = Column(String, nullable=False)
-    confidence_score = Column(Float, nullable=False)
-    matching_criteria = Column(JSON, nullable=False)
-    merged_at = Column(DateTime, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    primary_candidate_id: Mapped[str] = mapped_column(String, nullable=False)
+    merged_candidate_id: Mapped[str] = mapped_column(String, nullable=False)
+    resolution_type: Mapped[str] = mapped_column(String, nullable=False)
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False)
+    matching_criteria: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    merged_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
 
 def init_db(engine: Engine):
     """

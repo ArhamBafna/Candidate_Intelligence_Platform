@@ -1,5 +1,6 @@
 from sqlalchemy import text
-from typing import Optional, Callable
+from sqlalchemy.orm import Session
+from typing import Optional, Callable, Dict, List, Any, Generator, Tuple
 import json
 from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql
 from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_fusion
@@ -10,7 +11,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-def execute_fts_query(sql: str, params: dict, db) -> dict[str, int]:
+def execute_fts_query(sql: str, params: dict, db: Session) -> Dict[str, int]:
     if not sql:
         return {}
     results = db.execute(text(sql), params).fetchall()
@@ -19,10 +20,17 @@ def execute_fts_query(sql: str, params: dict, db) -> dict[str, int]:
         ranks[row[0]] = rank
     return ranks
 
-def execute_vector_search(query_text: str, candidate_ids: Optional[list[str]], vector_db, warnings: list[str] = None) -> dict[str, int]:
+def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], vector_db: Any, warnings: Optional[List[str]] = None) -> Dict[str, int]:
     """Execute vector search with early termination optimizations."""
     # EARLY TERMINATION: Skip if no query text
     if not query_text:
+        return {}
+    
+    # EARLY TERMINATION: If candidate_ids was provided (from FTS filters) but is empty,
+    # it means no candidates matched the hard filters. In this case, we skip vector search.
+    # Note: search_candidates passes None if FTS matched everything or if FTS was skipped,
+    # which means we search against ALL candidates.
+    if candidate_ids is not None and not candidate_ids:
         return {}
     
     # Compute embedding (needed for error logging even if vector_db unavailable)
@@ -49,6 +57,8 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[list[str]], v
         return {}
         
     try:
+        # Optimization: if we have a specific set of candidate IDs, we could potentially
+        # push that filter down to LanceDB, but for now we filter in memory after the search.
         results = table.search(query_vector).limit(100).to_list()
     except Exception as e:
         logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
@@ -70,7 +80,7 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[list[str]], v
             
     return ranks
 
-def fetch_candidate_documents(candidate_ids: list[str], db) -> list[str]:
+def fetch_candidate_documents(candidate_ids: List[str], db: Session) -> List[str]:
     if not candidate_ids:
         return []
         
@@ -84,7 +94,7 @@ def fetch_candidate_documents(candidate_ids: list[str], db) -> list[str]:
     doc_map = {row.candidate_id: row.raw_text for row in docs}
     return [doc_map.get(cid, "") for cid in candidate_ids]
 
-def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
+def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: bool = False) -> Generator[Tuple[str, int, str, Any], None, None]:
     warnings = []
     
     yield ("STARTING", 0, "Initializing search...", None)
@@ -110,10 +120,7 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
     else:
         yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
         # If no filtered_ids (but no hard filters), we search against ALL candidates by passing None
-        try:
-            vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db, warnings=warnings)
-        except TypeError:
-            vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db)
+        vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db, warnings=warnings)
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
@@ -146,8 +153,8 @@ def search_candidates(query: str, db, vector_db, return_warnings: bool = False):
     rrf_dict = dict(rrf_results)
     for rank, (cid, score) in enumerate(reranked, start=1):
         rrf = rrf_dict.get(cid, 0.0)
-        params = MatchParameters(candidate_id=cid, rank=rank, rrf_score=rrf, rerank_score=score)
-        rationale = build_match_rationale(params)
+        params_obj = MatchParameters(candidate_id=cid, rank=rank, rrf_score=rrf, rerank_score=score)
+        rationale = build_match_rationale(params_obj)
         results.append(rationale)
         
     final_result = (results, warnings) if return_warnings else results

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from api.dependencies import get_db, get_vector_db, get_settings, _get_sessionmaker
 from config.settings import Settings
@@ -15,6 +15,7 @@ from crm.state_machine import CandidateStateMachine, TransitionContext
 from crm.timeline_ledger import TimelineLedger
 from api.services.candidate_service import CandidateService
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 from ingestion.chunker import chunk_document
 from ingestion.parsers.models import ParsedDocument
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
@@ -30,18 +31,24 @@ from candidate_intelligence_platform.extraction.hybrid_extractor import (
 )
 from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts
 import structlog
+import json
+import asyncio
+import hashlib
+import uuid
+from pathlib import Path
+from fastapi.responses import StreamingResponse, FileResponse
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 @router.get("", response_model=List[CandidateResponse])
-def list_candidates(db: Session = Depends(get_db)):
+def list_candidates(db: Session = Depends(get_db)) -> List[Candidate]:
     candidates = db.query(Candidate).all()
     return candidates
 
 @router.get("/{candidate_id}", response_model=CandidateResponse)
-def get_candidate(candidate_id: str, db: Session = Depends(get_db)):
+def get_candidate(candidate_id: str, db: Session = Depends(get_db)) -> Candidate:
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -52,7 +59,7 @@ def delete_candidate(
     candidate_id: str, 
     db: Session = Depends(get_db),
     vector_db = Depends(get_vector_db)
-):
+) -> None:
     success = CandidateService.delete_candidate(db, candidate_id, vector_db)
     if not success:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -64,7 +71,7 @@ def update_candidate_status(
     candidate_id: str, 
     update: CandidateStatusUpdate, 
     db: Session = Depends(get_db)
-):
+) -> Dict[str, str]:
     try:
         sm = CandidateStateMachine()
         context = TransitionContext(
@@ -83,13 +90,13 @@ def update_candidate_status(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/{candidate_id}/timeline", response_model=List[TimelineEventResponse])
-def get_candidate_timeline(candidate_id: str, db: Session = Depends(get_db)):
+def get_candidate_timeline(candidate_id: str, db: Session = Depends(get_db)) -> List[CandidateTimelineEvent]:
     ledger = TimelineLedger()
     events = ledger.get_events(session=db, candidate_id=candidate_id)
     return events
 
 @router.put("/{candidate_id}", response_model=CandidateResponse)
-def update_candidate(candidate_id: str, update_data: CandidateUpdate, db: Session = Depends(get_db)):
+def update_candidate(candidate_id: str, update_data: CandidateUpdate, db: Session = Depends(get_db)) -> Candidate:
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -121,7 +128,7 @@ def update_candidate(candidate_id: str, update_data: CandidateUpdate, db: Sessio
     return candidate
 
 @router.get("/{candidate_id}/file")
-def get_candidate_file(candidate_id: str, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+def get_candidate_file(candidate_id: str, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> FileResponse:
     from fastapi.responses import FileResponse
     from storage.cas import CASManager
     from pathlib import Path
@@ -155,7 +162,7 @@ def reprocess_candidate(
     candidate_id: str, 
     db: Session = Depends(get_db),
     vector_db = Depends(get_vector_db)
-):
+) -> Dict[str, Any]:
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -184,6 +191,7 @@ def reprocess_candidate(
         # 2. Refresh Full-Text Search (FTS)
         try:
             CandidateService.update_fts_index(db, candidate_id, f"{candidate.first_name} {candidate.last_name}", candidate, raw_text)
+            db.commit()
         except Exception:
             reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
@@ -215,7 +223,7 @@ async def reprocess_candidate_stream(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
-):
+) -> StreamingResponse:
     async def stream_generator():
         reprocess_warnings = []
         try:
@@ -273,7 +281,10 @@ async def reprocess_candidate_stream(
             await asyncio.sleep(0.05)
             if raw_text:
                 try:
-                    CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
+                    def do_fts_update():
+                        CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
+                        db.commit()
+                    await asyncio.to_thread(do_fts_update)
                 except Exception:
                     db.rollback()
                     reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
@@ -284,7 +295,9 @@ async def reprocess_candidate_stream(
             if raw_text:
                 try:
                     if vector_db:
-                        CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id if rv else "")
+                        def do_vector_update():
+                            CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id if rv else "")
+                        await asyncio.to_thread(do_vector_update)
                     else:
                         reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
                 except Exception:
@@ -293,17 +306,19 @@ async def reprocess_candidate_stream(
             # 5. Log Timeline Event
             yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
             await asyncio.sleep(0.05)
-            ledger = TimelineLedger()
-            ledger.log_event(
-                session=db,
-                candidate_id=candidate_id,
-                event_type="REPROCESS_TRIGGERED",
-                title="Reprocessing Triggered",
-                description="Recruiter triggered a manual re-processing of candidate data",
-                metadata={},
-                created_by="Recruiter"
-            )
-            db.commit()
+            def log_timeline():
+                ledger = TimelineLedger()
+                ledger.log_event(
+                    session=db,
+                    candidate_id=candidate_id,
+                    event_type="REPROCESS_TRIGGERED",
+                    title="Reprocessing Triggered",
+                    description="Recruiter triggered a manual re-processing of candidate data",
+                    metadata={},
+                    created_by="Recruiter"
+                )
+                db.commit()
+            await asyncio.to_thread(log_timeline)
 
             # 6. Completed
             mode_str = "AI Model" if used_ai else "Rule-based NER"
@@ -315,24 +330,13 @@ async def reprocess_candidate_stream(
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
 
-from fastapi import UploadFile, File
-from fastapi.responses import StreamingResponse
-import uuid
-import json
-import asyncio
-import hashlib
-from pathlib import Path
-from storage.cas import CASManager
-from config.settings import Settings
-from storage.db_models import ResumeVersion
-
 @router.post("/upload")
 async def upload_resume(
     file: UploadFile = File(...), 
     db: Session = Depends(get_db), 
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
-):
+) -> Dict[str, Any]:
     content = await file.read()
     cas_mgr = CASManager(settings.cas_root_dir)
     ext = Path(file.filename).suffix if file.filename else ".txt"
@@ -411,18 +415,11 @@ async def upload_resume(
     )
     db.commit()
 
-    # FTS Insertion
-    db.execute(
-        text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
-        {
-            "cid": cand_id,
-            "fname": f"{cand.first_name} {cand.last_name}",
-            "title": cand.current_title,
-            "company": cand.current_company or "",
-            "content": raw_text
-        }
-    )
-    db.commit()
+    # FTS Insertion (offloaded to thread)
+    def do_fts_insertion():
+        CandidateService.update_fts_index(db, cand_id, f"{cand.first_name} {cand.last_name}", cand, raw_text)
+        db.commit()
+    await asyncio.to_thread(do_fts_insertion)
 
     # Vector Insertion (CPU-bound embedding: run on thread pool)
     doc = ParsedDocument(text=raw_text, pages=1)
@@ -448,7 +445,7 @@ async def upload_stream_resumes(
     db: Session = Depends(get_db), 
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
-):
+) -> StreamingResponse:
     # Bounded semaphore to limit concurrent file processing
     upload_semaphore = asyncio.Semaphore(4)
     event_queue = asyncio.Queue()
@@ -639,7 +636,7 @@ def batch_delete_candidates(
     payload: BatchCandidateIds,
     db: Session = Depends(get_db),
     vector_db = Depends(get_vector_db)
-):
+) -> Dict[str, Any]:
     deleted_ids = []
     try:
         for candidate_id in payload.candidate_ids:
@@ -663,7 +660,7 @@ async def batch_reprocess_candidate_stream(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
-):
+) -> StreamingResponse:
     # Bounded semaphore to limit concurrent processing
     process_semaphore = asyncio.Semaphore(4)
     event_queue = asyncio.Queue()
