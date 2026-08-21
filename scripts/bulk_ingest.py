@@ -503,10 +503,11 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
 def run_bulk_ingest(
     source_dir: str,
     batch_size: int,
-    checkpoint_file: str,
-    report_file: str,
-    unprocessed_log: str,
-    summary_file: str = "bulk_ingest_summary.md",
+    output_dir: Optional[str] = "ingestion_reports",
+    checkpoint_file: Optional[str] = None,
+    report_file: Optional[str] = None,
+    unprocessed_log: Optional[str] = None,
+    summary_file: Optional[str] = None,
     dry_run: bool = False
 ):
     base_dir = Path(source_dir)
@@ -514,10 +515,19 @@ def run_bulk_ingest(
         logger.error("Source directory does not exist", directory=source_dir)
         return
 
-    checkpoint_path = Path(checkpoint_file)
-    report_path = Path(report_file)
-    unprocessed_path = Path(unprocessed_log)
-    summary_path = Path(summary_file)
+    out_dir_path = Path(output_dir) if output_dir else Path(".")
+    if not dry_run and output_dir:
+        out_dir_path.mkdir(parents=True, exist_ok=True)
+
+    checkpoint_name = checkpoint_file if checkpoint_file else "bulk_ingest_checkpoint.json"
+    report_name = report_file if report_file else "bulk_ingest_report.json"
+    unprocessed_name = unprocessed_log if unprocessed_log else "bulk_ingest_unprocessed.json"
+    summary_name = summary_file if summary_file else "bulk_ingest_summary.md"
+
+    checkpoint_path = Path(checkpoint_name) if (checkpoint_file and Path(checkpoint_file).is_absolute()) else out_dir_path / checkpoint_name
+    report_path = Path(report_name) if (report_file and Path(report_file).is_absolute()) else out_dir_path / report_name
+    unprocessed_path = Path(unprocessed_name) if (unprocessed_log and Path(unprocessed_log).is_absolute()) else out_dir_path / unprocessed_name
+    summary_path = Path(summary_name) if (summary_file and Path(summary_file).is_absolute()) else out_dir_path / summary_name
     
     processed_files: Set[str] = set()
     if checkpoint_path.exists():
@@ -556,6 +566,7 @@ def run_bulk_ingest(
     print(f"\n=======================================================")
     print(f"  CIP Bulk Ingestion Engine")
     print(f"  Source Directory: {base_dir}")
+    print(f"  Output Directory: {out_dir_path.resolve()}")
     print(f"  Batch Size Limit: {batch_size}")
     print(f"  Master Report:   {report_path}")
     print(f"  Summary Report:  {summary_path}")
@@ -694,10 +705,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bulk Resume Ingestion Script")
     parser.add_argument("--source-dir", type=str, default=r"G:\My Drive\intellect_iSolutons\All_Resumes\Resumes", help="Path to resumes folder")
     parser.add_argument("--batch-size", type=int, default=500, help="Number of valid resumes to ingest in this run")
-    parser.add_argument("--checkpoint-file", type=str, default="bulk_ingest_checkpoint.json", help="Path to checkpoint JSON file")
-    parser.add_argument("--report-file", type=str, default="bulk_ingest_report.json", help="Path to complete master audit JSON report")
-    parser.add_argument("--unprocessed-log", type=str, default="bulk_ingest_unprocessed.json", help="Path to unprocessed non-resume log JSON file")
-    parser.add_argument("--summary-file", type=str, default="bulk_ingest_summary.md", help="Path to generated Markdown summary report")
+    parser.add_argument("--output-dir", type=str, default="ingestion_reports", help="Directory where all generated reports, summaries, and checkpoints are stored")
+    parser.add_argument("--checkpoint-file", type=str, default=None, help="Name or path to checkpoint JSON file (saved in output-dir by default)")
+    parser.add_argument("--report-file", type=str, default=None, help="Name or path to master audit JSON report (saved in output-dir by default)")
+    parser.add_argument("--unprocessed-log", type=str, default=None, help="Name or path to unprocessed non-resume log JSON file (saved in output-dir by default)")
+    parser.add_argument("--summary-file", type=str, default=None, help="Name or path to generated Markdown summary report (saved in output-dir by default)")
     parser.add_argument("--dry-run", action="store_true", help="Scan and list files without processing")
     
     args = parser.parse_args()
@@ -705,6 +717,7 @@ if __name__ == "__main__":
     run_bulk_ingest(
         source_dir=args.source_dir,
         batch_size=args.batch_size,
+        output_dir=args.output_dir,
         checkpoint_file=args.checkpoint_file,
         report_file=args.report_file,
         unprocessed_log=args.unprocessed_log,
