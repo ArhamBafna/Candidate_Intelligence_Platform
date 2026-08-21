@@ -30,7 +30,7 @@ pip install -e .
 `pytest` uses `pythonpath = ["."]` in `pyproject.toml`.
 
 ```powershell
-# Fast test suite (skips live Ollama test, ~10s)
+# Fast test suite (skips live Ollama test, ~10s) - DEFAULT UNLESS USER STATES OTHERWISE
 uv run pytest
 
 # Include live Ollama integration test
@@ -38,19 +38,6 @@ uv run pytest --run-ollama
 
 # Run ONLY live Ollama integration test
 uv run pytest -m ollama --run-ollama
-```
-
-## Layout
-```
-Candidate_Intelligence_Platform/
-├── config/                  # DB & app settings (settings.py, database.py)
-├── storage/                 # ORM, CAS, LanceDB (db_models.py, cas.py, vector_store.py)
-├── ingestion/               # Parsers, chunker, entity resolution (parsers/, chunker.py, entity_resolution.py)
-├── src/                     # Package root (candidate_intelligence_platform/)
-├── api/                     # FastAPI application, dependencies, schemas & routes
-├── ui/                      # Vite + React + Tailwind CSS Recruiter UI
-├── docs/                    # Architecture docs & task.md
-└── tests/                   # Test suite matching modules
 ```
 
 ## Code Rules
@@ -67,15 +54,3 @@ Candidate_Intelligence_Platform/
 - **Privacy**: Local-first. No remote API call or cloud dep without approval.
 - **DB**: SQLite WAL pragmas mandatory.
 - **CAS**: SHA-256 files immutable once written.
-
-## Agent skills
-
-### Issue tracker
-
-Issues and specs live as GitHub issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
-
-### Domain docs
-
-Single-context repository layout (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
-
-

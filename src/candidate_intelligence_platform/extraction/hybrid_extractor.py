@@ -224,37 +224,62 @@ def _apply_llm_fallback(profile: Dict[str, Any], text: str, facts: List[Dict[str
         
     return used_ai, warnings
 
+def assess_tier1(
+    text: str, 
+    facts: List[Dict[str, Any]],
+    confidence_threshold: float = 0.70
+) -> tuple[Dict[str, Any], float, bool]:
+    """
+    Assess Tier 1 extraction quality using precomputed facts.
+    
+    Returns:
+        (profile, tier1_confidence, needs_ai): The deterministic profile, its confidence
+        score, and whether AI fallback is needed.
+    """
+    profile = _extract_deterministic_profile(text, facts)
+    tier1_confidence = calculate_tier1_confidence(facts, profile)
+    
+    has_skills_or_loc = any(
+        f.get("claim_category") in ("SKILL", "LOCATION") for f in facts
+    )
+    
+    missing_key_fields = (
+        profile["first_name"] == "Uploaded" 
+        or profile["current_title"] in ("Candidate", "Summary")
+        or not has_skills_or_loc
+    )
+    
+    needs_ai = tier1_confidence < confidence_threshold or missing_key_fields
+    return profile, tier1_confidence, needs_ai
+
+
 def extract_candidate_profile_hybrid(
     text: str, 
     confidence_threshold: float = 0.70, 
-    model_name: Optional[str] = None
+    model_name: Optional[str] = None,
+    facts: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Extract candidate profile using Tier 1 deterministic parsing first.
     If Tier 1 confidence is below confidence_threshold (0.70) or if any of the key fields
     (Name, Job Title, or Skills/Location) are missing, trigger Tier 2 local AI LLM extraction.
     Applies Title Case normalization to candidate names and titles.
+    
+    Args:
+        text: Raw resume text.
+        confidence_threshold: Minimum confidence for Tier 1 extraction (default 0.70).
+        model_name: Optional Ollama model name override.
+        facts: Optional precomputed facts from extract_facts(). If provided, avoids
+               re-running spaCy NER (significant speedup for multi-page resumes).
     """
-    facts = extract_facts(text)
-    profile = _extract_deterministic_profile(text, facts)
-
-    tier1_confidence = calculate_tier1_confidence(facts, profile)
+    # Use precomputed facts if provided, otherwise extract fresh
+    facts = facts if facts is not None else extract_facts(text)
+    profile, tier1_confidence, needs_ai = assess_tier1(text, facts, confidence_threshold)
     used_ai = False
 
     warnings = []
 
-    has_skills_or_loc = any(
-        f.get("claim_category") in ("SKILL", "LOCATION") for f in facts
-    )
-
-    # Check if Tier 1 confidence is below threshold or if any key field (Name, Job Title, Skills/Loc) is missing
-    missing_key_fields = (
-        profile["first_name"] == "Uploaded" 
-        or profile["current_title"] in ("Candidate", "Summary")
-        or not has_skills_or_loc
-    )
-
-    if tier1_confidence < confidence_threshold or missing_key_fields:
+    if needs_ai:
         used_ai, warnings = _apply_llm_fallback(profile, text, facts, model_name)
 
     # Final normalization guarantee

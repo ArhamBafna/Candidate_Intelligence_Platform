@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Briefcase, ChevronRight, User, Upload, CheckCircle2, AlertCircle, RefreshCw, MoreVertical, Download, Trash2, Sparkles, CheckSquare, Square, Check, X } from 'lucide-react';
+import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, Check, X } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function CandidateList() {
@@ -445,7 +445,7 @@ function CandidateList() {
       {/* Header */}
       <header className="flex justify-between items-center mb-2">
         <div>
-          <h1 className="text-3xl font-bold gradient-text tracking-tight">Candidate Intelligence Platform</h1>
+          <h1 className="text-3xl font-bold font-display tracking-tight text-slate-100">Candidate Intelligence Platform</h1>
           <p className="text-slate-400 mt-1">Local-first, zero-cloud candidate retrieval & CRM platform.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -508,7 +508,7 @@ function CandidateList() {
           </div>
           <div className="w-full bg-slate-900/80 rounded-full h-2.5 overflow-hidden shadow-inner">
             <div 
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+              className="bg-indigo-500 h-full rounded-full transition-all duration-300 ease-out"
               style={{ width: `${searchProgress.progress}%` }}
             />
           </div>
@@ -606,8 +606,8 @@ function CandidateList() {
                           candidate.match_percentage >= 50 ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' :
                           'bg-amber-500/15 text-amber-300 border-amber-500/30'
                         }`}>
-                          <Sparkles size={11} className="shrink-0" />
-                          {candidate.match_percentage}% Match
+                          <span className="font-extrabold text-[9px] uppercase tracking-wider bg-slate-800/80 px-1 rounded-sm border border-slate-700/80 text-slate-300">Match</span>
+                          {candidate.match_percentage}%
                         </span>
                       )}
                     </div>
@@ -727,8 +727,8 @@ function CandidateList() {
                     <div className="flex items-center gap-2 text-xs font-medium">
                       {item.status === 'SUCCESS' && (
                         item.used_ai_fallback ? (
-                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/15 px-2.5 py-1 rounded border border-purple-500/30">
-                            <Sparkles size={13} className="text-purple-400"/> Ingested (AI Model: {item.model_name || 'llama3.2'})
+                          <span className="flex items-center gap-1 text-indigo-300 bg-indigo-500/15 px-2.5 py-1 rounded border border-indigo-500/30">
+                            <span className="font-bold text-[9px] uppercase bg-indigo-500/30 px-1 rounded-sm text-indigo-200">AI</span> Ingested (Model: {item.model_name || 'llama3.2'})
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
@@ -740,8 +740,8 @@ function CandidateList() {
                       {item.status === 'SKIPPED_DUPLICATE' && <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20"><RefreshCw size={14}/> Duplicate</span>}
                       {item.status === 'IN_PROGRESS' && (
                         item.stage === 'AI_EXTRACTION' || item.used_ai ? (
-                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded border border-purple-500/40 animate-pulse font-medium">
-                            <Sparkles size={13} className="text-purple-400 animate-spin" /> AI Model Extraction ({item.model_name || 'llama3.2'})
+                          <span className="flex items-center gap-1 text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded border border-indigo-500/40 animate-pulse font-medium">
+                            <span className="font-bold text-[9px] uppercase bg-indigo-500/30 px-1 rounded-sm text-indigo-200">AI</span> Extraction ({item.model_name || 'llama3.2'})
                           </span>
                         ) : (
                           <span className="text-indigo-400 animate-pulse font-medium">{item.stage_detail || item.stage}...</span>
@@ -756,9 +756,9 @@ function CandidateList() {
                       className={`h-2 rounded-full transition-all duration-300 ${
                         item.status === 'FAILED' ? 'bg-red-500' : 
                         item.status === 'SKIPPED_DUPLICATE' ? 'bg-amber-500' : 
-                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-indigo-500' :
                         item.status === 'SUCCESS' ? 'bg-emerald-500' :
-                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-purple-500/30 animate-pulse' :
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-indigo-500 animate-pulse' :
                         'bg-indigo-500'
                       }`} 
                       style={{ width: `${item.progress}%` }}
@@ -766,8 +766,8 @@ function CandidateList() {
                   </div>
                   
                   {item.stage === 'AI_EXTRACTION' && (
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-200 text-xs shadow-inner">
-                      <Sparkles size={14} className="text-purple-400 shrink-0 animate-bounce" />
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-500/30 text-indigo-200 text-xs shadow-inner">
+                      <span className="font-bold text-[10px] uppercase bg-indigo-500/30 px-1.5 py-0.5 rounded-sm text-indigo-200">AI Process</span>
                       <span>{item.message || `Extracting candidate facts using local AI model (${item.model_name || 'llama3.2'})...`}</span>
                     </div>
                   )}

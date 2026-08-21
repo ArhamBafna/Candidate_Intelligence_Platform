@@ -36,7 +36,7 @@ class TimelineLedger:
             event.created_at = created_at
         
         session.add(event)
-        session.commit()
+        # Note: caller is responsible for committing the transaction
         return event
 
     def get_events(self, session: Session, candidate_id: str) -> List[CandidateTimelineEvent]:

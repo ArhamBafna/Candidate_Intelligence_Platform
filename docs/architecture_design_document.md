@@ -14,7 +14,7 @@
 
 The Candidate Intelligence Platform (CIP) is a local-first, zero-cost, high-scale recruitment automation system designed to unify search, entity resolution, evidence attribution, and candidate lifecycle management. Unlike simple keyword/vector resume search tools, CIP treats **original resumes as immutable source evidence** while maintaining a single, unified, working **Candidate Profile**.
 
-CIP enforces a strict separation between **explicit resume facts** and **AI-generated inferences**, guaranteeing complete auditability and zero hallucination contamination. It scales seamlessly to **100,000+ candidates** on local NVMe/SSD hardware with low memory requirements by using embedded database technologies (SQLite WAL + LanceDB) and local ONNX model execution.
+CIP enforces a strict separation between **explicit resume facts** and **AI-generated inferences**, guaranteeing complete auditability and zero hallucination contamination. It scales to **100,000+ candidates** on local NVMe/SSD hardware with low memory requirements by using embedded database technologies (SQLite WAL + LanceDB) and local ONNX model execution.
 
 ---
 

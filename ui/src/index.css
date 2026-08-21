@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @layer base {
@@ -34,14 +35,19 @@
   }
 
   body {
-    @apply bg-slate-900 text-slate-100 font-sans antialiased;
+    @apply bg-slate-900 text-slate-100 antialiased;
+    font-family: 'Roboto', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Outfit', sans-serif;
   }
 }
 
 .glass-panel {
-  @apply bg-slate-800/50 backdrop-blur-md border border-slate-700/50 shadow-xl;
+  @apply bg-slate-800 border border-slate-700 shadow-xl;
 }
 
 .gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400;
+  @apply text-slate-100 font-bold tracking-tight;
 }

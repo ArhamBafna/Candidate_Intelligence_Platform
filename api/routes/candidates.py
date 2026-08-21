@@ -25,7 +25,8 @@ from candidate_intelligence_platform.extraction.hybrid_extractor import (
     calculate_tier1_confidence,
     _extract_deterministic_profile,
     normalize_name,
-    normalize_title
+    normalize_title,
+    assess_tier1
 )
 from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts
 import structlog
@@ -235,19 +236,11 @@ async def reprocess_candidate_stream(
 
             raw_text = rv.raw_text if (rv and rv.raw_text) else ""
 
-            # 2. Entity Resolution
+            # 2. Entity Resolution (compute facts ONCE, reuse for assessment and extraction)
             used_ai = False
             if raw_text:
                 facts = await asyncio.to_thread(extract_facts, raw_text)
-                profile = await asyncio.to_thread(_extract_deterministic_profile, raw_text, facts)
-                tier1_conf = calculate_tier1_confidence(facts, profile)
-                has_skills_or_loc = any(f.get("claim_category") in ("SKILL", "LOCATION") for f in facts)
-                needs_ai = (
-                    tier1_conf < 0.40
-                    or profile["first_name"] == "Uploaded"
-                    or profile["current_title"] in ("Candidate", "Summary")
-                    or not has_skills_or_loc
-                )
+                profile, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
                 
                 if needs_ai:
                     llm_model = settings.llm_model
@@ -257,8 +250,9 @@ async def reprocess_candidate_stream(
                     yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False, 'warnings': reprocess_warnings})}\n\n"
                     await asyncio.sleep(0.02)
 
+                # Pass precomputed facts to avoid re-running spaCy NER
                 def do_extract():
-                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
                 extracted = await asyncio.to_thread(do_extract)
                 used_ai = extracted.get("used_ai_fallback", False)
                 
@@ -342,28 +336,42 @@ async def upload_resume(
     content = await file.read()
     cas_mgr = CASManager(settings.cas_root_dir)
     ext = Path(file.filename).suffix if file.filename else ".txt"
-    file_hash, cas_path = cas_mgr.store(content, extension=ext)
     
-    raw_text = ""
-    if ext.lower() == ".pdf":
-        try:
-            from ingestion.parsers.pdf_parser import parse_pdf
-            doc = parse_pdf(Path(cas_path))
-            raw_text = doc.text
-        except Exception:
+    # CAS store + parse on thread pool (CPU/IO bound)
+    def store_and_parse():
+        file_hash, cas_path = cas_mgr.store(content, extension=ext)
+        raw_text = ""
+        if ext.lower() == ".pdf":
+            try:
+                from ingestion.parsers.pdf_parser import parse_pdf
+                doc = parse_pdf(Path(cas_path))
+                raw_text = doc.text
+            except Exception:
+                raw_text = content.decode("utf-8", errors="ignore")
+        elif ext.lower() in [".docx", ".doc"]:
+            try:
+                from ingestion.parsers.docx_parser import parse_docx
+                doc = parse_docx(Path(cas_path))
+                raw_text = doc.text
+            except Exception:
+                raw_text = content.decode("utf-8", errors="ignore")
+        else:
             raw_text = content.decode("utf-8", errors="ignore")
-    elif ext.lower() in [".docx", ".doc"]:
-        try:
-            from ingestion.parsers.docx_parser import parse_docx
-            doc = parse_docx(Path(cas_path))
-            raw_text = doc.text
-        except Exception:
-            raw_text = content.decode("utf-8", errors="ignore")
-    else:
-        raw_text = content.decode("utf-8", errors="ignore")
+        return file_hash, raw_text
+    
+    file_hash, raw_text = await asyncio.to_thread(store_and_parse)
+    
+    # Check for duplicate (dedup)
+    existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
+    if existing_rv:
+        return {"status": "skipped", "message": "File already exists", "candidate_id": existing_rv.candidate_id}
         
     upload_warnings = []
-    extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+    
+    # Extract on thread pool (CPU-bound spaCy NER)
+    def extract_profile():
+        return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+    extracted = await asyncio.to_thread(extract_profile)
     if extracted.get("warnings"):
         upload_warnings.extend(extracted["warnings"])
         
@@ -416,18 +424,20 @@ async def upload_resume(
     )
     db.commit()
 
-    # Vector Insertion
+    # Vector Insertion (CPU-bound embedding: run on thread pool)
     doc = ParsedDocument(text=raw_text, pages=1)
     chunks = chunk_document(doc, cand_id, "SUMMARY")
     if chunks and vector_db:
-        texts = [c.text for c in chunks]
-        embeddings = generate_embeddings(texts)
-        if hasattr(vector_db, "create_table"):
-            table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-            records = []
-            for i, chunk in enumerate(chunks):
-                records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
-            table.add(records)
+        def embed_and_store():
+            texts = [c.text for c in chunks]
+            embeddings = generate_embeddings(texts)
+            if hasattr(vector_db, "create_table"):
+                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                records = []
+                for i, chunk in enumerate(chunks):
+                    records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
+                table.add(records)
+        await asyncio.to_thread(embed_and_store)
 
     logger.info("resume_upload_complete", status="success", file_hash=file_hash, parser_used=ext, candidate_id=cand_id)
     return {"status": "success", "candidate_id": cand_id, "first_name": cand.first_name, "last_name": cand.last_name, "warnings": upload_warnings}
@@ -439,6 +449,9 @@ async def upload_stream_resumes(
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
 ):
+    # Bounded semaphore to limit concurrent file processing
+    upload_semaphore = asyncio.Semaphore(4)
+    
     async def stream_generator():
         for file in files:
             file_warnings = []
@@ -449,10 +462,12 @@ async def upload_stream_resumes(
                 cas_mgr = CASManager(settings.cas_root_dir)
                 ext = Path(file.filename).suffix if file.filename else ".txt"
                 
+                # Hash on thread pool (CPU-bound)
+                file_hash = await asyncio.to_thread(lambda c: hashlib.sha256(c).hexdigest(), content)
+                
+                # Check for duplicate on thread pool (DB read)
                 def check_existing_rv(h):
                     return db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == h).first()
-                    
-                file_hash = await asyncio.to_thread(lambda c: hashlib.sha256(c).hexdigest(), content)
                 existing_rv = await asyncio.to_thread(check_existing_rv, file_hash)
                 if existing_rv:
                     logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", file_hash=file_hash)
@@ -461,48 +476,41 @@ async def upload_stream_resumes(
                 
                 _, cas_path = cas_mgr.store(content, extension=ext)
                 
-                # 2. Parsing
+                # 2. Parsing (CPU-bound: run on thread pool)
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'PARSING', 'status': 'IN_PROGRESS', 'progress': 30})}\n\n"
-                await asyncio.sleep(0.01) # Yield to event loop
-                raw_text = ""
-                if ext.lower() == ".pdf":
-                    try:
-                        from ingestion.parsers.pdf_parser import parse_pdf
-                        doc = parse_pdf(Path(cas_path))
-                        raw_text = doc.text
-                    except Exception:
+                
+                def parse_file():
+                    raw_text = ""
+                    if ext.lower() == ".pdf":
+                        try:
+                            from ingestion.parsers.pdf_parser import parse_pdf
+                            doc = parse_pdf(Path(cas_path))
+                            raw_text = doc.text
+                        except Exception:
+                            raw_text = content.decode("utf-8", errors="ignore")
+                    elif ext.lower() in [".docx", ".doc"]:
+                        try:
+                            from ingestion.parsers.docx_parser import parse_docx
+                            doc = parse_docx(Path(cas_path))
+                            raw_text = doc.text
+                        except Exception:
+                            raw_text = content.decode("utf-8", errors="ignore")
+                    else:
                         raw_text = content.decode("utf-8", errors="ignore")
-                        file_warnings.append("Structured PDF parsing failed; continued using raw text fallback.")
-                elif ext.lower() in [".docx", ".doc"]:
-                    try:
-                        from ingestion.parsers.docx_parser import parse_docx
-                        doc = parse_docx(Path(cas_path))
-                        raw_text = doc.text
-                    except Exception:
-                        raw_text = content.decode("utf-8", errors="ignore")
-                        file_warnings.append("Structured DOCX parsing failed; continued using raw text fallback.")
-                else:
-                    raw_text = content.decode("utf-8", errors="ignore")
+                    return raw_text
+                
+                raw_text = await asyncio.to_thread(parse_file)
                     
-                # 3. Chunking
+                # 3. Chunking (CPU-bound: run on thread pool)
                 yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'CHUNKING', 'status': 'IN_PROGRESS', 'progress': 50})}\n\n"
-                await asyncio.sleep(0.01)
                 doc = ParsedDocument(text=raw_text, pages=1)
                 def do_chunking():
                     return chunk_document(doc, cand_id if 'cand_id' in locals() else "tmp", "SUMMARY")
                 chunks = await asyncio.to_thread(do_chunking)
                 
-                # 4. Entity Resolution (simplified extraction)
+                # 4. Entity Resolution (compute facts ONCE, reuse for assessment and extraction)
                 facts = await asyncio.to_thread(extract_facts, raw_text)
-                profile = await asyncio.to_thread(_extract_deterministic_profile, raw_text, facts)
-                tier1_conf = calculate_tier1_confidence(facts, profile)
-                has_skills_or_loc = any(f.get("claim_category") in ("SKILL", "LOCATION") for f in facts)
-                needs_ai = (
-                    tier1_conf < 0.40 
-                    or profile["first_name"] == "Uploaded" 
-                    or profile["current_title"] in ("Candidate", "Summary")
-                    or not has_skills_or_loc
-                )
+                profile, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
                 
                 if needs_ai:
                     llm_model = settings.llm_model
@@ -512,8 +520,9 @@ async def upload_stream_resumes(
                     yield f"data: {json.dumps({'file_name': file.filename, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 70, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False})}\n\n"
                     await asyncio.sleep(0.01)
 
+                # Pass precomputed facts to avoid re-running spaCy NER
                 def extract_profile():
-                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
                 extracted = await asyncio.to_thread(extract_profile)
                 if extracted.get("warnings"):
                     file_warnings.extend(extracted["warnings"])
@@ -572,19 +581,23 @@ async def upload_stream_resumes(
                     db.commit()
                 await asyncio.to_thread(do_fts_insertion)
 
-                # Vector Insertion (use pre-computed chunks but fix candidate_id)
+                # Vector Insertion (CPU-bound embedding + vector store: run on thread pool)
                 if chunks and vector_db:
                     try:
                         for c in chunks:
                             c.candidate_id = cand_id
-                        texts = [c.text for c in chunks]
-                        embeddings = generate_embeddings(texts)
-                        if hasattr(vector_db, "create_table"):
-                            table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                            records = []
-                            for i, chunk in enumerate(chunks):
-                                records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
-                            table.add(records)
+                        
+                        def embed_and_store():
+                            texts = [c.text for c in chunks]
+                            embeddings = generate_embeddings(texts)
+                            if hasattr(vector_db, "create_table"):
+                                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
+                                records = []
+                                for i, chunk in enumerate(chunks):
+                                    records.append(CandidateSectionVector.create_record(chunk, rv.id, embeddings[i]))
+                                table.add(records)
+                        
+                        await asyncio.to_thread(embed_and_store)
                     except Exception:
                         file_warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
                 
@@ -606,9 +619,14 @@ def batch_delete_candidates(
     vector_db = Depends(get_vector_db)
 ):
     deleted_ids = []
-    for candidate_id in payload.candidate_ids:
-        if CandidateService.delete_candidate(db, candidate_id, vector_db):
-            deleted_ids.append(candidate_id)
+    try:
+        for candidate_id in payload.candidate_ids:
+            if CandidateService.delete_candidate(db, candidate_id, vector_db, commit=False):
+                deleted_ids.append(candidate_id)
+        db.commit()  # Single commit for all deletes
+    except Exception:
+        db.rollback()
+        raise
 
     return {
         "status": "success",
@@ -655,19 +673,11 @@ async def batch_reprocess_candidate_stream(
                 
                 raw_text = rv.raw_text
 
-                # 2. Entity Resolution
+                # 2. Entity Resolution (compute facts ONCE, reuse for assessment and extraction)
                 used_ai = False
                 try:
                     facts = await asyncio.to_thread(extract_facts, raw_text)
-                    profile = await asyncio.to_thread(_extract_deterministic_profile, raw_text, facts)
-                    tier1_conf = calculate_tier1_confidence(facts, profile)
-                    has_skills_or_loc = any(f.get("claim_category") in ("SKILL", "LOCATION") for f in facts)
-                    needs_ai = (
-                        tier1_conf < 0.40
-                        or profile["first_name"] == "Uploaded"
-                        or profile["current_title"] in ("Candidate", "Summary")
-                        or not has_skills_or_loc
-                    )
+                    profile, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
 
                     if needs_ai:
                         llm_model = settings.llm_model
@@ -677,8 +687,9 @@ async def batch_reprocess_candidate_stream(
                         yield f"data: {json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities (Rule-based)...', 'used_ai': False, 'warnings': reprocess_warnings})}\n\n"
                         await asyncio.sleep(0.02)
 
+                    # Pass precomputed facts to avoid re-running spaCy NER
                     def do_extract():
-                        return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
+                        return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
                     extracted = await asyncio.to_thread(do_extract)
                     used_ai = extracted.get("used_ai_fallback", False)
                     if extracted.get("warnings"):

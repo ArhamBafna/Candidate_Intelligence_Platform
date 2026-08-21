@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Gear, MagnifyingGlass, FileText, ChartBar, Timer, Warning } from '@phosphor-icons/react';
 
 export default function SystemLogDrawer() {
   const [isOpen, setIsOpen] = useState(false);
@@ -55,7 +56,7 @@ export default function SystemLogDrawer() {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999, fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999, fontFamily: 'Roboto, sans-serif' }}>
       {/* Floating Status Pill */}
       {!isOpen && (
         <button
@@ -93,8 +94,7 @@ export default function SystemLogDrawer() {
           width: '440px',
           maxHeight: '580px',
           borderRadius: '16px',
-          background: 'rgba(15, 23, 42, 0.95)',
-          backdropFilter: 'blur(16px)',
+          background: '#0f172a', /* Solid slate-900 */
           border: '1px solid rgba(255, 255, 255, 0.15)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
           display: 'flex',
@@ -109,11 +109,11 @@ export default function SystemLogDrawer() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'rgba(30, 41, 59, 0.6)'
+            background: 'rgba(30, 41, 59, 1)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px' }}>⚙️</span>
-              <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '-0.01em' }}>System Activity Console</span>
+              <span style={{ fontSize: '18px', display: 'flex' }}><Gear /></span>
+              <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '-0.01em', fontFamily: 'Outfit, sans-serif' }}>System Activity Console</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -224,12 +224,12 @@ export default function SystemLogDrawer() {
                     </div>
 
                     {/* Metadata details */}
-                    <div style={{ color: '#94a3b8', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      {log.query && <div>🔍 Query: <span style={{ color: '#cbd5e1' }}>"{log.query}"</span></div>}
-                      {log.file_hash && <div>📄 Hash: <code style={{ color: '#93c5fd' }}>{log.file_hash.substring(0, 16)}...</code></div>}
-                      {log.candidates_returned !== undefined && <div>📊 Returned: <span style={{ color: '#cbd5e1' }}>{log.candidates_returned} candidates</span></div>}
-                      {log.total_duration_ms !== undefined && <div>⏱️ Latency: <span style={{ color: '#34d399' }}>{log.total_duration_ms} ms</span> (vector: {log.vector_search_duration_ms}ms, db: {log.db_retrieval_duration_ms}ms)</div>}
-                      {log.error && <div style={{ color: '#fca5a5', marginTop: '2px' }}>⚠️ Error: {log.error}</div>}
+                    <div style={{ color: '#94a3b8', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                      {log.query && <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MagnifyingGlass size={12}/> Query: <span style={{ color: '#cbd5e1' }}>"{log.query}"</span></div>}
+                      {log.file_hash && <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><FileText size={12}/> Hash: <code style={{ color: '#93c5fd' }}>{log.file_hash.substring(0, 16)}...</code></div>}
+                      {log.candidates_returned !== undefined && <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><ChartBar size={12}/> Returned: <span style={{ color: '#cbd5e1' }}>{log.candidates_returned} candidates</span></div>}
+                      {log.total_duration_ms !== undefined && <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Timer size={12}/> Latency: <span style={{ color: '#34d399' }}>{log.total_duration_ms} ms</span> (vector: {log.vector_search_duration_ms}ms, db: {log.db_retrieval_duration_ms}ms)</div>}
+                      {log.error && <div style={{ color: '#fca5a5', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}><Warning size={12}/> Error: {log.error}</div>}
                       {log.timestamp && <div style={{ fontSize: '9px', color: '#475569', marginTop: '2px' }}>{new Date(log.timestamp).toLocaleTimeString()}</div>}
                     </div>
                   </div>

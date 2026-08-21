@@ -81,11 +81,16 @@ class EntityResolutionAudit(Base):
 
 def init_db(engine: Engine):
     """
-    Creates all declarative tables and the FTS5 virtual tables.
+    Creates all declarative tables, FTS5 virtual tables, and performance indexes.
     """
     Base.metadata.create_all(engine)
     
     with engine.begin() as conn:
+        # Performance indexes on FK columns (not auto-created by SQLAlchemy)
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_resume_versions_candidate_id ON resume_versions(candidate_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_candidate_claims_candidate_id ON candidate_claims(candidate_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_candidate_claims_resume_version_id ON candidate_claims(resume_version_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_candidate_timeline_events_candidate_id ON candidate_timeline_events(candidate_id)"))
         conn.execute(text("""
             CREATE VIRTUAL TABLE IF NOT EXISTS candidate_fts USING fts5(
                 candidate_id UNINDEXED,

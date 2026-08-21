@@ -8,7 +8,7 @@ from candidate_intelligence_platform.intelligence.embeddings import generate_emb
 
 class CandidateService:
     @staticmethod
-    def delete_candidate(db: Session, candidate_id: str, vector_db) -> bool:
+    def delete_candidate(db: Session, candidate_id: str, vector_db, commit: bool = True) -> bool:
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if not candidate:
             return False
@@ -25,7 +25,8 @@ class CandidateService:
         db.query(CandidateTimelineEvent).filter(CandidateTimelineEvent.candidate_id == candidate_id).delete()
 
         db.delete(candidate)
-        db.commit()
+        if commit:
+            db.commit()
 
         if vector_db:
             if hasattr(vector_db, "delete_candidate_vectors"):
@@ -53,7 +54,7 @@ class CandidateService:
                 "content": raw_text
             }
         )
-        db.commit()
+        # Note: caller is responsible for committing the transaction
 
     @staticmethod
     def update_vector_index(vector_db, candidate_id: str, raw_text: str, rv_id: str):

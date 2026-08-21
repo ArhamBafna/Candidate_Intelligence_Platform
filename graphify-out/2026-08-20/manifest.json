@@ -180,10 +180,10 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1786910603.8344588,
-    "seen": 1787269790.097792,
-    "ast_hash": "d6b0bf2e4ebb9f92d58c2cacc3ab2c56",
-    "semantic_hash": "d6b0bf2e4ebb9f92d58c2cacc3ab2c56"
+    "mtime": 1787276793.048461,
+    "seen": 1787276905.5443897,
+    "ast_hash": "095a8c9e6427fbbd477fbd1638556b1b",
+    "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/__init__.py": {
     "mtime": 1786910603.8344588,
@@ -270,10 +270,10 @@
     "semantic_hash": "e851d50cb8647b8c0ce24bc8b3c4f3bf"
   },
   "tests/conftest.py": {
-    "mtime": 1787152564.2635982,
-    "seen": 1787269790.097806,
-    "ast_hash": "394f7abe940304d182271da4801d841e",
-    "semantic_hash": "394f7abe940304d182271da4801d841e"
+    "mtime": 1787276799.372882,
+    "seen": 1787276905.5444083,
+    "ast_hash": "bdd676693466146b9447dec6ddca3a61",
+    "semantic_hash": ""
   },
   "tests/test_ai_failure_logging.py": {
     "mtime": 1787148803.1268864,
@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "tests/test_live_ollama_standalone.py": {
-    "mtime": 1787275844.3234906,
-    "seen": 1787276366.425738,
-    "ast_hash": "af7a245012b643b64b92b3715047f398",
+    "mtime": 1787276807.0097516,
+    "seen": 1787276905.5444334,
+    "ast_hash": "2947c185bde8828abe087da69323d138",
     "semantic_hash": ""
   },
   "tests/test_local_llm_fallback.py": {

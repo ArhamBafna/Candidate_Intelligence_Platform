@@ -65,9 +65,12 @@ def extract_facts(text: str) -> list[dict]:
                 "confidence_score": 1.0
             })
 
-    # 3. Spacy NER (Names, Locations)
+    # 3. Spacy NER (Names, Locations) - truncate to header for speed
+    # Names and locations are always in the first page; long resumes waste CPU
     if nlp is not None:
-        doc = nlp(text)
+        # Truncate to first 5000 chars (covers ~2 pages of text)
+        ner_text = text[:5000] if len(text) > 5000 else text
+        doc = nlp(ner_text)
         for ent in doc.ents:
             if ent.label_ == "PERSON":
                 facts.append({
