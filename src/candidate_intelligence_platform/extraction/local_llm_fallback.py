@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import ollama
 import structlog
@@ -7,13 +8,15 @@ logger = structlog.get_logger(__name__)
 
 VALID_CATEGORIES = {"PERSON", "CONTACT", "EMPLOYMENT", "SKILL", "EDUCATION", "LOCATION"}
 
-def extract_inferences(text: str, model_name: str | None = None) -> list[dict]:
+def extract_inferences(text: str, model_name: str | None = None, timeout_seconds: float = 30.0) -> list[dict]:
     """
     Extract AI inferences from text using a local LLM via Ollama.
     Defaults to configured Settings model (llama3.2).
     Includes validation, anomaly logging, and self-healing for LLM schema deviations.
     """
     selected_model = model_name or Settings().llm_model
+    # Truncate text to header/profile section (~3000 chars) to ensure fast inference on CPU
+    truncated_text = (text or "")[:3000]
     prompt = f"""
 You are an expert fact-extraction engine for resumes. Extract all candidate facts into structured JSON.
 
@@ -60,20 +63,25 @@ Return ONLY valid JSON matching this schema:
 }}
 
 Text:
-{text}
+{truncated_text}
 """
     
     try:
-        response = ollama.chat(
-            model=selected_model,
-            messages=[
-                {
-                    'role': 'user',
-                    'content': prompt
-                }
-            ],
-            format='json'
-        )
+        def _call_ollama():
+            return ollama.chat(
+                model=selected_model,
+                messages=[
+                    {
+                        'role': 'user',
+                        'content': prompt
+                    }
+                ],
+                format='json'
+            )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_ollama)
+            response = future.result(timeout=timeout_seconds)
         
         content = response.message.content
         try:

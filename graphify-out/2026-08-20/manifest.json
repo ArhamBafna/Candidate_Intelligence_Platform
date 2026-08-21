@@ -174,10 +174,10 @@
     "semantic_hash": "8544c15c80f00bfe6d66865bd476587f"
   },
   "ingestion/parsers/pdf_parser.py": {
-    "mtime": 1787273450.5411787,
-    "seen": 1787273660.600044,
-    "ast_hash": "7402cc533ce42fe3ee1b71f6439d2e80",
-    "semantic_hash": ""
+    "mtime": 1787148909.2353182,
+    "seen": 1787269790.097791,
+    "ast_hash": "e18429a58c41af59004c1433a132e25b",
+    "semantic_hash": "e18429a58c41af59004c1433a132e25b"
   },
   "pyproject.toml": {
     "mtime": 1786910603.8344588,
@@ -198,16 +198,16 @@
     "semantic_hash": "b6ab82bc7d428503bb36c90413fcf7a9"
   },
   "src/candidate_intelligence_platform/extraction/hybrid_extractor.py": {
-    "mtime": 1787273470.478111,
-    "seen": 1787273660.6000493,
-    "ast_hash": "19899169442e88d6190d8ee34a2394dd",
-    "semantic_hash": ""
+    "mtime": 1787148786.3959444,
+    "seen": 1787269790.0977948,
+    "ast_hash": "4ec623aac35f8957733dadccaa1a2d75",
+    "semantic_hash": "4ec623aac35f8957733dadccaa1a2d75"
   },
   "src/candidate_intelligence_platform/extraction/local_llm_fallback.py": {
-    "mtime": 1787273614.9215605,
-    "seen": 1787273660.6000502,
-    "ast_hash": "b885ae9284b8d153df4d72ab3f87d0e5",
-    "semantic_hash": ""
+    "mtime": 1787085452.039595,
+    "seen": 1787269790.0977955,
+    "ast_hash": "3972d2e60fe8ad1ba2a613a72f5037c0",
+    "semantic_hash": "3972d2e60fe8ad1ba2a613a72f5037c0"
   },
   "src/candidate_intelligence_platform/intelligence/embeddings.py": {
     "mtime": 1787148499.0514834,
@@ -378,10 +378,10 @@
     "semantic_hash": "0cdbbb7ba7ca6bfb451896f36987b669"
   },
   "tests/test_hybrid_extractor.py": {
-    "mtime": 1787273481.362847,
-    "seen": 1787273660.6000805,
-    "ast_hash": "9a9fa7bc6bd31cf92ad13c990ca3002b",
-    "semantic_hash": ""
+    "mtime": 1786910603.858909,
+    "seen": 1787269790.0978222,
+    "ast_hash": "c955ad270f57755d879df7fa800a0823",
+    "semantic_hash": "c955ad270f57755d879df7fa800a0823"
   },
   "tests/test_intelligence.py": {
     "mtime": 1787149294.4670043,
@@ -426,10 +426,10 @@
     "semantic_hash": "8382131e44c0ab68816e6b308706475f"
   },
   "tests/test_settings.py": {
-    "mtime": 1787273475.5964134,
-    "seen": 1787273660.6000896,
-    "ast_hash": "e6211a56c15c1e61566ecee21e5ce1a4",
-    "semantic_hash": ""
+    "mtime": 1787152353.5825913,
+    "seen": 1787269790.097829,
+    "ast_hash": "a67fec8ada35b27ef9f1aeb72dae4aed",
+    "semantic_hash": "a67fec8ada35b27ef9f1aeb72dae4aed"
   },
   "tests/test_state_machine.py": {
     "mtime": 1787143721.138317,

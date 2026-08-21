@@ -5,7 +5,7 @@ Public interface:
 """
 from pathlib import Path
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 
 from ingestion.parsers.models import ParsedDocument
 

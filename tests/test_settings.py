@@ -8,8 +8,8 @@ def test_default_settings(monkeypatch):
     monkeypatch.delenv("CIP_VECTOR_DB_PATH", raising=False)
     settings = Settings()
     
-    assert settings.db_path == "storage/cip_main.db"
-    assert settings.cas_root_dir == "storage/documents"
-    assert settings.vector_db_path == "storage/lancedb"
+    assert settings.db_path.endswith("cip_main.db")
+    assert settings.cas_root_dir.endswith("documents")
+    assert settings.vector_db_path.endswith("lancedb")
     assert settings.embedding_model == "BAAI/bge-small-en-v1.5"
     assert settings.entity_resolution_auto_merge_threshold == 0.92

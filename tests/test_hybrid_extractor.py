@@ -96,4 +96,24 @@ def test_extract_candidate_profile_hybrid_ai_fallback_failed_warning(monkeypatch
     assert "warnings" in res
     assert any("LLM fallback attempted" in w for w in res["warnings"])
 
+def test_extract_candidate_profile_with_page_header_noise():
+    text = """
+    Page 1 of 2
+    SRINIVAS PEDDI
+    Alpharetta, GA | (404) 992-1973 | srinipe28@gmail.com
+    ____________________________________________________
+    PROFESSIONAL SUMMARY
+    Cybersecurity professional with extensive experience partnering with engineering teams.
+    Skills: Python, SQL, Docker, AWS
+    """
+    res = extract_candidate_profile_hybrid(text, confidence_threshold=0.70)
+    assert res["first_name"] == "Srinivas"
+    assert res["last_name"] == "Peddi"
+    assert res["primary_email"] == "srinipe28@gmail.com"
+    assert res["primary_phone"] == "(404) 992-1973"
+    assert "Cybersecurity" in res["current_title"]
+    assert res["used_ai_fallback"] is False
+    assert res["confidence_score"] >= 0.70
+
+
 

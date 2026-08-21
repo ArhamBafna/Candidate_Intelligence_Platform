@@ -6,7 +6,8 @@ from candidate_intelligence_platform.extraction.local_llm_fallback import extrac
 TITLE_KEYWORDS = {
     "engineer", "developer", "manager", "lead", "architect", "analyst", 
     "specialist", "director", "administrator", "consultant", "designer", "scientist",
-    "programmer", "officer", "executive", "coordinator", "technician"
+    "programmer", "officer", "executive", "coordinator", "technician", "cybersecurity",
+    "security", "devops", "cloud", "qa"
 }
 
 TITLE_IGNORE_HEADINGS = {
@@ -19,6 +20,22 @@ TITLE_IGNORE_HEADINGS = {
     "education", "academic background", "certifications",
     "resume", "curriculum vitae", "cv"
 }
+
+IGNORE_HEADER_PATTERNS = [
+    re.compile(r'^page\s+\d+(\s+of\s+\d+)?$', re.IGNORECASE),
+    re.compile(r'^\d+\s*/\s*\d+$'),
+    re.compile(r'^[_\-=\*~]{3,}$'),
+    re.compile(r'^(curriculum\s+vitae|resume|cv|confidential|profile|bio)$', re.IGNORECASE)
+]
+
+def is_noise_header_line(line: str) -> bool:
+    line_clean = line.strip()
+    if not line_clean:
+        return True
+    for pat in IGNORE_HEADER_PATTERNS:
+        if pat.match(line_clean):
+            return True
+    return False
 
 def normalize_name(text: str | None) -> str:
     """
@@ -112,27 +129,39 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
         first_name = normalize_name(parts[0])
         last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
     elif lines:
-        header_line = lines[0]
-        if not EMAIL_REGEX.search(header_line) and not PHONE_REGEX.search(header_line):
-            parts = header_line.split()
-            if 1 <= len(parts) <= 3:
+        for line in lines[:8]:
+            clean_line = line.strip()
+            if not clean_line or is_noise_header_line(clean_line):
+                continue
+            if EMAIL_REGEX.search(clean_line) or PHONE_REGEX.search(clean_line):
+                continue
+            if any(kw in clean_line.lower() for kw in ("http", "www", "github", "linkedin")):
+                continue
+            parts = clean_line.split()
+            if 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts):
                 first_name = normalize_name(parts[0])
                 last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
+                break
 
-    if (last_name.lower() in ("candidate", "") or not last_name) and email:
+    if email:
         local_part = email.split("@")[0]
         if "." in local_part:
             email_parts = local_part.split(".")
-            if len(email_parts) >= 2 and email_parts[0].lower() == first_name.lower():
-                inferred_last = re.sub(r'\d+', '', email_parts[1])
-                if inferred_last and len(inferred_last) > 1:
-                    last_name = normalize_name(inferred_last)
+            if len(email_parts) >= 2:
+                if first_name.lower() in ("uploaded", "") or not first_name:
+                    inferred_first = re.sub(r'\d+', '', email_parts[0])
+                    if inferred_first and len(inferred_first) > 1:
+                        first_name = normalize_name(inferred_first)
+                if last_name.lower() in ("candidate", "") or not last_name:
+                    inferred_last = re.sub(r'\d+', '', email_parts[1])
+                    if inferred_last and len(inferred_last) > 1:
+                        last_name = normalize_name(inferred_last)
 
     title = "Candidate"
     candidate_full_name = f"{first_name} {last_name}".strip().lower()
-    for line in lines[1:]:
+    for line in lines:
         clean_l = line.strip()
-        if not clean_l:
+        if not clean_l or is_noise_header_line(clean_l):
             continue
         if EMAIL_REGEX.search(clean_l) or PHONE_REGEX.search(clean_l):
             continue
@@ -142,9 +171,17 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
         if lower_l == candidate_full_name or lower_l == first_name.lower():
             continue
         if any(kw in lower_l for kw in TITLE_KEYWORDS):
-            title = normalize_title(clean_l[:100])
+            words = clean_l.split()
+            if len(words) > 7:
+                match = re.search(r'^(.*?(?:professional|engineer|developer|analyst|specialist|architect|manager|lead|officer|consultant))', clean_l, re.IGNORECASE)
+                if match:
+                    title = normalize_title(match.group(1))
+                else:
+                    title = normalize_title(" ".join(words[:5]))
+            else:
+                title = normalize_title(clean_l[:100])
             break
-        if title == "Candidate" and len(clean_l) <= 100 and not any(kw in lower_l for kw in ("http", "www", "github", "linkedin")):
+        if title == "Candidate" and len(clean_l) <= 80 and not any(kw in lower_l for kw in ("http", "www", "github", "linkedin")):
             title = normalize_title(clean_l)
 
     return {
