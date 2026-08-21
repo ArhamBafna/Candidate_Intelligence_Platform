@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/extraction/hybrid_extractor.py": {
-    "mtime": 1787279881.0834136,
-    "seen": 1787280347.30126,
-    "ast_hash": "04dc831535a71c6976f4686043c0903f",
+    "mtime": 1787340888.058501,
+    "seen": 1787341630.3204947,
+    "ast_hash": "79d2543aec5508112e304dfd4b7ec7c4",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/extraction/local_llm_fallback.py": {
@@ -222,10 +222,10 @@
     "semantic_hash": "e6e3f12cce1785ca69612ecadbae04df"
   },
   "src/candidate_intelligence_platform/search/ast_parser.py": {
-    "mtime": 1787148858.7811232,
-    "seen": 1787269790.097798,
-    "ast_hash": "2c61ee8507e5dd045382d39018d1ca66",
-    "semantic_hash": "2c61ee8507e5dd045382d39018d1ca66"
+    "mtime": 1787341478.604667,
+    "seen": 1787341630.3205047,
+    "ast_hash": "c23592b96edeffc3988635269b3c98ea",
+    "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/hybrid_searcher.py": {
     "mtime": 1787324525.0516658,
@@ -300,10 +300,10 @@
     "semantic_hash": "1c3fc26693f8d9dcc9f09a0321ccc655"
   },
   "tests/test_api_search.py": {
-    "mtime": 1787152506.3460026,
-    "seen": 1787269790.0978103,
-    "ast_hash": "e216ee326f9a1aa99677cee4470ad17a",
-    "semantic_hash": "e216ee326f9a1aa99677cee4470ad17a"
+    "mtime": 1787340888.060532,
+    "seen": 1787341630.3205345,
+    "ast_hash": "99aae3930c1a8d1d71d2cf4162d37793",
+    "semantic_hash": ""
   },
   "tests/test_api_search_stream.py": {
     "mtime": 1786910603.8530903,
@@ -414,9 +414,9 @@
     "semantic_hash": ""
   },
   "tests/test_search_engine.py": {
-    "mtime": 1787325845.2563255,
-    "seen": 1787326026.6202164,
-    "ast_hash": "12785ee93f0f6e29a26384e104a74a05",
+    "mtime": 1787341448.4096134,
+    "seen": 1787341630.320578,
+    "ast_hash": "5e43e4a9923b7ded8edb6ec6dcd93118",
     "semantic_hash": ""
   },
   "tests/test_search_logging.py": {
@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "ui/src/pages/CandidateList.jsx": {
-    "mtime": 1787328052.034209,
-    "seen": 1787328088.68637,
-    "ast_hash": "6385167979116cd8126d827d62303fb2",
+    "mtime": 1787341521.0817037,
+    "seen": 1787341630.3206434,
+    "ast_hash": "3f7933d259426145dcef53a129aa81c5",
     "semantic_hash": ""
   },
   "ui/tailwind.config.js": {
@@ -629,12 +629,6 @@
     "ast_hash": "6d5180a782d64c8cf51ba01c2a2184d8",
     "semantic_hash": "6d5180a782d64c8cf51ba01c2a2184d8"
   },
-  "docs/anti_ai_pattern_findings.md": {
-    "mtime": 1787278786.6615243,
-    "seen": 1787280347.3013563,
-    "ast_hash": "692fbe64bfe641710e7ab37d74d3df2e",
-    "semantic_hash": ""
-  },
   "docs/setup/environment_setup_windows.md": {
     "mtime": 1786910603.8262324,
     "seen": 1787280347.3013637,
@@ -675,6 +669,48 @@
     "mtime": 1787327664.4903808,
     "seen": 1787328088.6863854,
     "ast_hash": "86748a31b0915a4f2716d55b32bc5816",
+    "semantic_hash": ""
+  },
+  "ingestion_reports/bulk_ingest_checkpoint.json": {
+    "mtime": 1787340888.0548522,
+    "seen": 1787341630.3204782,
+    "ast_hash": "54bb8b3325b24ade86caf5f84bc1c07f",
+    "semantic_hash": ""
+  },
+  "ingestion_reports/bulk_ingest_report.json": {
+    "mtime": 1787340888.0551815,
+    "seen": 1787341630.3204827,
+    "ast_hash": "db308d72f9ab87749822983917b15c4d",
+    "semantic_hash": ""
+  },
+  "scripts/bulk_ingest.py": {
+    "mtime": 1787340888.0578022,
+    "seen": 1787341630.3204877,
+    "ast_hash": "2c434f7e86033b0efb4d8c00edfa7116",
+    "semantic_hash": ""
+  },
+  "tests/test_bulk_ingest.py": {
+    "mtime": 1787340888.060532,
+    "seen": 1787341630.3205426,
+    "ast_hash": "2b4fc673093e6052719fb8bdc5842109",
+    "semantic_hash": ""
+  },
+  "docs/handoffs/handoff-bulk-resume-ingestion.md": {
+    "mtime": 1787340888.05268,
+    "seen": 1787341630.3206725,
+    "ast_hash": "397c928e40a13cbaaa14f054747615d5",
+    "semantic_hash": ""
+  },
+  "docs/handoffs/search-query-bug-analysis.md": {
+    "mtime": 1787340888.0538642,
+    "seen": 1787341630.3206763,
+    "ast_hash": "5246aabda750446831c3986be488290d",
+    "semantic_hash": ""
+  },
+  "ingestion_reports/bulk_ingest_summary.md": {
+    "mtime": 1787340888.0557494,
+    "seen": 1787341630.320698,
+    "ast_hash": "dd0f07323114881e8a1c13000ea72f1a",
     "semantic_hash": ""
   }
 }

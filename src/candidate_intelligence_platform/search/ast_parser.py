@@ -37,8 +37,8 @@ def parse_query_to_sql(query: str) -> tuple[str, dict]:
     if fts_query.count("'") % 2 != 0:
         fts_query = fts_query.replace("'", "")
         
-    # Remove FTS5 illegal characters
-    fts_query = re.sub(r'[!()*^{}\[\]~:]', ' ', fts_query)
+    # Remove FTS5 illegal characters including -, /, and +
+    fts_query = re.sub(r'[!()*^{}\[\]~:\-\/+]', ' ', fts_query)
     fts_query = re.sub(r'\s+', ' ', fts_query).strip()
     
     if fts_query:

@@ -399,6 +399,7 @@ function CandidateList() {
                   }, 800);
                 } else if (event.stage === 'ERROR') {
                   console.error('Search error:', event.message);
+                  setSearchWarnings([`Search failed: ${event.message}`]);
                   setIsSearching(false);
                   setSearchProgress(null);
                 } else {

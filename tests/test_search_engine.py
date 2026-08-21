@@ -16,6 +16,14 @@ def test_parse_query_to_sql():
     assert params["yoe"] == 5
     assert "python" in params["fts_query"]
 
+def test_parse_query_to_sql_special_chars():
+    query = "Java/J2EE hands-on C++"
+    sql, params = parse_query_to_sql(query)
+    
+    assert "candidate_fts MATCH :fts_query" in sql
+    # The special characters should be stripped or replaced by spaces
+    assert params["fts_query"] == "Java J2EE hands on C"
+
 def test_reciprocal_rank_fusion():
     fts_ranks = {"cand_1": 1, "cand_2": 2, "cand_3": 3}
     vector_ranks = {"cand_3": 1, "cand_1": 4}
