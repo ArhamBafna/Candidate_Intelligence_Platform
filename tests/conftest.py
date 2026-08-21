@@ -145,3 +145,19 @@ def client(db_engine, mock_vector_db, test_settings):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-ollama",
+        action="store_true",
+        default=False,
+        help="Run live Ollama LLM integration tests",
+    )
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--run-ollama"):
+        skip_ollama = pytest.mark.skip(reason="Pass --run-ollama flag to run live Ollama tests")
+        for item in items:
+            if "ollama" in item.keywords:
+                item.add_marker(skip_ollama)
+

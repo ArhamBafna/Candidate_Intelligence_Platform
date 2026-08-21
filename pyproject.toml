@@ -28,6 +28,9 @@ candidate-intelligence-platform = "candidate_intelligence_platform:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+markers = [
+    "ollama: marks tests as requiring live Ollama instance (skipped by default, run with --run-ollama)",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]

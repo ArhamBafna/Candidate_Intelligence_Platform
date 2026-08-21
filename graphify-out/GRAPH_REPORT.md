@@ -1,21 +1,20 @@
 # Graph Report - Candidate_Intelligence_Platform  (2026-08-20)
 
 ## Corpus Check
-- 103 files · ~38,771 words
+- 103 files · ~38,828 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 587 nodes · 1067 edges · 51 communities (40 shown, 11 thin omitted)
+- 590 nodes · 1071 edges · 50 communities (39 shown, 11 thin omitted)
 - Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 124 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1325bb9b`
+- Built from commit: `dd7b364a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- CandidateSectionVector
 - Settings
 - routes/candidates.py
 - extract_candidate_profile_hybrid
@@ -23,7 +22,7 @@
 - devDependencies
 - hybrid_searcher.py
 - ParsedDocument
-- test_api_candidates.py
+- Candidate
 - Advanced Optimization
 - extract_inferences
 - App.jsx
@@ -70,10 +69,10 @@
   ui/src/assets/hero.png → docs/architecture_design_document.md
 - `lifespan()` --uses--> `Settings`  [INFERRED]
   api/main.py → config/settings.py
-- `update_candidate()` --calls--> `normalize_name()`  [INFERRED]
-  api/routes/candidates.py → src/candidate_intelligence_platform/extraction/hybrid_extractor.py
-- `update_candidate()` --calls--> `normalize_title()`  [INFERRED]
-  api/routes/candidates.py → src/candidate_intelligence_platform/extraction/hybrid_extractor.py
+- `list_candidates()` --uses--> `Candidate`  [INFERRED]
+  api/routes/candidates.py → storage/db_models.py
+- `get_candidate()` --uses--> `Candidate`  [INFERRED]
+  api/routes/candidates.py → storage/db_models.py
 
 ## Import Cycles
 - None detected.
@@ -81,19 +80,15 @@
 ## Hyperedges (group relationships)
 - **CIP Core Processing Flow** — docs_how_candidate_intelligence_works_ingestion, docs_how_candidate_intelligence_works_hybrid_search, docs_ollama_setup_windows_llama [EXTRACTED 0.95]
 
-## Communities (51 total, 11 thin omitted)
-
-### Community 0 - "CandidateSectionVector"
-Cohesion: 0.18
-Nodes (14): DBConnection, LanceModel, CandidateSectionVector, get_lancedb_connection(), Connect to the embedded LanceDB instance at the specified path., patch, Session, TestClient (+6 more)
+## Communities (50 total, 11 thin omitted)
 
 ### Community 1 - "Settings"
-Cohesion: 0.13
-Nodes (24): get_db(), _get_sessionmaker(), get_settings(), get_vector_db(), Session, BaseSettings, Settings, client() (+16 more)
+Cohesion: 0.09
+Nodes (26): get_db(), _get_sessionmaker(), get_settings(), get_vector_db(), Session, BaseSettings, Settings, client() (+18 more)
 
 ### Community 2 - "routes/candidates.py"
-Cohesion: 0.08
-Nodes (59): batch_delete_candidates(), batch_reprocess_candidate_stream(), delete_candidate(), get_candidate(), get_candidate_file(), get_candidate_timeline(), list_candidates(), get (+51 more)
+Cohesion: 0.07
+Nodes (46): batch_delete_candidates(), batch_reprocess_candidate_stream(), delete_candidate(), get_candidate(), get_candidate_file(), get_candidate_timeline(), list_candidates(), get (+38 more)
 
 ### Community 3 - "extract_candidate_profile_hybrid"
 Cohesion: 0.11
@@ -115,17 +110,17 @@ Nodes (27): generate_embeddings(), generate_single_embedding(), Generate dense v
 Cohesion: 0.07
 Nodes (44): parse_docx(), Path, DOCX parser using python-docx. Public interface: parse_docx(path: Path) ->…, Extract text and metadata from a Word (.docx) file. Extraction order: 1. All…, _decode_header(), parse_email(), _parse_eml(), _parse_msg() (+36 more)
 
-### Community 8 - "test_api_candidates.py"
-Cohesion: 0.11
-Nodes (22): parametrize, CASManager, Path, Store content in the CAS file structure. Returns (sha256_hash,…, MockVectorStore, Mock LanceDB vector store connection for isolated test runs., Session, TestClient (+14 more)
+### Community 8 - "Candidate"
+Cohesion: 0.09
+Nodes (47): Base, CandidateStateMachine, InvalidStateTransition, Transitions the candidate to a new status and logs the event., TransitionContext, Any, Session, Logs a new event in the candidate's timeline. (+39 more)
 
 ### Community 9 - "Advanced Optimization"
 Cohesion: 0.11
 Nodes (17): Advanced Optimization, Benchmarking Tools, Custom Benchmark Decorator, Database Optimization, Memory Optimization, Pattern 11: NumPy for Numerical Operations, Pattern 12: Caching with functools.lru_cache, Pattern 13: Using __slots__ for Memory (+9 more)
 
 ### Community 10 - "extract_inferences"
-Cohesion: 0.18
-Nodes (11): extract_inferences(), Extract AI inferences from text using a local LLM via Ollama. Defaults to…, Test when LLM returns null claim_value and entity in claim_key., test_llm_claim_value_null_logs_warning_and_repairs(), test_llm_extraction_failure_logs_ai_warning(), test_vector_search_failure_logs_ai_warning(), Live integration test against running Ollama instance., test_live_ollama_extraction() (+3 more)
+Cohesion: 0.16
+Nodes (12): ollama, extract_inferences(), Extract AI inferences from text using a local LLM via Ollama. Defaults to…, Test when LLM returns null claim_value and entity in claim_key., test_llm_claim_value_null_logs_warning_and_repairs(), test_llm_extraction_failure_logs_ai_warning(), test_vector_search_failure_logs_ai_warning(), Live integration test against running Ollama instance. (+4 more)
 
 ### Community 11 - "App.jsx"
 Cohesion: 0.16
@@ -187,11 +182,11 @@ Nodes (3): Expanding the Oxlint configuration, React Compiler, React + Vite
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `upload_resume()` connect `routes/candidates.py` to `CandidateSectionVector`, `Settings`, `extract_candidate_profile_hybrid`, `hybrid_searcher.py`, `ParsedDocument`, `test_api_candidates.py`, `chunk_document`?**
+- **Why does `upload_resume()` connect `routes/candidates.py` to `Settings`, `extract_candidate_profile_hybrid`, `hybrid_searcher.py`, `ParsedDocument`, `Candidate`, `chunk_document`?**
   _High betweenness centrality (0.069) - this node is a cross-community bridge._
-- **Why does `ParsedDocument` connect `ParsedDocument` to `routes/candidates.py`, `chunk_document`?**
+- **Why does `ParsedDocument` connect `ParsedDocument` to `Candidate`, `routes/candidates.py`, `chunk_document`?**
   _High betweenness centrality (0.059) - this node is a cross-community bridge._
-- **Why does `Candidate` connect `routes/candidates.py` to `routes/search.py`, `test_api_candidates.py`, `CandidateSectionVector`?**
+- **Why does `Candidate` connect `Candidate` to `routes/search.py`, `routes/candidates.py`?**
   _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **Are the 13 inferred relationships involving `Candidate` (e.g. with `batch_reprocess_candidate_stream()` and `get_candidate()`) actually correct?**
   _`Candidate` has 13 INFERRED edges - model-reasoned connections that need verification._

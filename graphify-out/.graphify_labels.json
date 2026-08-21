@@ -1,5 +1,4 @@
 {
-  "0": "CandidateSectionVector",
   "1": "Settings",
   "2": "routes/candidates.py",
   "3": "extract_candidate_profile_hybrid",
@@ -7,7 +6,7 @@
   "5": "devDependencies",
   "6": "hybrid_searcher.py",
   "7": "ParsedDocument",
-  "8": "test_api_candidates.py",
+  "8": "Candidate",
   "9": "Advanced Optimization",
   "10": "extract_inferences",
   "11": "App.jsx",

@@ -2,6 +2,7 @@ import json
 import pytest
 from candidate_intelligence_platform.extraction.local_llm_fallback import extract_inferences
 
+@pytest.mark.ollama
 def test_live_ollama_extraction():
     """Live integration test against running Ollama instance."""
     sample_resume_text = """
