@@ -16,3 +16,4 @@ storage/vector_index/
 storage/lancedb/
 test-resumes/
 .freebuff/
+bulk_ingest_unprocessed*.json
