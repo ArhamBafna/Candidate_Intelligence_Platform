@@ -2,7 +2,7 @@
 title Candidate Intelligence Platform Launcher
 cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([ScriptBlock]::Create((Get-Content -Path '%~f0' | Select-Object -Skip 6 | Out-String)))"
-exit /b %ERRORLEVEL%
+exit
 rem --- PURE POWERSHELL CODE STARTS BELOW ---
 
 $ErrorActionPreference = "Stop"
@@ -75,3 +75,4 @@ Write-Host " Candidate Intelligence Platform is now running!" -ForegroundColor G
 Write-Host " - Frontend UI: http://localhost:5173" -ForegroundColor Green
 Write-Host " - Backend API: http://127.0.0.1:8000" -ForegroundColor Green
 Write-Host "=======================================================" -ForegroundColor Green
+Start-Sleep -Seconds 1
