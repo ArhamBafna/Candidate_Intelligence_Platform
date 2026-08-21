@@ -94,3 +94,31 @@ def test_execute_vector_search_missing_table(monkeypatch):
     # Should handle gracefully and return empty dict
     results = execute_vector_search("test query", {"cand_1"}, MockVectorDB())
     assert results == {}
+
+def test_execute_vector_search_end_to_end(tmp_path):
+    import lancedb
+    from storage.vector_store import CandidateSectionVector
+    from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
+    from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+
+    db_path = str(tmp_path / "lancedb_search")
+    db = lancedb.connect(db_path)
+    tbl = db.create_table("candidate_vectors", schema=CandidateSectionVector)
+
+    emb = generate_embeddings(["Senior Python Engineer in New York"])[0]
+    tbl.add([{
+        "chunk_id": "c1",
+        "candidate_id": "cand_1",
+        "resume_version_id": "rv1",
+        "section_type": "SUMMARY",
+        "chunk_text": "Senior Python Engineer in New York",
+        "vector": emb,
+        "start_offset": 0,
+        "end_offset": 35
+    }])
+
+    warnings = []
+    ranks = execute_vector_search("new york", ["cand_1"], db, warnings=warnings)
+    assert warnings == []
+    assert ranks == {"cand_1": 1}
+

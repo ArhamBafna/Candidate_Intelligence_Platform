@@ -24,7 +24,7 @@ def execute_vector_search(query_text: str, candidate_ids: list[str], vector_db, 
         return {}
     
     try:
-        query_vector = generate_single_embedding(query_text)
+        query_vector = list(generate_single_embedding(query_text))
     except Exception as e:
         logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
         if warnings is not None:

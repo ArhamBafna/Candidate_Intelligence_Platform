@@ -20,43 +20,17 @@
   },
   "nodes": [
     {
-      "id": "api_schemas_search_searchqueryrequest",
-      "label": "SearchQueryRequest",
+      "id": "storage_vector_store_candidatesectionvector",
+      "label": "CandidateSectionVector",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "searchqueryrequest",
-      "source_file": "api/schemas/search.py",
+      "norm_label": "candidatesectionvector",
+      "source_file": "storage/vector_store.py",
       "source_location": "L4"
-    },
-    {
-      "id": "api_schemas_search_searchresponse",
-      "label": "SearchResponse",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "searchresponse",
-      "source_file": "api/schemas/search.py",
-      "source_location": "L20"
-    },
-    {
-      "id": "api_schemas_search_searchresultitem",
-      "label": "SearchResultItem",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "searchresultitem",
-      "source_file": "api/schemas/search.py",
-      "source_location": "L11"
     },
     {
       "id": "config_settings_settings",
@@ -98,17 +72,43 @@
       "source_location": "L21"
     },
     {
-      "id": "tests_conftest_mockvectorstore",
-      "label": "MockVectorStore",
+      "id": "api_schemas_search_searchqueryrequest",
+      "label": "SearchQueryRequest",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
+      "community_name": "routes/search.py",
       "file_type": "code",
-      "norm_label": "mockvectorstore",
-      "source_file": "tests/conftest.py",
-      "source_location": "L31"
+      "norm_label": "searchqueryrequest",
+      "source_file": "api/schemas/search.py",
+      "source_location": "L4"
+    },
+    {
+      "id": "api_schemas_search_searchresponse",
+      "label": "SearchResponse",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "searchresponse",
+      "source_file": "api/schemas/search.py",
+      "source_location": "L20"
+    },
+    {
+      "id": "api_schemas_search_searchresultitem",
+      "label": "SearchResultItem",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "searchresultitem",
+      "source_file": "api/schemas/search.py",
+      "source_location": "L11"
     },
     {
       "id": "api_schemas_candidates_batchcandidateids",
@@ -228,17 +228,69 @@
       "source_location": "L9"
     },
     {
-      "id": "storage_cas_casmanager",
-      "label": "CASManager",
+      "id": "crm_state_machine_candidatestatemachine",
+      "label": "CandidateStateMachine",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "casmanager",
-      "source_file": "storage/cas.py",
-      "source_location": "L6"
+      "norm_label": "candidatestatemachine",
+      "source_file": "crm/state_machine.py",
+      "source_location": "L18"
+    },
+    {
+      "id": "crm_state_machine_invalidstatetransition",
+      "label": "InvalidStateTransition",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "invalidstatetransition",
+      "source_file": "crm/state_machine.py",
+      "source_location": "L7"
+    },
+    {
+      "id": "crm_state_machine_transitioncontext",
+      "label": "TransitionContext",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "transitioncontext",
+      "source_file": "crm/state_machine.py",
+      "source_location": "L11"
+    },
+    {
+      "id": "crm_timeline_ledger_timelineledger",
+      "label": "TimelineLedger",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "timelineledger",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L7"
+    },
+    {
+      "id": "storage_db_models_candidate",
+      "label": "Candidate",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "candidate",
+      "source_file": "storage/db_models.py",
+      "source_location": "L11"
     },
     {
       "id": "storage_db_models_candidateclaim",
@@ -254,6 +306,32 @@
       "source_location": "L44"
     },
     {
+      "id": "storage_db_models_candidatetimelineevent",
+      "label": "CandidateTimelineEvent",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "candidatetimelineevent",
+      "source_file": "storage/db_models.py",
+      "source_location": "L61"
+    },
+    {
+      "id": "storage_db_models_entityresolutionaudit",
+      "label": "EntityResolutionAudit",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "entityresolutionaudit",
+      "source_file": "storage/db_models.py",
+      "source_location": "L72"
+    },
+    {
       "id": "storage_db_models_resumeversion",
       "label": "ResumeVersion",
       "_callable": true,
@@ -265,19 +343,6 @@
       "norm_label": "resumeversion",
       "source_file": "storage/db_models.py",
       "source_location": "L32"
-    },
-    {
-      "id": "storage_vector_store_candidatesectionvector",
-      "label": "CandidateSectionVector",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "routes/candidates.py",
-      "file_type": "code",
-      "norm_label": "candidatesectionvector",
-      "source_file": "storage/vector_store.py",
-      "source_location": "L4"
     },
     {
       "id": "ingestion_entity_resolution_candidateidentifiers",
@@ -384,95 +449,90 @@
       "source_location": "L6"
     },
     {
-      "id": "crm_state_machine_candidatestatemachine",
-      "label": "CandidateStateMachine",
+      "id": "storage_cas_casmanager",
+      "label": "CASManager",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "candidatestatemachine",
-      "source_file": "crm/state_machine.py",
-      "source_location": "L18"
+      "norm_label": "casmanager",
+      "source_file": "storage/cas.py",
+      "source_location": "L6"
     },
     {
-      "id": "crm_state_machine_invalidstatetransition",
-      "label": "InvalidStateTransition",
+      "id": "tests_conftest_mockvectorstore",
+      "label": "MockVectorStore",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "invalidstatetransition",
-      "source_file": "crm/state_machine.py",
-      "source_location": "L7"
+      "norm_label": "mockvectorstore",
+      "source_file": "tests/conftest.py",
+      "source_location": "L31"
     },
     {
-      "id": "crm_state_machine_transitioncontext",
-      "label": "TransitionContext",
+      "id": "storage_vector_store_get_lancedb_connection",
+      "label": "get_lancedb_connection()",
       "_callable": true,
-      "_callable_class": true,
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "transitioncontext",
-      "source_file": "crm/state_machine.py",
-      "source_location": "L11"
+      "norm_label": "get_lancedb_connection()",
+      "source_file": "storage/vector_store.py",
+      "source_location": "L30"
     },
     {
-      "id": "crm_timeline_ledger_timelineledger",
-      "label": "TimelineLedger",
+      "id": "tests_test_api_search_test_search_candidates",
+      "label": "test_search_candidates()",
       "_callable": true,
-      "_callable_class": true,
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "timelineledger",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L7"
+      "norm_label": "test_search_candidates()",
+      "source_file": "tests/test_api_search.py",
+      "source_location": "L10"
     },
     {
-      "id": "storage_db_models_candidate",
-      "label": "Candidate",
+      "id": "tests_test_api_search_test_upload_and_search_exact_keyword_integration",
+      "label": "test_upload_and_search_exact_keyword_integration()",
       "_callable": true,
-      "_callable_class": true,
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "candidate",
-      "source_file": "storage/db_models.py",
-      "source_location": "L11"
+      "norm_label": "test_upload_and_search_exact_keyword_integration()",
+      "source_file": "tests/test_api_search.py",
+      "source_location": "L53"
     },
     {
-      "id": "storage_db_models_candidatetimelineevent",
-      "label": "CandidateTimelineEvent",
+      "id": "tests_test_vector_store_test_lancedb_initialization",
+      "label": "test_lancedb_initialization()",
       "_callable": true,
-      "_callable_class": true,
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "candidatetimelineevent",
-      "source_file": "storage/db_models.py",
-      "source_location": "L61"
+      "norm_label": "test_lancedb_initialization()",
+      "source_file": "tests/test_vector_store.py",
+      "source_location": "L5"
     },
     {
-      "id": "storage_db_models_entityresolutionaudit",
-      "label": "EntityResolutionAudit",
+      "id": "tests_test_vector_store_test_vector_store_embedding_search",
+      "label": "test_vector_store_embedding_search()",
       "_callable": true,
-      "_callable_class": true,
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "entityresolutionaudit",
-      "source_file": "storage/db_models.py",
-      "source_location": "L72"
+      "norm_label": "test_vector_store_embedding_search()",
+      "source_file": "tests/test_vector_store.py",
+      "source_location": "L23"
     },
     {
       "id": "api_dependencies_get_db",
@@ -521,66 +581,6 @@
       "norm_label": "get_vector_db()",
       "source_file": "api/dependencies.py",
       "source_location": "L25"
-    },
-    {
-      "id": "api_routes_search_build_search_query",
-      "label": "_build_search_query()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "_build_search_query()",
-      "source_file": "api/routes/search.py",
-      "source_location": "L14"
-    },
-    {
-      "id": "api_routes_search_format_search_results",
-      "label": "_format_search_results()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "_format_search_results()",
-      "source_file": "api/routes/search.py",
-      "source_location": "L31"
-    },
-    {
-      "id": "api_routes_search_hydrate_candidates",
-      "label": "_hydrate_candidates()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "_hydrate_candidates()",
-      "source_file": "api/routes/search.py",
-      "source_location": "L26"
-    },
-    {
-      "id": "api_routes_search_perform_search",
-      "label": "perform_search()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "perform_search()",
-      "source_file": "api/routes/search.py",
-      "source_location": "L63"
-    },
-    {
-      "id": "api_routes_search_perform_search_stream",
-      "label": "perform_search_stream()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "perform_search_stream()",
-      "source_file": "api/routes/search.py",
-      "source_location": "L102"
     },
     {
       "id": "tests_conftest_client",
@@ -703,88 +703,100 @@
       "source_location": "L4"
     },
     {
-      "id": "ingestion_parsers_docx_parser_parse_docx",
-      "label": "parse_docx()",
+      "id": "src_candidate_intelligence_platform_extraction_local_llm_fallback_extract_inferences",
+      "label": "extract_inferences()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "parse_docx()",
-      "source_file": "ingestion/parsers/docx_parser.py",
-      "source_location": "L14"
+      "norm_label": "extract_inferences()",
+      "source_file": "src/candidate_intelligence_platform/extraction/local_llm_fallback.py",
+      "source_location": "L11"
     },
     {
-      "id": "tests_test_docx_parser_make_docx",
-      "label": "_make_docx()",
+      "id": "tests_test_ai_failure_logging_test_llm_claim_value_null_logs_warning_and_repairs",
+      "label": "test_llm_claim_value_null_logs_warning_and_repairs()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "_make_docx()",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L21"
+      "norm_label": "test_llm_claim_value_null_logs_warning_and_repairs()",
+      "source_file": "tests/test_ai_failure_logging.py",
+      "source_location": "L37"
     },
     {
-      "id": "tests_test_docx_parser_test_parse_docx_default_page_count",
-      "label": "test_parse_docx_default_page_count()",
+      "id": "tests_test_ai_failure_logging_test_llm_extraction_failure_logs_ai_warning",
+      "label": "test_llm_extraction_failure_logs_ai_warning()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "test_parse_docx_default_page_count()",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L65"
+      "norm_label": "test_llm_extraction_failure_logs_ai_warning()",
+      "source_file": "tests/test_ai_failure_logging.py",
+      "source_location": "L22"
     },
     {
-      "id": "tests_test_docx_parser_test_parse_docx_extracts_paragraph_text",
-      "label": "test_parse_docx_extracts_paragraph_text()",
+      "id": "tests_test_ai_failure_logging_test_vector_search_failure_logs_ai_warning",
+      "label": "test_vector_search_failure_logs_ai_warning()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "test_parse_docx_extracts_paragraph_text()",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L55"
+      "norm_label": "test_vector_search_failure_logs_ai_warning()",
+      "source_file": "tests/test_ai_failure_logging.py",
+      "source_location": "L6"
     },
     {
-      "id": "tests_test_docx_parser_test_parse_docx_extracts_table_text",
-      "label": "test_parse_docx_extracts_table_text()",
+      "id": "tests_test_live_ollama_standalone_test_live_ollama_extraction",
+      "label": "test_live_ollama_extraction()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "test_parse_docx_extracts_table_text()",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L84"
+      "norm_label": "test_live_ollama_extraction()",
+      "source_file": "tests/test_live_ollama_standalone.py",
+      "source_location": "L5"
     },
     {
-      "id": "tests_test_docx_parser_test_parse_docx_metadata_contains_source_path",
-      "label": "test_parse_docx_metadata_contains_source_path()",
+      "id": "tests_test_local_llm_fallback_test_extract_inferences",
+      "label": "test_extract_inferences()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "test_parse_docx_metadata_contains_source_path()",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L74"
+      "norm_label": "test_extract_inferences()",
+      "source_file": "tests/test_local_llm_fallback.py",
+      "source_location": "L4"
     },
     {
-      "id": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
-      "label": "test_parse_docx_returns_parsed_document()",
+      "id": "tests_test_local_llm_fallback_test_extract_inferences_exception",
+      "label": "test_extract_inferences_exception()",
       "_callable": true,
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "test_parse_docx_returns_parsed_document()",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L46"
+      "norm_label": "test_extract_inferences_exception()",
+      "source_file": "tests/test_local_llm_fallback.py",
+      "source_location": "L45"
+    },
+    {
+      "id": "tests_test_local_llm_fallback_test_extract_inferences_malformed_json",
+      "label": "test_extract_inferences_malformed_json()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 10,
+      "community_name": "extract_inferences",
+      "file_type": "code",
+      "norm_label": "test_extract_inferences_malformed_json()",
+      "source_file": "tests/test_local_llm_fallback.py",
+      "source_location": "L28"
     },
     {
       "id": "ui_src_app_app",
@@ -1231,88 +1243,64 @@
       "source_location": "L96"
     },
     {
-      "id": "tests_conftest_mockvectorstore_create_mock_table",
-      "label": "._create_mock_table()",
+      "id": "api_routes_search_build_search_query",
+      "label": "_build_search_query()",
       "_callable": true,
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
+      "community_name": "routes/search.py",
       "file_type": "code",
-      "norm_label": "._create_mock_table()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L52"
+      "norm_label": "_build_search_query()",
+      "source_file": "api/routes/search.py",
+      "source_location": "L14"
     },
     {
-      "id": "tests_conftest_mockvectorstore_create_table",
-      "label": ".create_table()",
+      "id": "api_routes_search_format_search_results",
+      "label": "_format_search_results()",
       "_callable": true,
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
+      "community_name": "routes/search.py",
       "file_type": "code",
-      "norm_label": ".create_table()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L49"
+      "norm_label": "_format_search_results()",
+      "source_file": "api/routes/search.py",
+      "source_location": "L31"
     },
     {
-      "id": "tests_conftest_mockvectorstore_delete_candidate_vectors",
-      "label": ".delete_candidate_vectors()",
+      "id": "api_routes_search_hydrate_candidates",
+      "label": "_hydrate_candidates()",
       "_callable": true,
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
+      "community_name": "routes/search.py",
       "file_type": "code",
-      "norm_label": ".delete_candidate_vectors()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L37"
+      "norm_label": "_hydrate_candidates()",
+      "source_file": "api/routes/search.py",
+      "source_location": "L26"
     },
     {
-      "id": "tests_conftest_mockvectorstore_init",
-      "label": ".__init__()",
+      "id": "api_routes_search_perform_search",
+      "label": "perform_search()",
       "_callable": true,
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
+      "community_name": "routes/search.py",
       "file_type": "code",
-      "norm_label": ".__init__()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L33"
+      "norm_label": "perform_search()",
+      "source_file": "api/routes/search.py",
+      "source_location": "L63"
     },
     {
-      "id": "tests_conftest_mockvectorstore_list_tables",
-      "label": ".list_tables()",
+      "id": "api_routes_search_perform_search_stream",
+      "label": "perform_search_stream()",
       "_callable": true,
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
+      "community_name": "routes/search.py",
       "file_type": "code",
-      "norm_label": ".list_tables()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L40"
-    },
-    {
-      "id": "tests_conftest_mockvectorstore_open_table",
-      "label": ".open_table()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 16,
-      "community_name": "MockVectorStore",
-      "file_type": "code",
-      "norm_label": ".open_table()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L46"
-    },
-    {
-      "id": "tests_conftest_mockvectorstore_table_names",
-      "label": ".table_names()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 16,
-      "community_name": "MockVectorStore",
-      "file_type": "code",
-      "norm_label": ".table_names()",
-      "source_file": "tests/conftest.py",
-      "source_location": "L43"
+      "norm_label": "perform_search_stream()",
+      "source_file": "api/routes/search.py",
+      "source_location": "L102"
     },
     {
       "id": "api_routes_candidates_batch_delete_candidates",
@@ -1507,7 +1495,7 @@
       "source_location": "L59"
     },
     {
-      "id": "storage_cas_casmanager_init",
+      "id": "crm_state_machine_candidatestatemachine_init",
       "label": ".__init__()",
       "_callable": true,
       "_origin": "ast",
@@ -1515,20 +1503,44 @@
       "community_name": "routes/candidates.py",
       "file_type": "code",
       "norm_label": ".__init__()",
-      "source_file": "storage/cas.py",
-      "source_location": "L7"
+      "source_file": "crm/state_machine.py",
+      "source_location": "L21"
     },
     {
-      "id": "storage_cas_casmanager_store",
-      "label": ".store()",
+      "id": "crm_state_machine_candidatestatemachine_transition_state",
+      "label": ".transition_state()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": ".store()",
-      "source_file": "storage/cas.py",
-      "source_location": "L10"
+      "norm_label": ".transition_state()",
+      "source_file": "crm/state_machine.py",
+      "source_location": "L24"
+    },
+    {
+      "id": "crm_timeline_ledger_timelineledger_get_events",
+      "label": ".get_events()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": ".get_events()",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L42"
+    },
+    {
+      "id": "crm_timeline_ledger_timelineledger_log_event",
+      "label": ".log_event()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": ".log_event()",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L12"
     },
     {
       "id": "storage_vector_store_candidatesectionvector_create_record",
@@ -1543,52 +1555,76 @@
       "source_location": "L15"
     },
     {
-      "id": "storage_vector_store_get_lancedb_connection",
-      "label": "get_lancedb_connection()",
+      "id": "tests_test_state_machine_db_session",
+      "label": "db_session()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "get_lancedb_connection()",
-      "source_file": "storage/vector_store.py",
-      "source_location": "L30"
+      "norm_label": "db_session()",
+      "source_file": "tests/test_state_machine.py",
+      "source_location": "L9"
     },
     {
-      "id": "tests_test_cas_test_cas_storage",
-      "label": "test_cas_storage()",
+      "id": "tests_test_state_machine_test_invalid_state_transition",
+      "label": "test_invalid_state_transition()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "test_cas_storage()",
-      "source_file": "tests/test_cas.py",
-      "source_location": "L6"
+      "norm_label": "test_invalid_state_transition()",
+      "source_file": "tests/test_state_machine.py",
+      "source_location": "L51"
     },
     {
-      "id": "tests_test_vector_store_test_lancedb_initialization",
-      "label": "test_lancedb_initialization()",
+      "id": "tests_test_state_machine_test_transition_state_success",
+      "label": "test_transition_state_success()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "test_lancedb_initialization()",
-      "source_file": "tests/test_vector_store.py",
-      "source_location": "L5"
+      "norm_label": "test_transition_state_success()",
+      "source_file": "tests/test_state_machine.py",
+      "source_location": "L15"
     },
     {
-      "id": "tests_test_vector_store_test_vector_store_embedding_search",
-      "label": "test_vector_store_embedding_search()",
+      "id": "tests_test_timeline_ledger_db_session",
+      "label": "db_session()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "test_vector_store_embedding_search()",
-      "source_file": "tests/test_vector_store.py",
-      "source_location": "L23"
+      "norm_label": "db_session()",
+      "source_file": "tests/test_timeline_ledger.py",
+      "source_location": "L9"
+    },
+    {
+      "id": "tests_test_timeline_ledger_test_events_returned_in_descending_order",
+      "label": "test_events_returned_in_descending_order()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "test_events_returned_in_descending_order()",
+      "source_file": "tests/test_timeline_ledger.py",
+      "source_location": "L49"
+    },
+    {
+      "id": "tests_test_timeline_ledger_test_log_event_and_get_timeline",
+      "label": "test_log_event_and_get_timeline()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "test_log_event_and_get_timeline()",
+      "source_file": "tests/test_timeline_ledger.py",
+      "source_location": "L15"
     },
     {
       "id": "docs_tests_end_to_end_runner_rune2etests",
@@ -1660,7 +1696,7 @@
       "file_type": "code",
       "norm_label": "test_upload_stream_duplicate_resume()",
       "source_file": "tests/test_api_upload_stream.py",
-      "source_location": "L32"
+      "source_location": "L38"
     },
     {
       "id": "tests_test_api_upload_stream_test_upload_stream_multi_resume",
@@ -1684,7 +1720,7 @@
       "file_type": "code",
       "norm_label": "test_upload_stream_transparency_events()",
       "source_file": "tests/test_api_upload_stream.py",
-      "source_location": "L48"
+      "source_location": "L54"
     },
     {
       "id": "tests_test_api_logs_test_get_logs_endpoint_returns_recent_events",
@@ -1744,7 +1780,7 @@
       "file_type": "code",
       "norm_label": "test_upload_resume_emits_wide_event_skipped()",
       "source_file": "tests/test_upload_logging.py",
-      "source_location": "L34"
+      "source_location": "L36"
     },
     {
       "id": "src_candidate_intelligence_platform_extraction_deterministic_ner_extract_facts",
@@ -1841,54 +1877,6 @@
       "norm_label": "normalize_title()",
       "source_file": "src/candidate_intelligence_platform/extraction/hybrid_extractor.py",
       "source_location": "L57"
-    },
-    {
-      "id": "src_candidate_intelligence_platform_extraction_local_llm_fallback_extract_inferences",
-      "label": "extract_inferences()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "extract_inferences()",
-      "source_file": "src/candidate_intelligence_platform/extraction/local_llm_fallback.py",
-      "source_location": "L11"
-    },
-    {
-      "id": "tests_test_ai_failure_logging_test_llm_claim_value_null_logs_warning_and_repairs",
-      "label": "test_llm_claim_value_null_logs_warning_and_repairs()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_llm_claim_value_null_logs_warning_and_repairs()",
-      "source_file": "tests/test_ai_failure_logging.py",
-      "source_location": "L37"
-    },
-    {
-      "id": "tests_test_ai_failure_logging_test_llm_extraction_failure_logs_ai_warning",
-      "label": "test_llm_extraction_failure_logs_ai_warning()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_llm_extraction_failure_logs_ai_warning()",
-      "source_file": "tests/test_ai_failure_logging.py",
-      "source_location": "L22"
-    },
-    {
-      "id": "tests_test_ai_failure_logging_test_vector_search_failure_logs_ai_warning",
-      "label": "test_vector_search_failure_logs_ai_warning()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_vector_search_failure_logs_ai_warning()",
-      "source_file": "tests/test_ai_failure_logging.py",
-      "source_location": "L6"
     },
     {
       "id": "tests_test_deterministic_ner_test_extract_email",
@@ -2045,54 +2033,6 @@
       "norm_label": "test_extract_candidate_profile_with_page_header_noise()",
       "source_file": "tests/test_hybrid_extractor.py",
       "source_location": "L99"
-    },
-    {
-      "id": "tests_test_live_ollama_standalone_test_live_ollama_extraction",
-      "label": "test_live_ollama_extraction()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_live_ollama_extraction()",
-      "source_file": "tests/test_live_ollama_standalone.py",
-      "source_location": "L5"
-    },
-    {
-      "id": "tests_test_local_llm_fallback_test_extract_inferences",
-      "label": "test_extract_inferences()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_extract_inferences()",
-      "source_file": "tests/test_local_llm_fallback.py",
-      "source_location": "L4"
-    },
-    {
-      "id": "tests_test_local_llm_fallback_test_extract_inferences_exception",
-      "label": "test_extract_inferences_exception()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_extract_inferences_exception()",
-      "source_file": "tests/test_local_llm_fallback.py",
-      "source_location": "L45"
-    },
-    {
-      "id": "tests_test_local_llm_fallback_test_extract_inferences_malformed_json",
-      "label": "test_extract_inferences_malformed_json()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_extract_inferences_malformed_json()",
-      "source_file": "tests/test_local_llm_fallback.py",
-      "source_location": "L28"
     },
     {
       "id": "src_candidate_intelligence_platform_init_main",
@@ -2464,7 +2404,7 @@
       "file_type": "code",
       "norm_label": "test_build_match_rationale()",
       "source_file": "tests/test_intelligence.py",
-      "source_location": "L14"
+      "source_location": "L21"
     },
     {
       "id": "tests_test_intelligence_test_embedding_semantic_similarity",
@@ -2476,7 +2416,7 @@
       "file_type": "code",
       "norm_label": "test_embedding_semantic_similarity()",
       "source_file": "tests/test_intelligence.py",
-      "source_location": "L38"
+      "source_location": "L45"
     },
     {
       "id": "tests_test_intelligence_test_generate_embeddings",
@@ -2489,6 +2429,30 @@
       "norm_label": "test_generate_embeddings()",
       "source_file": "tests/test_intelligence.py",
       "source_location": "L5"
+    },
+    {
+      "id": "tests_test_intelligence_test_generate_single_embedding",
+      "label": "test_generate_single_embedding()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "hybrid_searcher.py",
+      "file_type": "code",
+      "norm_label": "test_generate_single_embedding()",
+      "source_file": "tests/test_intelligence.py",
+      "source_location": "L14"
+    },
+    {
+      "id": "tests_test_search_engine_test_execute_vector_search_end_to_end",
+      "label": "test_execute_vector_search_end_to_end()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "hybrid_searcher.py",
+      "file_type": "code",
+      "norm_label": "test_execute_vector_search_end_to_end()",
+      "source_file": "tests/test_search_engine.py",
+      "source_location": "L98"
     },
     {
       "id": "tests_test_search_engine_test_execute_vector_search_missing_table",
@@ -2563,6 +2527,18 @@
       "source_location": "L30"
     },
     {
+      "id": "ingestion_parsers_docx_parser_parse_docx",
+      "label": "parse_docx()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "code",
+      "norm_label": "parse_docx()",
+      "source_file": "ingestion/parsers/docx_parser.py",
+      "source_location": "L14"
+    },
+    {
       "id": "ingestion_parsers_email_parser_decode_header",
       "label": "_decode_header()",
       "_callable": true,
@@ -2635,6 +2611,30 @@
       "source_location": "L13"
     },
     {
+      "id": "tests_test_docx_parser_make_docx",
+      "label": "_make_docx()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "code",
+      "norm_label": "_make_docx()",
+      "source_file": "tests/test_docx_parser.py",
+      "source_location": "L21"
+    },
+    {
+      "id": "tests_test_docx_parser_test_parse_docx_functional_flow",
+      "label": "test_parse_docx_functional_flow()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "code",
+      "norm_label": "test_parse_docx_functional_flow()",
+      "source_file": "tests/test_docx_parser.py",
+      "source_location": "L46"
+    },
+    {
       "id": "tests_test_email_parser_make_eml",
       "label": "_make_eml()",
       "_callable": true,
@@ -2647,50 +2647,14 @@
       "source_location": "L22"
     },
     {
-      "id": "tests_test_email_parser_test_parse_email_extracts_body_text",
-      "label": "test_parse_email_extracts_body_text()",
+      "id": "tests_test_email_parser_test_parse_email_functional_flow",
+      "label": "test_parse_email_functional_flow()",
       "_callable": true,
       "_origin": "ast",
       "community": 7,
       "community_name": "ParsedDocument",
       "file_type": "code",
-      "norm_label": "test_parse_email_extracts_body_text()",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L52"
-    },
-    {
-      "id": "tests_test_email_parser_test_parse_email_metadata_headers",
-      "label": "test_parse_email_metadata_headers()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "code",
-      "norm_label": "test_parse_email_metadata_headers()",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L71"
-    },
-    {
-      "id": "tests_test_email_parser_test_parse_email_page_count_is_one",
-      "label": "test_parse_email_page_count_is_one()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "code",
-      "norm_label": "test_parse_email_page_count_is_one()",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L62"
-    },
-    {
-      "id": "tests_test_email_parser_test_parse_email_returns_parsed_document",
-      "label": "test_parse_email_returns_parsed_document()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "code",
-      "norm_label": "test_parse_email_returns_parsed_document()",
+      "norm_label": "test_parse_email_functional_flow()",
       "source_file": "tests/test_email_parser.py",
       "source_location": "L43"
     },
@@ -2707,40 +2671,16 @@
       "source_location": "L24"
     },
     {
-      "id": "tests_test_pdf_parser_test_parse_pdf_correct_page_count",
-      "label": "test_parse_pdf_correct_page_count()",
+      "id": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
+      "label": "test_parse_pdf_functional_flow()",
       "_callable": true,
       "_origin": "ast",
       "community": 7,
       "community_name": "ParsedDocument",
       "file_type": "code",
-      "norm_label": "test_parse_pdf_correct_page_count()",
+      "norm_label": "test_parse_pdf_functional_flow()",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L100"
-    },
-    {
-      "id": "tests_test_pdf_parser_test_parse_pdf_extracts_text",
-      "label": "test_parse_pdf_extracts_text()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "code",
-      "norm_label": "test_parse_pdf_extracts_text()",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L88"
-    },
-    {
-      "id": "tests_test_pdf_parser_test_parse_pdf_metadata_contains_source_path",
-      "label": "test_parse_pdf_metadata_contains_source_path()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "code",
-      "norm_label": "test_parse_pdf_metadata_contains_source_path()",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L110"
+      "source_location": "L78"
     },
     {
       "id": "tests_test_pdf_parser_test_parse_pdf_ocr_fallback",
@@ -2752,67 +2692,115 @@
       "file_type": "code",
       "norm_label": "test_parse_pdf_ocr_fallback()",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L120"
+      "source_location": "L92"
     },
     {
-      "id": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
-      "label": "test_parse_pdf_returns_parsed_document()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "code",
-      "norm_label": "test_parse_pdf_returns_parsed_document()",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L78"
-    },
-    {
-      "id": "crm_state_machine_candidatestatemachine_init",
+      "id": "storage_cas_casmanager_init",
       "label": ".__init__()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": ".__init__()",
-      "source_file": "crm/state_machine.py",
-      "source_location": "L21"
+      "source_file": "storage/cas.py",
+      "source_location": "L7"
     },
     {
-      "id": "crm_state_machine_candidatestatemachine_transition_state",
-      "label": ".transition_state()",
+      "id": "storage_cas_casmanager_store",
+      "label": ".store()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": ".transition_state()",
-      "source_file": "crm/state_machine.py",
-      "source_location": "L24"
+      "norm_label": ".store()",
+      "source_file": "storage/cas.py",
+      "source_location": "L10"
     },
     {
-      "id": "crm_timeline_ledger_timelineledger_get_events",
-      "label": ".get_events()",
+      "id": "tests_conftest_mockvectorstore_create_mock_table",
+      "label": "._create_mock_table()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": ".get_events()",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L42"
+      "norm_label": "._create_mock_table()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L52"
     },
     {
-      "id": "crm_timeline_ledger_timelineledger_log_event",
-      "label": ".log_event()",
+      "id": "tests_conftest_mockvectorstore_create_table",
+      "label": ".create_table()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": ".log_event()",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L12"
+      "norm_label": ".create_table()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L49"
+    },
+    {
+      "id": "tests_conftest_mockvectorstore_delete_candidate_vectors",
+      "label": ".delete_candidate_vectors()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "test_api_candidates.py",
+      "file_type": "code",
+      "norm_label": ".delete_candidate_vectors()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L37"
+    },
+    {
+      "id": "tests_conftest_mockvectorstore_init",
+      "label": ".__init__()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "test_api_candidates.py",
+      "file_type": "code",
+      "norm_label": ".__init__()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L33"
+    },
+    {
+      "id": "tests_conftest_mockvectorstore_list_tables",
+      "label": ".list_tables()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "test_api_candidates.py",
+      "file_type": "code",
+      "norm_label": ".list_tables()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L40"
+    },
+    {
+      "id": "tests_conftest_mockvectorstore_open_table",
+      "label": ".open_table()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "test_api_candidates.py",
+      "file_type": "code",
+      "norm_label": ".open_table()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L46"
+    },
+    {
+      "id": "tests_conftest_mockvectorstore_table_names",
+      "label": ".table_names()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "test_api_candidates.py",
+      "file_type": "code",
+      "norm_label": ".table_names()",
+      "source_file": "tests/conftest.py",
+      "source_location": "L43"
     },
     {
       "id": "tests_test_api_candidates_test_batch_delete_candidates",
@@ -2820,11 +2808,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_batch_delete_candidates()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L253"
+      "source_location": "L256"
     },
     {
       "id": "tests_test_api_candidates_test_batch_reprocess_stream",
@@ -2832,11 +2820,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_batch_reprocess_stream()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L276"
+      "source_location": "L279"
     },
     {
       "id": "tests_test_api_candidates_test_delete_candidate_not_found",
@@ -2844,11 +2832,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_delete_candidate_not_found()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L249"
+      "source_location": "L252"
     },
     {
       "id": "tests_test_api_candidates_test_delete_candidate_success",
@@ -2856,23 +2844,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_delete_candidate_success()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L192"
-    },
-    {
-      "id": "tests_test_api_candidates_test_get_candidate",
-      "label": "test_get_candidate()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "test_get_candidate()",
-      "source_file": "tests/test_api_candidates.py",
-      "source_location": "L24"
+      "source_location": "L195"
     },
     {
       "id": "tests_test_api_candidates_test_get_candidate_file",
@@ -2880,23 +2856,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_get_candidate_file()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L98"
+      "source_location": "L99"
     },
     {
-      "id": "tests_test_api_candidates_test_get_candidate_not_found",
-      "label": "test_get_candidate_not_found()",
+      "id": "tests_test_api_candidates_test_get_candidate_scenarios",
+      "label": "test_get_candidate_scenarios()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "test_get_candidate_not_found()",
+      "norm_label": "test_get_candidate_scenarios()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L37"
+      "source_location": "L25"
     },
     {
       "id": "tests_test_api_candidates_test_get_candidate_timeline",
@@ -2904,11 +2880,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_get_candidate_timeline()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L57"
+      "source_location": "L58"
     },
     {
       "id": "tests_test_api_candidates_test_list_candidates",
@@ -2916,7 +2892,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_list_candidates()",
       "source_file": "tests/test_api_candidates.py",
@@ -2928,11 +2904,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_reprocess_candidate()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L126"
+      "source_location": "L127"
     },
     {
       "id": "tests_test_api_candidates_test_reprocess_candidate_stream",
@@ -2940,11 +2916,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_reprocess_candidate_stream()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L161"
+      "source_location": "L164"
     },
     {
       "id": "tests_test_api_candidates_test_update_candidate",
@@ -2952,11 +2928,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_update_candidate()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L76"
+      "source_location": "L77"
     },
     {
       "id": "tests_test_api_candidates_test_update_candidate_status",
@@ -2964,107 +2940,144 @@
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_update_candidate_status()",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L41"
+      "source_location": "L42"
     },
     {
-      "id": "tests_test_api_search_test_search_candidates",
-      "label": "test_search_candidates()",
+      "id": "tests_test_cas_test_cas_storage",
+      "label": "test_cas_storage()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "test_search_candidates()",
+      "norm_label": "test_cas_storage()",
+      "source_file": "tests/test_cas.py",
+      "source_location": "L6"
+    },
+    {
+      "id": "dbconnection",
+      "label": "DBConnection",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "code",
+      "norm_label": "dbconnection",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "lancemodel",
+      "label": "LanceModel",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "code",
+      "norm_label": "lancemodel",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "storage_vector_store",
+      "label": "vector_store.py",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "code",
+      "norm_label": "vector_store.py",
+      "source_file": "storage/vector_store.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_test_api_search",
+      "label": "test_api_search.py",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "code",
+      "norm_label": "test_api_search.py",
       "source_file": "tests/test_api_search.py",
-      "source_location": "L10"
+      "source_location": "L1"
     },
     {
-      "id": "tests_test_api_search_test_upload_and_search_exact_keyword_integration",
-      "label": "test_upload_and_search_exact_keyword_integration()",
-      "_callable": true,
+      "id": "tests_test_api_search_py_patch",
+      "label": "patch",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "test_upload_and_search_exact_keyword_integration()",
-      "source_file": "tests/test_api_search.py",
-      "source_location": "L53"
+      "norm_label": "patch",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "tests_test_state_machine_db_session",
-      "label": "db_session()",
-      "_callable": true,
+      "id": "tests_test_api_search_py_session",
+      "label": "Session",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "db_session()",
-      "source_file": "tests/test_state_machine.py",
-      "source_location": "L9"
+      "norm_label": "session",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "tests_test_state_machine_test_invalid_state_transition",
-      "label": "test_invalid_state_transition()",
-      "_callable": true,
+      "id": "tests_test_api_search_py_testclient",
+      "label": "TestClient",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "test_invalid_state_transition()",
-      "source_file": "tests/test_state_machine.py",
-      "source_location": "L51"
+      "norm_label": "testclient",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "tests_test_state_machine_test_transition_state_success",
-      "label": "test_transition_state_success()",
-      "_callable": true,
+      "id": "tests_test_vector_store",
+      "label": "test_vector_store.py",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community": 0,
+      "community_name": "CandidateSectionVector",
       "file_type": "code",
-      "norm_label": "test_transition_state_success()",
-      "source_file": "tests/test_state_machine.py",
-      "source_location": "L15"
+      "norm_label": "test_vector_store.py",
+      "source_file": "tests/test_vector_store.py",
+      "source_location": "L1"
     },
     {
-      "id": "tests_test_timeline_ledger_db_session",
-      "label": "db_session()",
-      "_callable": true,
+      "id": "storage_vector_store_rationale_31",
+      "label": "Connect to the embedded LanceDB instance at the specified path.",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "db_session()",
-      "source_file": "tests/test_timeline_ledger.py",
-      "source_location": "L9"
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "rationale",
+      "norm_label": "connect to the embedded lancedb instance at the specified path.",
+      "source_file": "storage/vector_store.py",
+      "source_location": "L31"
     },
     {
-      "id": "tests_test_timeline_ledger_test_events_returned_in_descending_order",
-      "label": "test_events_returned_in_descending_order()",
-      "_callable": true,
+      "id": "tests_test_vector_store_rationale_24",
+      "label": "End-to-end test verifying embedding generation, LanceDB storage, and vector\u2026",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "test_events_returned_in_descending_order()",
-      "source_file": "tests/test_timeline_ledger.py",
-      "source_location": "L49"
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "rationale",
+      "norm_label": "end-to-end test verifying embedding generation, lancedb storage, and vector...",
+      "source_file": "tests/test_vector_store.py",
+      "source_location": "L24"
     },
     {
-      "id": "tests_test_timeline_ledger_test_log_event_and_get_timeline",
-      "label": "test_log_event_and_get_timeline()",
-      "_callable": true,
+      "id": "tests_test_vector_store_rationale_6",
+      "label": "Verify LanceDB connection and table initialization.",
       "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "test_log_event_and_get_timeline()",
-      "source_file": "tests/test_timeline_ledger.py",
-      "source_location": "L15"
+      "community": 0,
+      "community_name": "CandidateSectionVector",
+      "file_type": "rationale",
+      "norm_label": "verify lancedb connection and table initialization.",
+      "source_file": "tests/test_vector_store.py",
+      "source_location": "L6"
     },
     {
       "id": "api_dependencies",
@@ -3085,61 +3098,6 @@
       "community_name": "Settings",
       "file_type": "code",
       "norm_label": "session",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "api_routes_search",
-      "label": "routes/search.py",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "routes/search.py",
-      "source_file": "api/routes/search.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "api_routes_search_py_post",
-      "label": "post",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "post",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "api_routes_search_py_session",
-      "label": "Session",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "session",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "api_schemas_search",
-      "label": "schemas/search.py",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "schemas/search.py",
-      "source_file": "api/schemas/search.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "api_schemas_search_py_basemodel",
-      "label": "BaseModel",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "Settings",
-      "file_type": "code",
-      "norm_label": "basemodel",
       "source_file": "",
       "source_location": ""
     },
@@ -3287,125 +3245,70 @@
       "source_location": "L5"
     },
     {
-      "id": "ingestion_parsers_docx_parser_py_path",
-      "label": "Path",
+      "id": "tests_test_ai_failure_logging",
+      "label": "test_ai_failure_logging.py",
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "path",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_docx_parser",
-      "label": "test_docx_parser.py",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "parse_docx",
-      "file_type": "code",
-      "norm_label": "test_docx_parser.py",
-      "source_file": "tests/test_docx_parser.py",
+      "norm_label": "test_ai_failure_logging.py",
+      "source_file": "tests/test_ai_failure_logging.py",
       "source_location": "L1"
     },
     {
-      "id": "tests_test_docx_parser_py_path",
-      "label": "Path",
+      "id": "tests_test_live_ollama_standalone",
+      "label": "test_live_ollama_standalone.py",
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "code",
-      "norm_label": "path",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "ingestion_parsers_docx_parser_rationale_15",
-      "label": "Extract text and metadata from a Word (.docx) file. Extraction order: 1. All\u2026",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "parse_docx",
-      "file_type": "rationale",
-      "norm_label": "extract text and metadata from a word (.docx) file. extraction order: 1. all...",
-      "source_file": "ingestion/parsers/docx_parser.py",
-      "source_location": "L15"
-    },
-    {
-      "id": "tests_test_docx_parser_rationale_1",
-      "label": "Tests for ingestion/parsers/docx_parser.py Seam under test: parse_docx(path:\u2026",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "parse_docx",
-      "file_type": "rationale",
-      "norm_label": "tests for ingestion/parsers/docx_parser.py seam under test: parse_docx(path:...",
-      "source_file": "tests/test_docx_parser.py",
+      "norm_label": "test_live_ollama_standalone.py",
+      "source_file": "tests/test_live_ollama_standalone.py",
       "source_location": "L1"
     },
     {
-      "id": "tests_test_docx_parser_rationale_22",
-      "label": "Write a .docx file with the given paragraphs (and optional table).",
+      "id": "tests_test_local_llm_fallback",
+      "label": "test_local_llm_fallback.py",
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
-      "file_type": "rationale",
-      "norm_label": "write a .docx file with the given paragraphs (and optional table).",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L22"
+      "community_name": "extract_inferences",
+      "file_type": "code",
+      "norm_label": "test_local_llm_fallback.py",
+      "source_file": "tests/test_local_llm_fallback.py",
+      "source_location": "L1"
     },
     {
-      "id": "tests_test_docx_parser_rationale_47",
-      "label": "parse_docx must return a ParsedDocument instance.",
+      "id": "src_candidate_intelligence_platform_extraction_local_llm_fallback_rationale_12",
+      "label": "Extract AI inferences from text using a local LLM via Ollama. Defaults to\u2026",
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "rationale",
-      "norm_label": "parse_docx must return a parseddocument instance.",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L47"
+      "norm_label": "extract ai inferences from text using a local llm via ollama. defaults to...",
+      "source_file": "src/candidate_intelligence_platform/extraction/local_llm_fallback.py",
+      "source_location": "L12"
     },
     {
-      "id": "tests_test_docx_parser_rationale_56",
-      "label": "parse_docx must include paragraph text in the result.",
+      "id": "tests_test_ai_failure_logging_rationale_38",
+      "label": "Test when LLM returns null claim_value and entity in claim_key.",
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "rationale",
-      "norm_label": "parse_docx must include paragraph text in the result.",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L56"
+      "norm_label": "test when llm returns null claim_value and entity in claim_key.",
+      "source_file": "tests/test_ai_failure_logging.py",
+      "source_location": "L38"
     },
     {
-      "id": "tests_test_docx_parser_rationale_66",
-      "label": "parse_docx must set pages to 1 (DOCX has no native page count).",
+      "id": "tests_test_live_ollama_standalone_rationale_6",
+      "label": "Live integration test against running Ollama instance.",
       "_origin": "ast",
       "community": 10,
-      "community_name": "parse_docx",
+      "community_name": "extract_inferences",
       "file_type": "rationale",
-      "norm_label": "parse_docx must set pages to 1 (docx has no native page count).",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L66"
-    },
-    {
-      "id": "tests_test_docx_parser_rationale_75",
-      "label": "parse_docx must include source_path in metadata.",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "parse_docx",
-      "file_type": "rationale",
-      "norm_label": "parse_docx must include source_path in metadata.",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L75"
-    },
-    {
-      "id": "tests_test_docx_parser_rationale_85",
-      "label": "parse_docx must include text from tables in the result.",
-      "_origin": "ast",
-      "community": 10,
-      "community_name": "parse_docx",
-      "file_type": "rationale",
-      "norm_label": "parse_docx must include text from tables in the result.",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L85"
+      "norm_label": "live integration test against running ollama instance.",
+      "source_file": "tests/test_live_ollama_standalone.py",
+      "source_location": "L6"
     },
     {
       "id": "ui_oxlintrc",
@@ -4203,15 +4106,59 @@
       "source_location": "L97"
     },
     {
-      "id": "tests_conftest_rationale_32",
-      "label": "Mock LanceDB vector store connection for isolated test runs.",
+      "id": "api_routes_search",
+      "label": "routes/search.py",
       "_origin": "ast",
       "community": 16,
-      "community_name": "MockVectorStore",
-      "file_type": "rationale",
-      "norm_label": "mock lancedb vector store connection for isolated test runs.",
-      "source_file": "tests/conftest.py",
-      "source_location": "L32"
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "routes/search.py",
+      "source_file": "api/routes/search.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "api_routes_search_py_post",
+      "label": "post",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "post",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "api_routes_search_py_session",
+      "label": "Session",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "session",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "api_schemas_search",
+      "label": "schemas/search.py",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "schemas/search.py",
+      "source_file": "api/schemas/search.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "api_schemas_search_py_basemodel",
+      "label": "BaseModel",
+      "_origin": "ast",
+      "community": 16,
+      "community_name": "routes/search.py",
+      "file_type": "code",
+      "norm_label": "basemodel",
+      "source_file": "",
+      "source_location": ""
     },
     {
       "id": "docs_agents_issue_tracker",
@@ -4397,13 +4344,57 @@
       "source_location": ""
     },
     {
-      "id": "dbconnection",
-      "label": "DBConnection",
+      "id": "base",
+      "label": "Base",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "dbconnection",
+      "norm_label": "base",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "crm_state_machine",
+      "label": "state_machine.py",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "state_machine.py",
+      "source_file": "crm/state_machine.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "crm_timeline_ledger",
+      "label": "timeline_ledger.py",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "timeline_ledger.py",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "crm_timeline_ledger_py_any",
+      "label": "Any",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "any",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "crm_timeline_ledger_py_session",
+      "label": "Session",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "session",
       "source_file": "",
       "source_location": ""
     },
@@ -4419,13 +4410,13 @@
       "source_location": ""
     },
     {
-      "id": "lancemodel",
-      "label": "LanceModel",
+      "id": "exception",
+      "label": "Exception",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "lancemodel",
+      "norm_label": "exception",
       "source_file": "",
       "source_location": ""
     },
@@ -4441,59 +4432,81 @@
       "source_location": ""
     },
     {
-      "id": "storage_cas",
-      "label": "cas.py",
+      "id": "storage_db_models",
+      "label": "db_models.py",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "cas.py",
-      "source_file": "storage/cas.py",
+      "norm_label": "db_models.py",
+      "source_file": "storage/db_models.py",
       "source_location": "L1"
     },
     {
-      "id": "storage_cas_py_path",
-      "label": "Path",
+      "id": "tests_test_state_machine",
+      "label": "test_state_machine.py",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "path",
+      "norm_label": "test_state_machine.py",
+      "source_file": "tests/test_state_machine.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_test_state_machine_py_fixture",
+      "label": "fixture",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "fixture",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "storage_vector_store",
-      "label": "vector_store.py",
+      "id": "tests_test_state_machine_py_session",
+      "label": "Session",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "vector_store.py",
-      "source_file": "storage/vector_store.py",
+      "norm_label": "session",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "tests_test_timeline_ledger",
+      "label": "test_timeline_ledger.py",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "code",
+      "norm_label": "test_timeline_ledger.py",
+      "source_file": "tests/test_timeline_ledger.py",
       "source_location": "L1"
     },
     {
-      "id": "tests_test_cas",
-      "label": "test_cas.py",
+      "id": "tests_test_timeline_ledger_py_fixture",
+      "label": "fixture",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "test_cas.py",
-      "source_file": "tests/test_cas.py",
-      "source_location": "L1"
+      "norm_label": "fixture",
+      "source_file": "",
+      "source_location": ""
     },
     {
-      "id": "tests_test_vector_store",
-      "label": "test_vector_store.py",
+      "id": "tests_test_timeline_ledger_py_session",
+      "label": "Session",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "code",
-      "norm_label": "test_vector_store.py",
-      "source_file": "tests/test_vector_store.py",
-      "source_location": "L1"
+      "norm_label": "session",
+      "source_file": "",
+      "source_location": ""
     },
     {
       "id": "uploadfile",
@@ -4507,15 +4520,48 @@
       "source_location": ""
     },
     {
-      "id": "storage_cas_rationale_11",
-      "label": "Store content in the CAS file structure. Returns (sha256_hash,\u2026",
+      "id": "crm_state_machine_rationale_25",
+      "label": "Transitions the candidate to a new status and logs the event.",
       "_origin": "ast",
       "community": 2,
       "community_name": "routes/candidates.py",
       "file_type": "rationale",
-      "norm_label": "store content in the cas file structure. returns (sha256_hash,...",
-      "source_file": "storage/cas.py",
-      "source_location": "L11"
+      "norm_label": "transitions the candidate to a new status and logs the event.",
+      "source_file": "crm/state_machine.py",
+      "source_location": "L25"
+    },
+    {
+      "id": "crm_timeline_ledger_rationale_23",
+      "label": "Logs a new event in the candidate's timeline.",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "rationale",
+      "norm_label": "logs a new event in the candidate's timeline.",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L23"
+    },
+    {
+      "id": "crm_timeline_ledger_rationale_43",
+      "label": "Retrieves all timeline events for a candidate, ordered by creation date\u2026",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "rationale",
+      "norm_label": "retrieves all timeline events for a candidate, ordered by creation date...",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L43"
+    },
+    {
+      "id": "crm_timeline_ledger_rationale_8",
+      "label": "Event-sourced logger for candidate timeline events.",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "routes/candidates.py",
+      "file_type": "rationale",
+      "norm_label": "event-sourced logger for candidate timeline events.",
+      "source_file": "crm/timeline_ledger.py",
+      "source_location": "L8"
     },
     {
       "id": "storage_vector_store_rationale_18",
@@ -4527,50 +4573,6 @@
       "norm_label": "helper to create a vector dictionary record from a chunk and embedding.",
       "source_file": "storage/vector_store.py",
       "source_location": "L18"
-    },
-    {
-      "id": "storage_vector_store_rationale_31",
-      "label": "Connect to the embedded LanceDB instance at the specified path.",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "routes/candidates.py",
-      "file_type": "rationale",
-      "norm_label": "connect to the embedded lancedb instance at the specified path.",
-      "source_file": "storage/vector_store.py",
-      "source_location": "L31"
-    },
-    {
-      "id": "tests_test_cas_rationale_7",
-      "label": "Verify CAS saves files at the correct sharded paths and deduplicates identical\u2026",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "routes/candidates.py",
-      "file_type": "rationale",
-      "norm_label": "verify cas saves files at the correct sharded paths and deduplicates identical...",
-      "source_file": "tests/test_cas.py",
-      "source_location": "L7"
-    },
-    {
-      "id": "tests_test_vector_store_rationale_24",
-      "label": "End-to-end test verifying embedding generation, LanceDB storage, and vector\u2026",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "routes/candidates.py",
-      "file_type": "rationale",
-      "norm_label": "end-to-end test verifying embedding generation, lancedb storage, and vector...",
-      "source_file": "tests/test_vector_store.py",
-      "source_location": "L24"
-    },
-    {
-      "id": "tests_test_vector_store_rationale_6",
-      "label": "Verify LanceDB connection and table initialization.",
-      "_origin": "ast",
-      "community": 2,
-      "community_name": "routes/candidates.py",
-      "file_type": "rationale",
-      "norm_label": "verify lancedb connection and table initialization.",
-      "source_file": "tests/test_vector_store.py",
-      "source_location": "L6"
     },
     {
       "id": "docs_tests_end_to_end_runner",
@@ -4815,17 +4817,6 @@
       "source_location": ""
     },
     {
-      "id": "tests_test_ai_failure_logging",
-      "label": "test_ai_failure_logging.py",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_ai_failure_logging.py",
-      "source_file": "tests/test_ai_failure_logging.py",
-      "source_location": "L1"
-    },
-    {
       "id": "tests_test_deterministic_ner",
       "label": "test_deterministic_ner.py",
       "_origin": "ast",
@@ -4845,28 +4836,6 @@
       "file_type": "code",
       "norm_label": "test_hybrid_extractor.py",
       "source_file": "tests/test_hybrid_extractor.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_test_live_ollama_standalone",
-      "label": "test_live_ollama_standalone.py",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_live_ollama_standalone.py",
-      "source_file": "tests/test_live_ollama_standalone.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_test_local_llm_fallback",
-      "label": "test_local_llm_fallback.py",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "code",
-      "norm_label": "test_local_llm_fallback.py",
-      "source_file": "tests/test_local_llm_fallback.py",
       "source_location": "L1"
     },
     {
@@ -4923,39 +4892,6 @@
       "norm_label": "calculate confidence score (0.0 to 1.0) for tier 1 deterministic extraction....",
       "source_file": "src/candidate_intelligence_platform/extraction/hybrid_extractor.py",
       "source_location": "L71"
-    },
-    {
-      "id": "src_candidate_intelligence_platform_extraction_local_llm_fallback_rationale_12",
-      "label": "Extract AI inferences from text using a local LLM via Ollama. Defaults to\u2026",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "rationale",
-      "norm_label": "extract ai inferences from text using a local llm via ollama. defaults to...",
-      "source_file": "src/candidate_intelligence_platform/extraction/local_llm_fallback.py",
-      "source_location": "L12"
-    },
-    {
-      "id": "tests_test_ai_failure_logging_rationale_38",
-      "label": "Test when LLM returns null claim_value and entity in claim_key.",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "rationale",
-      "norm_label": "test when llm returns null claim_value and entity in claim_key.",
-      "source_file": "tests/test_ai_failure_logging.py",
-      "source_location": "L38"
-    },
-    {
-      "id": "tests_test_live_ollama_standalone_rationale_6",
-      "label": "Live integration test against running Ollama instance.",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "extract_candidate_profile_hybrid",
-      "file_type": "rationale",
-      "norm_label": "live integration test against running ollama instance.",
-      "source_file": "tests/test_live_ollama_standalone.py",
-      "source_location": "L6"
     },
     {
       "id": "docs_agents_domain",
@@ -5994,6 +5930,17 @@
       "source_location": "L1"
     },
     {
+      "id": "ingestion_parsers_docx_parser_py_path",
+      "label": "Path",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "code",
+      "norm_label": "path",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
       "id": "ingestion_parsers_email_parser",
       "label": "email_parser.py",
       "_origin": "ast",
@@ -6039,6 +5986,28 @@
     },
     {
       "id": "ingestion_parsers_pdf_parser_py_path",
+      "label": "Path",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "code",
+      "norm_label": "path",
+      "source_file": "",
+      "source_location": ""
+    },
+    {
+      "id": "tests_test_docx_parser",
+      "label": "test_docx_parser.py",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "code",
+      "norm_label": "test_docx_parser.py",
+      "source_file": "tests/test_docx_parser.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_test_docx_parser_py_path",
       "label": "Path",
       "_origin": "ast",
       "community": 7,
@@ -6102,6 +6071,17 @@
       "norm_label": "docx parser using python-docx. public interface: parse_docx(path: path) ->...",
       "source_file": "ingestion/parsers/docx_parser.py",
       "source_location": "L1"
+    },
+    {
+      "id": "ingestion_parsers_docx_parser_rationale_15",
+      "label": "Extract text and metadata from a Word (.docx) file. Extraction order: 1. All\u2026",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "rationale",
+      "norm_label": "extract text and metadata from a word (.docx) file. extraction order: 1. all...",
+      "source_file": "ingestion/parsers/docx_parser.py",
+      "source_location": "L15"
     },
     {
       "id": "ingestion_parsers_email_parser_rationale_1",
@@ -6214,6 +6194,39 @@
       "source_location": "L71"
     },
     {
+      "id": "tests_test_docx_parser_rationale_1",
+      "label": "Tests for ingestion/parsers/docx_parser.py Seam under test: parse_docx(path:\u2026",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "rationale",
+      "norm_label": "tests for ingestion/parsers/docx_parser.py seam under test: parse_docx(path:...",
+      "source_file": "tests/test_docx_parser.py",
+      "source_location": "L1"
+    },
+    {
+      "id": "tests_test_docx_parser_rationale_22",
+      "label": "Write a .docx file with the given paragraphs (and optional table).",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "rationale",
+      "norm_label": "write a .docx file with the given paragraphs (and optional table).",
+      "source_file": "tests/test_docx_parser.py",
+      "source_location": "L22"
+    },
+    {
+      "id": "tests_test_docx_parser_rationale_47",
+      "label": "parse_docx must return ParsedDocument, extract text, tables, have correct\u2026",
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "ParsedDocument",
+      "file_type": "rationale",
+      "norm_label": "parse_docx must return parseddocument, extract text, tables, have correct...",
+      "source_file": "tests/test_docx_parser.py",
+      "source_location": "L47"
+    },
+    {
       "id": "tests_test_email_parser_rationale_1",
       "label": "Tests for ingestion/parsers/email_parser.py Seam under test: parse_email(path:\u2026",
       "_origin": "ast",
@@ -6248,47 +6261,14 @@
     },
     {
       "id": "tests_test_email_parser_rationale_44",
-      "label": "parse_email must return a ParsedDocument instance.",
+      "label": "parse_email must return ParsedDocument, extract body text, pages, and metadata\u2026",
       "_origin": "ast",
       "community": 7,
       "community_name": "ParsedDocument",
       "file_type": "rationale",
-      "norm_label": "parse_email must return a parseddocument instance.",
+      "norm_label": "parse_email must return parseddocument, extract body text, pages, and metadata...",
       "source_file": "tests/test_email_parser.py",
       "source_location": "L44"
-    },
-    {
-      "id": "tests_test_email_parser_rationale_53",
-      "label": "parse_email must include the email body in the result text.",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "rationale",
-      "norm_label": "parse_email must include the email body in the result text.",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L53"
-    },
-    {
-      "id": "tests_test_email_parser_rationale_63",
-      "label": "parse_email must set pages to 1.",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "rationale",
-      "norm_label": "parse_email must set pages to 1.",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L63"
-    },
-    {
-      "id": "tests_test_email_parser_rationale_72",
-      "label": "parse_email must populate subject, from, to, and source_path in metadata.",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "rationale",
-      "norm_label": "parse_email must populate subject, from, to, and source_path in metadata.",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L72"
     },
     {
       "id": "tests_test_pdf_parser_rationale_1",
@@ -6300,39 +6280,6 @@
       "norm_label": "tests for ingestion/parsers/pdf_parser.py seam under test: parse_pdf(path:...",
       "source_file": "tests/test_pdf_parser.py",
       "source_location": "L1"
-    },
-    {
-      "id": "tests_test_pdf_parser_rationale_101",
-      "label": "parse_pdf must set pages to the actual page count.",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "rationale",
-      "norm_label": "parse_pdf must set pages to the actual page count.",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L101"
-    },
-    {
-      "id": "tests_test_pdf_parser_rationale_111",
-      "label": "parse_pdf must include source_path in metadata.",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "rationale",
-      "norm_label": "parse_pdf must include source_path in metadata.",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L111"
-    },
-    {
-      "id": "tests_test_pdf_parser_rationale_121",
-      "label": "parse_pdf must fall back to OCR if get_text and pdfplumber return empty.",
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "ParsedDocument",
-      "file_type": "rationale",
-      "norm_label": "parse_pdf must fall back to ocr if get_text and pdfplumber return empty.",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L121"
     },
     {
       "id": "tests_test_pdf_parser_rationale_25",
@@ -6347,109 +6294,65 @@
     },
     {
       "id": "tests_test_pdf_parser_rationale_79",
-      "label": "parse_pdf must return a ParsedDocument instance.",
+      "label": "parse_pdf must return ParsedDocument, extract text, have correct pages, and\u2026",
       "_origin": "ast",
       "community": 7,
       "community_name": "ParsedDocument",
       "file_type": "rationale",
-      "norm_label": "parse_pdf must return a parseddocument instance.",
+      "norm_label": "parse_pdf must return parseddocument, extract text, have correct pages, and...",
       "source_file": "tests/test_pdf_parser.py",
       "source_location": "L79"
     },
     {
-      "id": "tests_test_pdf_parser_rationale_89",
-      "label": "parse_pdf must return non-empty text from a PDF with a text layer.",
+      "id": "tests_test_pdf_parser_rationale_93",
+      "label": "parse_pdf must fall back to OCR if get_text and pdfplumber return empty.",
       "_origin": "ast",
       "community": 7,
       "community_name": "ParsedDocument",
       "file_type": "rationale",
-      "norm_label": "parse_pdf must return non-empty text from a pdf with a text layer.",
+      "norm_label": "parse_pdf must fall back to ocr if get_text and pdfplumber return empty.",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L89"
+      "source_location": "L93"
     },
     {
-      "id": "base",
-      "label": "Base",
+      "id": "parametrize",
+      "label": "parametrize",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "base",
+      "norm_label": "parametrize",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "crm_state_machine",
-      "label": "state_machine.py",
+      "id": "storage_cas",
+      "label": "cas.py",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "state_machine.py",
-      "source_file": "crm/state_machine.py",
+      "norm_label": "cas.py",
+      "source_file": "storage/cas.py",
       "source_location": "L1"
     },
     {
-      "id": "crm_timeline_ledger",
-      "label": "timeline_ledger.py",
+      "id": "storage_cas_py_path",
+      "label": "Path",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "timeline_ledger.py",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "crm_timeline_ledger_py_any",
-      "label": "Any",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "any",
+      "norm_label": "path",
       "source_file": "",
       "source_location": ""
-    },
-    {
-      "id": "crm_timeline_ledger_py_session",
-      "label": "Session",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "session",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "exception",
-      "label": "Exception",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "exception",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "storage_db_models",
-      "label": "db_models.py",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "db_models.py",
-      "source_file": "storage/db_models.py",
-      "source_location": "L1"
     },
     {
       "id": "tests_test_api_candidates",
       "label": "test_api_candidates.py",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "test_api_candidates.py",
       "source_file": "tests/test_api_candidates.py",
@@ -6460,7 +6363,7 @@
       "label": "Session",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "session",
       "source_file": "",
@@ -6471,165 +6374,55 @@
       "label": "TestClient",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
       "norm_label": "testclient",
       "source_file": "",
       "source_location": ""
     },
     {
-      "id": "tests_test_api_search",
-      "label": "test_api_search.py",
+      "id": "tests_test_cas",
+      "label": "test_cas.py",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "code",
-      "norm_label": "test_api_search.py",
-      "source_file": "tests/test_api_search.py",
+      "norm_label": "test_cas.py",
+      "source_file": "tests/test_cas.py",
       "source_location": "L1"
     },
     {
-      "id": "tests_test_api_search_py_patch",
-      "label": "patch",
+      "id": "storage_cas_rationale_11",
+      "label": "Store content in the CAS file structure. Returns (sha256_hash,\u2026",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "patch",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_api_search_py_session",
-      "label": "Session",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "session",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_api_search_py_testclient",
-      "label": "TestClient",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "testclient",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_state_machine",
-      "label": "test_state_machine.py",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "test_state_machine.py",
-      "source_file": "tests/test_state_machine.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_test_state_machine_py_fixture",
-      "label": "fixture",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "fixture",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_state_machine_py_session",
-      "label": "Session",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "session",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_timeline_ledger",
-      "label": "test_timeline_ledger.py",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "test_timeline_ledger.py",
-      "source_file": "tests/test_timeline_ledger.py",
-      "source_location": "L1"
-    },
-    {
-      "id": "tests_test_timeline_ledger_py_fixture",
-      "label": "fixture",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "fixture",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "tests_test_timeline_ledger_py_session",
-      "label": "Session",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "code",
-      "norm_label": "session",
-      "source_file": "",
-      "source_location": ""
-    },
-    {
-      "id": "crm_state_machine_rationale_25",
-      "label": "Transitions the candidate to a new status and logs the event.",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "rationale",
-      "norm_label": "transitions the candidate to a new status and logs the event.",
-      "source_file": "crm/state_machine.py",
-      "source_location": "L25"
+      "norm_label": "store content in the cas file structure. returns (sha256_hash,...",
+      "source_file": "storage/cas.py",
+      "source_location": "L11"
     },
     {
-      "id": "crm_timeline_ledger_rationale_23",
-      "label": "Logs a new event in the candidate's timeline.",
+      "id": "tests_conftest_rationale_32",
+      "label": "Mock LanceDB vector store connection for isolated test runs.",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "rationale",
-      "norm_label": "logs a new event in the candidate's timeline.",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L23"
+      "norm_label": "mock lancedb vector store connection for isolated test runs.",
+      "source_file": "tests/conftest.py",
+      "source_location": "L32"
     },
     {
-      "id": "crm_timeline_ledger_rationale_43",
-      "label": "Retrieves all timeline events for a candidate, ordered by creation date\u2026",
+      "id": "tests_test_cas_rationale_7",
+      "label": "Verify CAS saves files at the correct sharded paths and deduplicates identical\u2026",
       "_origin": "ast",
       "community": 8,
-      "community_name": "Candidate",
+      "community_name": "test_api_candidates.py",
       "file_type": "rationale",
-      "norm_label": "retrieves all timeline events for a candidate, ordered by creation date...",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L43"
-    },
-    {
-      "id": "crm_timeline_ledger_rationale_8",
-      "label": "Event-sourced logger for candidate timeline events.",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "Candidate",
-      "file_type": "rationale",
-      "norm_label": "event-sourced logger for candidate timeline events.",
-      "source_file": "crm/timeline_ledger.py",
-      "source_location": "L8"
+      "norm_label": "verify cas saves files at the correct sharded paths and deduplicates identical...",
+      "source_file": "tests/test_cas.py",
+      "source_location": "L7"
     },
     {
       "id": "agents_skills_python_performance_optimization_references_advanced_patterns",
@@ -7900,7 +7693,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L254",
+      "source_location": "L257",
       "weight": 1.0
     },
     {
@@ -7912,7 +7705,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L260",
+      "source_location": "L263",
       "weight": 1.0
     },
     {
@@ -7924,7 +7717,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L277",
+      "source_location": "L280",
       "weight": 1.0
     },
     {
@@ -7936,7 +7729,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L285",
+      "source_location": "L288",
       "weight": 1.0
     },
     {
@@ -7948,7 +7741,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L288",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -7960,7 +7753,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L194",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -7972,7 +7765,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L202",
+      "source_location": "L205",
       "weight": 1.0
     },
     {
@@ -7984,19 +7777,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L211",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_api_candidates_test_get_candidate",
-      "target": "storage_db_models_candidate",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_api_candidates.py",
-      "source_location": "L26",
+      "source_location": "L214",
       "weight": 1.0
     },
     {
@@ -8008,7 +7789,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L100",
+      "source_location": "L101",
       "weight": 1.0
     },
     {
@@ -8020,7 +7801,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L105",
+      "source_location": "L106",
       "weight": 1.0
     },
     {
@@ -8032,7 +7813,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L108",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -8044,7 +7825,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L59",
+      "source_location": "L60",
       "weight": 1.0
     },
     {
@@ -8068,7 +7849,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L128",
+      "source_location": "L131",
       "weight": 1.0
     },
     {
@@ -8080,7 +7861,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L131",
+      "source_location": "L134",
       "weight": 1.0
     },
     {
@@ -8092,7 +7873,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L166",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -8104,7 +7885,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L169",
+      "source_location": "L172",
       "weight": 1.0
     },
     {
@@ -8116,7 +7897,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L78",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -8128,7 +7909,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -8444,103 +8225,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_docx_parser_test_parse_docx_default_page_count",
-      "target": "tests_test_docx_parser_make_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L67",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_default_page_count",
-      "target": "ingestion_parsers_docx_parser_parse_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L69",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_extracts_paragraph_text",
-      "target": "tests_test_docx_parser_make_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L57",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_extracts_paragraph_text",
-      "target": "ingestion_parsers_docx_parser_parse_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L59",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_extracts_table_text",
-      "target": "tests_test_docx_parser_make_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L86",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_extracts_table_text",
-      "target": "ingestion_parsers_docx_parser_parse_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L92",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_metadata_contains_source_path",
-      "target": "tests_test_docx_parser_make_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L76",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_metadata_contains_source_path",
-      "target": "ingestion_parsers_docx_parser_parse_docx",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L78",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
+      "source": "tests_test_docx_parser_test_parse_docx_functional_flow",
       "target": "tests_test_docx_parser_make_docx",
       "relation": "calls",
       "_origin": "ast",
@@ -8552,7 +8237,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
+      "source": "tests_test_docx_parser_test_parse_docx_functional_flow",
       "target": "ingestion_parsers_docx_parser_parse_docx",
       "relation": "calls",
       "_origin": "ast",
@@ -8560,11 +8245,11 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_docx_parser.py",
-      "source_location": "L50",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
-      "source": "tests_test_email_parser_test_parse_email_extracts_body_text",
+      "source": "tests_test_email_parser_test_parse_email_functional_flow",
       "target": "tests_test_email_parser_make_eml",
       "relation": "calls",
       "_origin": "ast",
@@ -8572,11 +8257,11 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_email_parser.py",
-      "source_location": "L55",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
-      "source": "tests_test_email_parser_test_parse_email_extracts_body_text",
+      "source": "tests_test_email_parser_test_parse_email_functional_flow",
       "target": "ingestion_parsers_email_parser_parse_email",
       "relation": "calls",
       "_origin": "ast",
@@ -8584,79 +8269,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_email_parser.py",
-      "source_location": "L57",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_metadata_headers",
-      "target": "tests_test_email_parser_make_eml",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L73",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_metadata_headers",
-      "target": "ingestion_parsers_email_parser_parse_email",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L75",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_page_count_is_one",
-      "target": "tests_test_email_parser_make_eml",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L64",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_page_count_is_one",
-      "target": "ingestion_parsers_email_parser_parse_email",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L66",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_returns_parsed_document",
-      "target": "tests_test_email_parser_make_eml",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L45",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_returns_parsed_document",
-      "target": "ingestion_parsers_email_parser_parse_email",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L47",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -9020,7 +8633,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_pdf_parser_test_parse_pdf_correct_page_count",
+      "source": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
       "target": "tests_test_pdf_parser_make_minimal_pdf",
       "relation": "calls",
       "_origin": "ast",
@@ -9028,11 +8641,11 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L103",
+      "source_location": "L82",
       "weight": 1.0
     },
     {
-      "source": "tests_test_pdf_parser_test_parse_pdf_correct_page_count",
+      "source": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
       "target": "ingestion_parsers_pdf_parser_parse_pdf",
       "relation": "calls",
       "_origin": "ast",
@@ -9040,55 +8653,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L105",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_extracts_text",
-      "target": "tests_test_pdf_parser_make_minimal_pdf",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L92",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_extracts_text",
-      "target": "ingestion_parsers_pdf_parser_parse_pdf",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L94",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_metadata_contains_source_path",
-      "target": "tests_test_pdf_parser_make_minimal_pdf",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L113",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_metadata_contains_source_path",
-      "target": "ingestion_parsers_pdf_parser_parse_pdf",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L115",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -9100,7 +8665,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L142",
+      "source_location": "L114",
       "weight": 1.0
     },
     {
@@ -9112,31 +8677,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L144",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
-      "target": "tests_test_pdf_parser_make_minimal_pdf",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L81",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
-      "target": "ingestion_parsers_pdf_parser_parse_pdf",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L83",
+      "source_location": "L116",
       "weight": 1.0
     },
     {
@@ -9617,6 +9158,18 @@
       "context": "decorator",
       "source_file": "tests/conftest.py",
       "source_location": "L115",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_api_candidates_test_get_candidate_scenarios",
+      "target": "parametrize",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "decorator",
+      "source_file": "tests/test_api_candidates.py",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -10672,7 +10225,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L255",
+      "source_location": "L258",
       "weight": 1.0
     },
     {
@@ -11057,6 +10610,18 @@
       "context": "import",
       "source_file": "tests/test_pdf_parser.py",
       "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_search_engine",
+      "target": "storage_vector_store_candidatesectionvector",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "tests/test_search_engine.py",
+      "source_location": "L100",
       "weight": 1.0
     },
     {
@@ -12736,7 +12301,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L253",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -12748,7 +12313,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L253",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -12760,7 +12325,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L276",
+      "source_location": "L279",
       "weight": 1.0
     },
     {
@@ -12772,7 +12337,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L276",
+      "source_location": "L279",
       "weight": 1.0
     },
     {
@@ -12784,7 +12349,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L249",
+      "source_location": "L252",
       "weight": 1.0
     },
     {
@@ -12796,7 +12361,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L192",
+      "source_location": "L195",
       "weight": 1.0
     },
     {
@@ -12808,31 +12373,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L192",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_api_candidates_test_get_candidate",
-      "target": "tests_test_api_candidates_py_session",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_api_candidates.py",
-      "source_location": "L24",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_api_candidates_test_get_candidate",
-      "target": "tests_test_api_candidates_py_testclient",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_api_candidates.py",
-      "source_location": "L24",
+      "source_location": "L195",
       "weight": 1.0
     },
     {
@@ -12844,7 +12385,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L98",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -12856,11 +12397,23 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L98",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
-      "source": "tests_test_api_candidates_test_get_candidate_not_found",
+      "source": "tests_test_api_candidates_test_get_candidate_scenarios",
+      "target": "tests_test_api_candidates_py_session",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "parameter_type",
+      "source_file": "tests/test_api_candidates.py",
+      "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_api_candidates_test_get_candidate_scenarios",
       "target": "tests_test_api_candidates_py_testclient",
       "relation": "references",
       "_origin": "ast",
@@ -12868,7 +12421,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L37",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -12880,7 +12433,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L57",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -12892,7 +12445,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L57",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -12928,7 +12481,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L126",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -12940,7 +12493,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L126",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -12952,7 +12505,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L161",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -12964,7 +12517,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L161",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -12976,7 +12529,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -12988,7 +12541,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -13000,7 +12553,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L41",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -13012,7 +12565,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L41",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -13132,7 +12685,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_upload_stream.py",
-      "source_location": "L32",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -13156,7 +12709,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_api_upload_stream.py",
-      "source_location": "L48",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -13196,55 +12749,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_docx_parser_test_parse_docx_default_page_count",
-      "target": "tests_test_docx_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L65",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_extracts_paragraph_text",
-      "target": "tests_test_docx_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L55",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_extracts_table_text",
-      "target": "tests_test_docx_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L84",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_metadata_contains_source_path",
-      "target": "tests_test_docx_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L74",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
+      "source": "tests_test_docx_parser_test_parse_docx_functional_flow",
       "target": "tests_test_docx_parser_py_path",
       "relation": "references",
       "_origin": "ast",
@@ -13256,43 +12761,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_email_parser_test_parse_email_extracts_body_text",
-      "target": "tests_test_email_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L52",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_metadata_headers",
-      "target": "tests_test_email_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L71",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_page_count_is_one",
-      "target": "tests_test_email_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L62",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_test_parse_email_returns_parsed_document",
+      "source": "tests_test_email_parser_test_parse_email_functional_flow",
       "target": "tests_test_email_parser_py_path",
       "relation": "references",
       "_origin": "ast",
@@ -13304,7 +12773,7 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_pdf_parser_test_parse_pdf_correct_page_count",
+      "source": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
       "target": "tests_test_pdf_parser_py_path",
       "relation": "references",
       "_origin": "ast",
@@ -13312,31 +12781,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L100",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_extracts_text",
-      "target": "tests_test_pdf_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L88",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_metadata_contains_source_path",
-      "target": "tests_test_pdf_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L110",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -13348,19 +12793,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L120",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
-      "target": "tests_test_pdf_parser_py_path",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "parameter_type",
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L78",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -13492,7 +12925,7 @@
       "confidence_score": 1.0,
       "context": "submodule_import",
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L123",
+      "source_location": "L95",
       "weight": 1.0
     },
     {
@@ -15164,7 +14597,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L126",
+      "source_location": "L127",
       "weight": 1.0
     },
     {
@@ -15175,7 +14608,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L161",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
@@ -15186,18 +14619,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L192",
+      "source_location": "L195",
       "weight": 1.0
     },
     {
       "source": "tests_test_api_candidates",
-      "target": "tests_test_api_candidates_test_get_candidate",
+      "target": "tests_test_api_candidates_test_get_candidate_scenarios",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L24",
+      "source_location": "L25",
       "weight": 1.0
     },
     {
@@ -15208,7 +14641,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L249",
+      "source_location": "L252",
       "weight": 1.0
     },
     {
@@ -15219,7 +14652,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L253",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -15230,18 +14663,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L276",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_api_candidates",
-      "target": "tests_test_api_candidates_test_get_candidate_not_found",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_api_candidates.py",
-      "source_location": "L37",
+      "source_location": "L279",
       "weight": 1.0
     },
     {
@@ -15252,7 +14674,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L41",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -15263,7 +14685,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L57",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -15274,7 +14696,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -15285,7 +14707,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L98",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -15384,18 +14806,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_api_upload_stream.py",
-      "source_location": "L32",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_api_upload_stream",
-      "target": "tests_test_api_upload_stream_test_upload_stream_transparency_events",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_api_upload_stream.py",
-      "source_location": "L48",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -15407,6 +14818,17 @@
       "confidence_score": 1.0,
       "source_file": "tests/test_api_upload_stream.py",
       "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_api_upload_stream",
+      "target": "tests_test_api_upload_stream_test_upload_stream_transparency_events",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_api_upload_stream.py",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -15686,57 +15108,13 @@
     },
     {
       "source": "tests_test_docx_parser",
-      "target": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
+      "target": "tests_test_docx_parser_test_parse_docx_functional_flow",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_docx_parser.py",
       "source_location": "L46",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser",
-      "target": "tests_test_docx_parser_test_parse_docx_extracts_paragraph_text",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L55",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser",
-      "target": "tests_test_docx_parser_test_parse_docx_default_page_count",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L65",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser",
-      "target": "tests_test_docx_parser_test_parse_docx_metadata_contains_source_path",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L74",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser",
-      "target": "tests_test_docx_parser_test_parse_docx_extracts_table_text",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L84",
       "weight": 1.0
     },
     {
@@ -15752,46 +15130,13 @@
     },
     {
       "source": "tests_test_email_parser",
-      "target": "tests_test_email_parser_test_parse_email_returns_parsed_document",
+      "target": "tests_test_email_parser_test_parse_email_functional_flow",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_email_parser.py",
       "source_location": "L43",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser",
-      "target": "tests_test_email_parser_test_parse_email_extracts_body_text",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L52",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser",
-      "target": "tests_test_email_parser_test_parse_email_page_count_is_one",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L62",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser",
-      "target": "tests_test_email_parser_test_parse_email_metadata_headers",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L71",
       "weight": 1.0
     },
     {
@@ -15917,7 +15262,7 @@
     },
     {
       "source": "tests_test_intelligence",
-      "target": "tests_test_intelligence_test_build_match_rationale",
+      "target": "tests_test_intelligence_test_generate_single_embedding",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -15928,13 +15273,24 @@
     },
     {
       "source": "tests_test_intelligence",
+      "target": "tests_test_intelligence_test_build_match_rationale",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_intelligence.py",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_intelligence",
       "target": "tests_test_intelligence_test_embedding_semantic_similarity",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_intelligence.py",
-      "source_location": "L38",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -16027,39 +15383,6 @@
     },
     {
       "source": "tests_test_pdf_parser",
-      "target": "tests_test_pdf_parser_test_parse_pdf_correct_page_count",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L100",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser",
-      "target": "tests_test_pdf_parser_test_parse_pdf_metadata_contains_source_path",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L110",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser",
-      "target": "tests_test_pdf_parser_test_parse_pdf_ocr_fallback",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L120",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser",
       "target": "tests_test_pdf_parser_make_minimal_pdf",
       "relation": "contains",
       "_origin": "ast",
@@ -16071,7 +15394,7 @@
     },
     {
       "source": "tests_test_pdf_parser",
-      "target": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
+      "target": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -16082,13 +15405,13 @@
     },
     {
       "source": "tests_test_pdf_parser",
-      "target": "tests_test_pdf_parser_test_parse_pdf_extracts_text",
+      "target": "tests_test_pdf_parser_test_parse_pdf_ocr_fallback",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L88",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -16155,6 +15478,17 @@
       "confidence_score": 1.0,
       "source_file": "tests/test_search_engine.py",
       "source_location": "L87",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_search_engine",
+      "target": "tests_test_search_engine_test_execute_vector_search_end_to_end",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_search_engine.py",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -16264,7 +15598,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_upload_logging.py",
-      "source_location": "L34",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -17996,57 +17330,13 @@
     },
     {
       "source": "tests_test_docx_parser_rationale_47",
-      "target": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
+      "target": "tests_test_docx_parser_test_parse_docx_functional_flow",
       "relation": "rationale_for",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_docx_parser.py",
       "source_location": "L47",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_rationale_56",
-      "target": "tests_test_docx_parser_test_parse_docx_extracts_paragraph_text",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L56",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_rationale_66",
-      "target": "tests_test_docx_parser_test_parse_docx_default_page_count",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L66",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_rationale_75",
-      "target": "tests_test_docx_parser_test_parse_docx_metadata_contains_source_path",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L75",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_docx_parser_rationale_85",
-      "target": "tests_test_docx_parser_test_parse_docx_extracts_table_text",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_docx_parser.py",
-      "source_location": "L85",
       "weight": 1.0
     },
     {
@@ -18084,46 +17374,13 @@
     },
     {
       "source": "tests_test_email_parser_rationale_44",
-      "target": "tests_test_email_parser_test_parse_email_returns_parsed_document",
+      "target": "tests_test_email_parser_test_parse_email_functional_flow",
       "relation": "rationale_for",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_email_parser.py",
       "source_location": "L44",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_rationale_53",
-      "target": "tests_test_email_parser_test_parse_email_extracts_body_text",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L53",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_rationale_63",
-      "target": "tests_test_email_parser_test_parse_email_page_count_is_one",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L63",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_email_parser_rationale_72",
-      "target": "tests_test_email_parser_test_parse_email_metadata_headers",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_email_parser.py",
-      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -18303,39 +17560,6 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_pdf_parser_rationale_101",
-      "target": "tests_test_pdf_parser_test_parse_pdf_correct_page_count",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L101",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_rationale_111",
-      "target": "tests_test_pdf_parser_test_parse_pdf_metadata_contains_source_path",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L111",
-      "weight": 1.0
-    },
-    {
-      "source": "tests_test_pdf_parser_rationale_121",
-      "target": "tests_test_pdf_parser_test_parse_pdf_ocr_fallback",
-      "relation": "rationale_for",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L121",
-      "weight": 1.0
-    },
-    {
       "source": "tests_test_pdf_parser_rationale_25",
       "target": "tests_test_pdf_parser_make_minimal_pdf",
       "relation": "rationale_for",
@@ -18348,7 +17572,7 @@
     },
     {
       "source": "tests_test_pdf_parser_rationale_79",
-      "target": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
+      "target": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
       "relation": "rationale_for",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -18358,14 +17582,14 @@
       "weight": 1.0
     },
     {
-      "source": "tests_test_pdf_parser_rationale_89",
-      "target": "tests_test_pdf_parser_test_parse_pdf_extracts_text",
+      "source": "tests_test_pdf_parser_rationale_93",
+      "target": "tests_test_pdf_parser_test_parse_pdf_ocr_fallback",
       "relation": "rationale_for",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L89",
+      "source_location": "L93",
       "weight": 1.0
     },
     {
@@ -18697,7 +17921,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "tests/test_intelligence.py",
-      "source_location": "L20",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -18709,7 +17933,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "tests/test_intelligence.py",
-      "source_location": "L46",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -18722,6 +17946,18 @@
       "context": "call",
       "source_file": "tests/test_intelligence.py",
       "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_intelligence_test_generate_single_embedding",
+      "target": "src_candidate_intelligence_platform_intelligence_embeddings_generate_single_embedding",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "context": "call",
+      "source_file": "tests/test_intelligence.py",
+      "source_location": "L15",
       "weight": 1.0
     },
     {
@@ -18770,6 +18006,30 @@
       "context": "call",
       "source_file": "tests/test_local_llm_fallback.py",
       "source_location": "L42",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_search_engine_test_execute_vector_search_end_to_end",
+      "target": "src_candidate_intelligence_platform_intelligence_embeddings_generate_embeddings",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "context": "call",
+      "source_file": "tests/test_search_engine.py",
+      "source_location": "L108",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_search_engine_test_execute_vector_search_end_to_end",
+      "target": "src_candidate_intelligence_platform_search_hybrid_searcher_execute_vector_search",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "context": "call",
+      "source_file": "tests/test_search_engine.py",
+      "source_location": "L121",
       "weight": 1.0
     },
     {
@@ -19033,7 +18293,7 @@
       "confidence_score": 0.95,
       "context": "parameter_type",
       "source_file": "tests/test_api_candidates.py",
-      "source_location": "L192",
+      "source_location": "L195",
       "weight": 0.8
     },
     {
@@ -19599,6 +18859,17 @@
       "weight": 0.8
     },
     {
+      "source": "tests_test_api_candidates_test_get_candidate_scenarios",
+      "target": "storage_db_models_candidate",
+      "relation": "uses",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "tests/test_api_candidates.py",
+      "source_location": "L28",
+      "weight": 0.8
+    },
+    {
       "source": "tests_test_api_search_test_search_candidates",
       "target": "storage_db_models_candidate",
       "relation": "uses",
@@ -19632,25 +18903,25 @@
       "weight": 0.8
     },
     {
-      "source": "tests_test_docx_parser_test_parse_docx_returns_parsed_document",
+      "source": "tests_test_docx_parser_test_parse_docx_functional_flow",
       "target": "ingestion_parsers_models_parseddocument",
       "relation": "uses",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "source_file": "tests/test_docx_parser.py",
-      "source_location": "L52",
+      "source_location": "L56",
       "weight": 0.8
     },
     {
-      "source": "tests_test_email_parser_test_parse_email_returns_parsed_document",
+      "source": "tests_test_email_parser_test_parse_email_functional_flow",
       "target": "ingestion_parsers_models_parseddocument",
       "relation": "uses",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "source_file": "tests/test_email_parser.py",
-      "source_location": "L49",
+      "source_location": "L50",
       "weight": 0.8
     },
     {
@@ -19694,18 +18965,29 @@
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "source_file": "tests/test_intelligence.py",
-      "source_location": "L20",
+      "source_location": "L27",
       "weight": 0.8
     },
     {
-      "source": "tests_test_pdf_parser_test_parse_pdf_returns_parsed_document",
+      "source": "tests_test_pdf_parser_test_parse_pdf_functional_flow",
       "target": "ingestion_parsers_models_parseddocument",
       "relation": "uses",
       "_origin": "ast",
       "confidence": "INFERRED",
       "confidence_score": 0.95,
       "source_file": "tests/test_pdf_parser.py",
-      "source_location": "L85",
+      "source_location": "L86",
+      "weight": 0.8
+    },
+    {
+      "source": "tests_test_search_engine_test_execute_vector_search_end_to_end",
+      "target": "storage_vector_store_candidatesectionvector",
+      "relation": "uses",
+      "_origin": "ast",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "tests/test_search_engine.py",
+      "source_location": "L106",
       "weight": 0.8
     },
     {
@@ -19831,5 +19113,5 @@
       "source_file": "docs/how_candidate_intelligence_works.html"
     }
   ],
-  "built_at_commit": "e79e2dd0b5084d0f29890077d2163e8f96293623"
+  "built_at_commit": "1325bb9b31aa9b740331b45b109e3cacd975b87f"
 }

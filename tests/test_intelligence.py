@@ -1,5 +1,5 @@
 import pytest
-from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings, generate_single_embedding
 from candidate_intelligence_platform.intelligence.explainer import build_match_rationale, MatchParameters
 
 def test_generate_embeddings():
@@ -10,6 +10,13 @@ def test_generate_embeddings():
     assert len(embeddings[0]) == 384
     assert len(embeddings[1]) == 384
     assert isinstance(embeddings[0][0], float)
+
+def test_generate_single_embedding():
+    emb = generate_single_embedding("Python developer")
+    assert isinstance(emb, list)
+    assert len(emb) == 384
+    assert isinstance(emb[0], float)
+
 
 def test_build_match_rationale():
     candidate_id = "test-123"
