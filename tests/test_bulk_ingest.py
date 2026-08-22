@@ -171,3 +171,61 @@ def test_bulk_ingest_master_report_logging(mock_sessionmaker, mock_cas_mgr, mock
     unprocessed = json.loads(unprocessed_log.read_text())
     assert len(unprocessed) == 1
     assert unprocessed[0]["category"] == "NON_RESUME_LEGAL_CONTRACT"
+
+def test_process_single_file_delegates_to_intake(db_session, tmp_path, monkeypatch):
+    """Adapter maps IntakeResult to legacy telemetry strings; adds resolution_action."""
+    import scripts.bulk_ingest as bi
+    from storage.cas import CASManager
+
+    monkeypatch.setattr(bi, "get_vector_db", lambda: None)
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.deterministic_ner.extract_facts",
+        lambda text: [],
+    )
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {
+            "first_name": "Jane", "last_name": "Doe", "primary_email": "jane.doe@example.com",
+            "primary_phone": "555-123-4567", "current_title": "Engineer",
+            "warnings": [], "used_ai_fallback": False,
+        },
+    )
+
+    resume_text = (
+        "Jane Candidate\nSenior Python Developer\njane.doe@example.com | 555-123-4567\n\n"
+        "Summary:\nExperienced Python software engineer building APIs and data pipelines.\n\n"
+        "Technical Skills:\nPython, FastAPI, Docker, PostgreSQL, AWS\n\n"
+        "Professional Experience:\nSenior Developer at Acme Corp (2020 - Present)\n\n"
+        "Education:\nBS in Computer Science\n"
+    ).encode("utf-8")
+    f = tmp_path / "resumes"
+    f.mkdir()
+    target = f / "jane_resume.txt"
+    target.write_bytes(resume_text)
+
+    cas_mgr = CASManager(str(tmp_path / "cas"))
+    success, file_hash, telemetry = bi.process_single_file(target, f, db_session, cas_mgr)
+    db_session.commit()
+
+    assert success is True
+    assert telemetry["status"] in ("SUCCESS", "PARTIAL_SUCCESS")
+    assert telemetry["category"] == "VALID_RESUME"
+    assert telemetry["how_processed"] == "Raw_Text_Fallback"
+    assert telemetry["candidate_name"] == "Jane Doe"
+    assert "resolution_action" in telemetry
+    assert telemetry["resolution_action"] == "NEW"
+
+    # Same file again -> duplicate via pipeline dedup-before-CAS (D5)
+    success2, _, telemetry2 = bi.process_single_file(target, f, db_session, cas_mgr)
+    assert success2 is True
+    assert telemetry2["status"] == "SKIPPED_DUPLICATE"
+    assert telemetry2["category"] == "DUPLICATE_FILE"
+    assert telemetry2["candidate_id"] == telemetry["candidate_id"]
+
+    # Non-resume -> legacy category preserved, nothing persisted beyond CAS blob
+    contract = f / "REFERRAL AGREEMENT.pdf"
+    contract.write_text("This Referral Agreement is entered into by and between the parties hereto. Governing law and indemnification terms apply.")
+    success3, _, telemetry3 = bi.process_single_file(contract, f, db_session, cas_mgr)
+    assert success3 is False
+    assert telemetry3["status"] == "SKIPPED_NON_RESUME"
+    assert telemetry3["category"] == "NON_RESUME_LEGAL_CONTRACT"
