@@ -27,18 +27,10 @@ from candidate_intelligence_platform.ingestion.intake import (
     IntakeStatus,
     TimelineMode,
 )
-from ingestion.chunker import chunk_document
-from ingestion.parsers.models import ParsedDocument
-from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
-from api.dependencies import get_vector_db
-from storage.vector_store import CandidateSectionVector
 from candidate_intelligence_platform.extraction.hybrid_extractor import (
-    extract_candidate_profile_hybrid,
     normalize_name,
-    normalize_title,
-    assess_tier1
+    normalize_title
 )
-from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts
 import structlog
 import json
 import asyncio
@@ -50,6 +42,35 @@ from fastapi.responses import StreamingResponse, FileResponse
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
+
+def translate_reprocess_progress(p: IntakeProgress, llm_model: str) -> Optional[Dict[str, Any]]:
+    """Canonical pipeline stages -> reprocess contracted stage names/progress."""
+    if p.stage == "ENTITY_RESOLUTION":
+        return {
+            "stage": "ENTITY_RESOLUTION",
+            "stage_detail": "Rule-based NER Extraction",
+            "status": "IN_PROGRESS",
+            "progress": 30,
+            "used_ai": False
+        }
+    if p.stage == "AI_EXTRACTION":
+        model = str(p.detail.get("model_name") or llm_model)
+        return {
+            "stage": "AI_EXTRACTION",
+            "stage_detail": f"AI Model Inference ({model})",
+            "status": "IN_PROGRESS",
+            "progress": 30,
+            "message": f"Running local AI Model extraction ({model})...",
+            "used_ai": True,
+            "model_name": model
+        }
+    if p.stage == "UPDATING_FTS":
+        return {"stage": "UPDATING_FTS", "status": "IN_PROGRESS", "progress": 50, "message": "Refreshing FTS search index"}
+    if p.stage == "GENERATING_VECTORS":
+        return {"stage": "GENERATING_VECTORS", "status": "IN_PROGRESS", "progress": 75, "message": "Chunking document and re-generating LanceDB vector embeddings"}
+    if p.stage == "LOGGING_TIMELINE":
+        return {"stage": "LOGGING_TIMELINE", "status": "IN_PROGRESS", "progress": 90, "message": "Logging timeline audit event"}
+    return None
 
 @router.get("", response_model=List[CandidateResponse])
 def list_candidates(db: Session = Depends(get_db)) -> List[Candidate]:
@@ -168,50 +189,40 @@ def get_candidate_file(candidate_id: str, db: Session = Depends(get_db), setting
 
 @router.post("/{candidate_id}/reprocess")
 def reprocess_candidate(
-    candidate_id: str, 
+    candidate_id: str,
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
 ) -> Dict[str, Any]:
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
-        
+
     rv = db.query(ResumeVersion).filter(
         ResumeVersion.candidate_id == candidate_id,
         ResumeVersion.is_primary == True
     ).first()
-    
-    if rv and rv.raw_text:
-        raw_text = rv.raw_text
-        reprocess_warnings = []
-        
-        # 1. Entity Resolution
-        extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
-        if extracted.get("warnings"):
-            reprocess_warnings.extend(extracted["warnings"])
-        
-        candidate.first_name = extracted.get("first_name", candidate.first_name)
-        candidate.last_name = extracted.get("last_name", candidate.last_name)
-        if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
-        if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
-        if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
-        db.commit()
-        
-        # 2. Refresh Full-Text Search (FTS)
-        try:
-            CandidateService.update_fts_index(db, candidate_id, f"{candidate.first_name} {candidate.last_name}", candidate, raw_text)
-            db.commit()
-        except Exception:
-            reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
 
-        # 3. Refresh Vector Embeddings
-        if vector_db:
-            try:
-                CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id)
-            except Exception:
-                reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
-        else:
-            reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
+    if rv and rv.raw_text:
+        result = reprocess_text(
+            raw_text=rv.raw_text,
+            candidate_id=candidate_id,
+            resume_version_id=rv.id,
+            db=db,
+            vector_db=vector_db,
+            settings=settings,
+        )
+        if result.status == IntakeStatus.ERROR:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=result.warnings[0] if result.warnings else "Reprocessing failed")
+        db.commit()
+        return {
+            "status": "success",
+            "message": "Reprocessing completed successfully",
+            "warnings": result.warnings,
+            "used_ai_fallback": result.used_ai_fallback,
+            "model_name": result.model_name
+        }
 
     ledger = TimelineLedger()
     ledger.log_event(
@@ -224,7 +235,7 @@ def reprocess_candidate(
         created_by="Recruiter"
     )
     db.commit()
-    return {"status": "success", "message": "Reprocessing completed successfully", "warnings": reprocess_warnings if 'reprocess_warnings' in locals() else []}
+    return {"status": "success", "message": "Reprocessing completed successfully", "warnings": [], "used_ai_fallback": False, "model_name": None}
 
 @router.post("/{candidate_id}/reprocess-stream")
 async def reprocess_candidate_stream(
@@ -253,69 +264,55 @@ async def reprocess_candidate_stream(
 
             raw_text = rv.raw_text if (rv and rv.raw_text) else ""
 
-            # 2. Entity Resolution (compute facts ONCE, reuse for assessment and extraction)
             used_ai = False
             if raw_text:
-                facts = await asyncio.to_thread(extract_facts, raw_text)
-                profile, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
-                
-                if needs_ai:
-                    llm_model = settings.llm_model
-                    yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 30, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model, 'warnings': reprocess_warnings})}\n\n"
-                    await asyncio.sleep(0.02)
-                else:
-                    yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Extracting profile entities (Rule-based NER)...', 'used_ai': False, 'warnings': reprocess_warnings})}\n\n"
-                    await asyncio.sleep(0.02)
+                collected: List[str] = []
 
-                # Pass precomputed facts to avoid re-running spaCy NER
-                def do_extract():
-                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
-                extracted = await asyncio.to_thread(do_extract)
-                used_ai = extracted.get("used_ai_fallback", False)
-                
-                if extracted.get("warnings"):
-                    reprocess_warnings.extend(extracted["warnings"])
-                
-                candidate.first_name = extracted.get("first_name", candidate.first_name)
-                candidate.last_name = extracted.get("last_name", candidate.last_name)
-                if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
-                if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
-                if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
-                
-                candidate_name = f"{candidate.first_name} {candidate.last_name}".strip()
+                def on_progress_bridge(p: IntakeProgress) -> None:
+                    mapped = translate_reprocess_progress(p, settings.llm_model)
+                    if mapped is not None:
+                        payload = {"candidate_id": candidate_id, "candidate_name": candidate_name, **mapped}
+                        payload.setdefault("warnings", reprocess_warnings)
+                        collected.append(json.dumps(payload))
+
+                result = await asyncio.to_thread(
+                    lambda: reprocess_text(
+                        raw_text=raw_text,
+                        candidate_id=candidate_id,
+                        resume_version_id=rv.id,
+                        db=db,
+                        vector_db=vector_db,
+                        settings=settings,
+                        on_progress=on_progress_bridge,
+                    )
+                )
+
+                for payload_json in collected:
+                    yield f"data: {payload_json}\n\n"
+                reprocess_warnings.extend(result.warnings)
+
+                if result.status == IntakeStatus.ERROR:
+                    db.rollback()
+                    yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': result.warnings[0] if result.warnings else 'Reprocessing failed', 'warnings': reprocess_warnings})}\n\n"
+                    return
+
                 db.commit()
 
-            # 3. Refresh Full-Text Search (FTS)
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings})}\n\n"
-            await asyncio.sleep(0.05)
-            if raw_text:
-                try:
-                    def do_fts_update():
-                        CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
-                        db.commit()
-                    await asyncio.to_thread(do_fts_update)
-                except Exception:
-                    db.rollback()
-                    reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
+                if result.used_ai_fallback:
+                    model = result.model_name or settings.llm_model
+                    yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({model})', 'status': 'COMPLETED', 'progress': 40, 'message': f'Local AI Model extraction finished ({model}).', 'used_ai': True, 'model_name': model, 'warnings': reprocess_warnings})}\n\n"
+                    await asyncio.sleep(0.02)
 
-            # 4. Refresh Vector Embeddings
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings', 'warnings': reprocess_warnings})}\n\n"
-            await asyncio.sleep(0.05)
-            if raw_text:
-                try:
-                    if vector_db:
-                        def do_vector_update():
-                            CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id if rv else "")
-                        await asyncio.to_thread(do_vector_update)
-                    else:
-                        reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
-                except Exception:
-                    reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
-
-            # 5. Log Timeline Event
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
-            await asyncio.sleep(0.05)
-            def log_timeline():
+                mode_str = "AI Model" if result.used_ai_fallback else "Rule-based NER"
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessing completed successfully ({mode_str})', 'used_ai_fallback': result.used_ai_fallback, 'model_name': result.model_name, 'warnings': reprocess_warnings})}\n\n"
+            else:
+                # No raw text: preserve legacy stage sequence without extraction work.
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings})}\n\n"
+                await asyncio.sleep(0.05)
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating LanceDB vector embeddings', 'warnings': reprocess_warnings})}\n\n"
+                await asyncio.sleep(0.05)
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings})}\n\n"
+                await asyncio.sleep(0.05)
                 ledger = TimelineLedger()
                 ledger.log_event(
                     session=db,
@@ -327,11 +324,7 @@ async def reprocess_candidate_stream(
                     created_by="Recruiter"
                 )
                 db.commit()
-            await asyncio.to_thread(log_timeline)
-
-            # 6. Completed
-            mode_str = "AI Model" if used_ai else "Rule-based NER"
-            yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessing completed successfully ({mode_str})', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': reprocess_warnings})}\n\n"
+                yield f"data: {json.dumps({'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': 'Reprocessing completed successfully (Rule-based NER)', 'used_ai_fallback': False, 'model_name': None, 'warnings': reprocess_warnings})}\n\n"
         except Exception as e:
             db.rollback()
             yield f"data: {json.dumps({'candidate_id': candidate_id, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': str(e), 'warnings': reprocess_warnings})}\n\n"
@@ -602,95 +595,72 @@ async def batch_reprocess_candidate_stream(
                     return
 
                 candidate_name = f"{candidate.first_name} {candidate.last_name}"
-                
+
                 # 1. Fetch resume
                 await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'FETCHING_RESUME', 'status': 'IN_PROGRESS', 'progress': 10, 'message': f'Fetching primary resume for {candidate_name}', 'warnings': reprocess_warnings}))
-                
+
                 def fetch_rv():
                     return task_db.query(ResumeVersion).filter(
                         ResumeVersion.candidate_id == candidate_id,
                         ResumeVersion.is_primary == True
                     ).first()
                 rv = await asyncio.to_thread(fetch_rv)
-                
+
                 if not rv or not rv.raw_text:
                     reprocess_warnings.append("No primary resume text available for entity resolution.")
                     await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SKIPPED', 'progress': 100, 'message': 'No raw resume text available', 'warnings': reprocess_warnings}))
                     return
-                
+
                 raw_text = rv.raw_text
 
-                # 2. Entity Resolution
-                used_ai = False
-                facts = await asyncio.to_thread(extract_facts, raw_text)
-                profile_preview, tier1_conf, needs_ai = assess_tier1(raw_text, facts, confidence_threshold=0.40)
+                collected: List[str] = []
 
-                if needs_ai:
-                    llm_model = settings.llm_model
-                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({llm_model})', 'status': 'IN_PROGRESS', 'progress': 30, 'message': f'Running local AI Model extraction ({llm_model})...', 'used_ai': True, 'model_name': llm_model, 'warnings': reprocess_warnings}))
-                else:
-                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ENTITY_RESOLUTION', 'stage_detail': 'Rule-based NER Extraction', 'status': 'IN_PROGRESS', 'progress': 30, 'message': 'Re-extracting candidate profile entities (Rule-based)...', 'used_ai': False, 'warnings': reprocess_warnings}))
+                def on_progress_bridge(p: IntakeProgress) -> None:
+                    mapped = translate_reprocess_progress(p, settings.llm_model)
+                    if mapped is not None:
+                        payload = {
+                            'batch_index': idx + 1,
+                            'batch_total': total_candidates,
+                            'candidate_id': candidate_id,
+                            'candidate_name': candidate_name,
+                            **mapped
+                        }
+                        payload.setdefault('warnings', reprocess_warnings)
+                        collected.append(json.dumps(payload))
 
-                # 3. Hybrid Extraction
-                def do_extract():
-                    return extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40, facts=facts)
-                extracted = await asyncio.to_thread(do_extract)
-                used_ai = extracted.get("used_ai_fallback", False)
-                if extracted.get("warnings"):
-                    reprocess_warnings.extend(extracted["warnings"])
-                
-                candidate.first_name = extracted.get("first_name", candidate.first_name)
-                candidate.last_name = extracted.get("last_name", candidate.last_name)
-                if extracted.get("primary_email"): candidate.primary_email = extracted["primary_email"]
-                if extracted.get("primary_phone"): candidate.primary_phone = extracted["primary_phone"]
-                if extracted.get("current_title"): candidate.current_title = extracted["current_title"]
+                result = await asyncio.to_thread(
+                    lambda: reprocess_text(
+                        raw_text=raw_text,
+                        candidate_id=candidate_id,
+                        resume_version_id=rv.id,
+                        db=task_db,
+                        vector_db=vector_db,
+                        settings=settings,
+                        on_progress=on_progress_bridge,
+                    )
+                )
+
+                for payload_json in collected:
+                    await event_queue.put(payload_json)
+
+                reprocess_warnings.extend(result.warnings)
+
+                if result.status == IntakeStatus.ERROR:
+                    task_db.rollback()
+                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'ERROR', 'status': 'FAILED', 'progress': 100, 'message': result.warnings[0] if result.warnings else 'Reprocessing failed', 'warnings': reprocess_warnings}))
+                    return
+
                 task_db.commit()
-                candidate_name = f"{candidate.first_name} {candidate.last_name}"
+                refreshed = task_db.query(Candidate).filter(Candidate.id == candidate_id).first()
+                if refreshed:
+                    candidate_name = f"{refreshed.first_name} {refreshed.last_name}"
 
-                # 4. Refresh FTS
-                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'UPDATING_FTS', 'status': 'IN_PROGRESS', 'progress': 50, 'message': 'Refreshing FTS search index', 'warnings': reprocess_warnings}))
-                try:
-                    def do_fts_update():
-                        CandidateService.update_fts_index(task_db, candidate_id, candidate_name, candidate, raw_text)
-                        task_db.commit()
-                    await asyncio.to_thread(do_fts_update)
-                except Exception:
-                    reprocess_warnings.append("Full-Text Search (FTS) index update failed.")
+                if result.used_ai_fallback:
+                    model = result.model_name or settings.llm_model
+                    await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'AI_EXTRACTION', 'stage_detail': f'AI Model Inference ({model})', 'status': 'COMPLETED', 'progress': 40, 'message': f'Local AI Model extraction finished ({model}).', 'used_ai': True, 'model_name': model, 'warnings': reprocess_warnings}))
 
-                # 5. Refresh Vectors
-                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'GENERATING_VECTORS', 'status': 'IN_PROGRESS', 'progress': 75, 'message': 'Chunking document and re-generating vector embeddings', 'warnings': reprocess_warnings}))
-                if vector_db:
-                    try:
-                        def do_vector_update():
-                            CandidateService.update_vector_index(vector_db, candidate_id, raw_text, rv.id)
-                        await asyncio.to_thread(do_vector_update)
-                    except Exception:
-                        reprocess_warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
-                else:
-                    reprocess_warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
-
-                # 6. Timeline Audit Log
-                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'LOGGING_TIMELINE', 'status': 'IN_PROGRESS', 'progress': 90, 'message': 'Logging timeline audit event', 'warnings': reprocess_warnings}))
-                try:
-                    def log_timeline():
-                        ledger = TimelineLedger()
-                        ledger.log_event(
-                            session=task_db,
-                            candidate_id=candidate_id,
-                            event_type="REPROCESS_TRIGGERED",
-                            title="Reprocessing Triggered",
-                            description="Recruiter triggered batch re-processing of candidate data",
-                            metadata={},
-                            created_by="Recruiter"
-                        )
-                        task_db.commit()
-                    await asyncio.to_thread(log_timeline)
-                except Exception:
-                    pass
-
-                # 7. Completed for candidate
-                mode_str = "AI Model" if used_ai else "Rule-based"
-                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessed successfully ({mode_str})', 'used_ai_fallback': used_ai, 'model_name': settings.llm_model if used_ai else None, 'warnings': reprocess_warnings}))
+                mode_str = "AI Model" if result.used_ai_fallback else "Rule-based"
+                await event_queue.put(json.dumps({'batch_index': idx + 1, 'batch_total': total_candidates, 'candidate_id': candidate_id, 'candidate_name': candidate_name, 'stage': 'COMPLETED', 'status': 'SUCCESS', 'progress': 100, 'message': f'Reprocessed successfully ({mode_str})', 'used_ai_fallback': result.used_ai_fallback, 'model_name': result.model_name, 'warnings': reprocess_warnings}))
 
             except Exception as e:
                 task_db.rollback()
