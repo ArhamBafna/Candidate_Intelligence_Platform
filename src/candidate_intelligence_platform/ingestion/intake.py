@@ -613,7 +613,7 @@ def reprocess_text(
             created_by="Recruiter",
         )
 
-        final_status = IntakeStatus.PARTIAL if warnings or vector_failed else IntakeStatus.INGESTED
+        final_status = IntakeStatus.PARTIAL if vector_failed else IntakeStatus.INGESTED
         _emit(on_progress, "COMPLETED", 100, "Reprocessing completed", {"status": final_status.value})
         return IntakeResult(
             status=final_status,
