@@ -73,6 +73,18 @@ def mock_vector_db() -> MockVectorStore:
     return MockVectorStore()
 
 @pytest.fixture
+def mock_heavy_models(monkeypatch):
+    """Mock spaCy NER facts and embedding generation for API-level tests."""
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.deterministic_ner.extract_facts",
+        lambda text: [],
+    )
+    monkeypatch.setattr(
+        "api.services.candidate_service.generate_embeddings",
+        lambda texts: [[0.0] * 4 for _ in texts],
+    )
+
+@pytest.fixture
 def db_engine(tmp_path):
     """Provides an isolated SQLite file-based database engine configured with WAL mode and FTS5 tables."""
     db_file = str(tmp_path / "cip_test.db")
@@ -121,7 +133,7 @@ def test_settings(tmp_path):
     )
 
 @pytest.fixture
-def client(db_engine, mock_vector_db, test_settings):
+def client(db_engine, mock_vector_db, test_settings, mock_heavy_models):
     """Provides a FastAPI TestClient configured with overridden database and vector dependencies."""
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 

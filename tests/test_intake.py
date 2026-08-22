@@ -377,3 +377,11 @@ def test_classify_document_moved_and_public():
     is_resume, category, _ = classify_document(RESUME_TEXT, "resume.txt")
     assert is_resume
     assert category == "VALID_RESUME"
+
+
+def test_ui_duplicate_chip_wired():
+    """Possible-duplicate chip reads resolution_action/matched_candidate_id from the queue row."""
+    source = Path("ui/src/pages/CandidateList.jsx").read_text(encoding="utf-8")
+    assert "resolution_action === 'REVIEW'" in source
+    assert "matched_candidate_id" in source
+    assert "Possible duplicate?" in source
