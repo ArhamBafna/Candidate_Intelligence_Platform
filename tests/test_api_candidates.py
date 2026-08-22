@@ -125,8 +125,10 @@ def test_get_candidate_file(client: TestClient, db_session: Session, test_settin
     assert response.headers["content-type"] == "application/pdf"
 
 def test_reprocess_candidate(client: TestClient, db_session: Session, monkeypatch):
-    import api.routes.candidates as routes
-    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Reprocess", "last_name": "Test", "primary_email": "", "primary_phone": "", "current_title": "Software Engineer", "warnings": []})
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {"first_name": "Reprocess", "last_name": "Test", "primary_email": "", "primary_phone": "", "current_title": "Software Engineer", "warnings": []}
+    )
     c_id = str(uuid.uuid4())
     c = Candidate(id=c_id, first_name="Reprocess", last_name="Test", availability_status="ACTIVE", current_title="Software Engineer")
     db_session.add(c)
@@ -162,9 +164,11 @@ def test_reprocess_candidate(client: TestClient, db_session: Session, monkeypatc
     assert any(e["event_type"] == "REPROCESS_TRIGGERED" for e in timeline_data)
 
 def test_reprocess_candidate_stream(client: TestClient, db_session: Session, monkeypatch):
-    import api.routes.candidates as routes
     from api.services.candidate_service import CandidateService
-    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Stream", "last_name": "Reprocess", "primary_email": "", "primary_phone": "", "current_title": "Data Scientist", "warnings": []})
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {"first_name": "Stream", "last_name": "Reprocess", "primary_email": "", "primary_phone": "", "current_title": "Data Scientist", "warnings": []}
+    )
     monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: None)
 
     c_id = str(uuid.uuid4())
@@ -286,7 +290,10 @@ def test_batch_reprocess_stream(client: TestClient, db_session: Session, monkeyp
     monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: None)
     
     import api.routes.candidates as routes
-    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Stream", "last_name": "Tester", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []})
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {"first_name": "Stream", "last_name": "Tester", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []}
+    )
 
     c_id = str(uuid.uuid4())
     candidate = Candidate(id=c_id, first_name="Stream", last_name="Tester")

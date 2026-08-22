@@ -4,9 +4,11 @@ from structlog.testing import LogCapture
 import json
 
 def test_upload_resume_emits_wide_event(capsys, client, monkeypatch):
-    import api.routes.candidates as routes
-    monkeypatch.setattr(routes, "extract_candidate_profile_hybrid", lambda text, **kwargs: {"first_name": "Test", "last_name": "User", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []})
-    test_file_content = b"Mock PDF content"
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {"first_name": "Test", "last_name": "User", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []}
+    )
+    test_file_content = b"Test User\nSenior Engineer\nEmail: test.user@example.com\nSkills: Python, Docker\nExperience: 6 years building backend services"
     files = {"file": ("test_resume.pdf", test_file_content, "application/pdf")}
     
     response = client.post("/candidates/upload", files=files)
