@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
+
+const AI_NOTES_ENABLED_KEY = 'cip_ai_notes_enabled';
 
 function CandidateList() {
   const navigate = useNavigate();
@@ -16,6 +18,18 @@ function CandidateList() {
   const [searchWarnings, setSearchWarnings] = useState([]);
   const [searchProgress, setSearchProgress] = useState(null);
   const [insights, setInsights] = useState({});
+
+  // AI Notes Toggle State
+  const [aiNotesEnabled, setAiNotesEnabled] = useState(() => {
+    try {
+      return window.localStorage.getItem(AI_NOTES_ENABLED_KEY) !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const aiNotesEnabledRef = useRef(aiNotesEnabled);
+  const insightControllersRef = useRef(new Map());
+  const lastSearchedQueryRef = useRef('');
   
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
@@ -49,8 +63,35 @@ function CandidateList() {
     setSelectedIds([]);
   };
 
+  const fireTopInsights = (list, searchQuery) => {
+    list.slice(0, 3).forEach((c) => generateInsight(c.id, searchQuery));
+  };
+
+  const toggleAiNotes = () => {
+    const next = !aiNotesEnabled;
+    aiNotesEnabledRef.current = next;
+    setAiNotesEnabled(next);
+    try {
+      window.localStorage.setItem(AI_NOTES_ENABLED_KEY, String(next));
+    } catch {
+      // localStorage unavailable; toggle still works for this session
+    }
+
+    if (!next) {
+      insightControllersRef.current.forEach((controller) => controller.abort());
+      insightControllersRef.current.clear();
+      setInsights({});
+    } else if (lastSearchedQueryRef.current.trim()) {
+      fireTopInsights(candidates, lastSearchedQueryRef.current);
+    }
+  };
+
   const generateInsight = async (candidateId, searchQuery) => {
+    if (!aiNotesEnabledRef.current) return;
+    const existingController = insightControllersRef.current.get(candidateId);
+    if (existingController) existingController.abort();
     const controller = new AbortController();
+    insightControllersRef.current.set(candidateId, controller);
     setInsights(prev => ({
       ...prev,
       [candidateId]: { text: '', status: 'loading', controller }
@@ -79,7 +120,7 @@ function CandidateList() {
             if (line.startsWith('data: ')) {
               try {
                 const event = JSON.parse(line.substring(6));
-                if (event.token) {
+                if (event.token && aiNotesEnabledRef.current) {
                   setInsights(prev => ({
                     ...prev,
                     [candidateId]: { 
@@ -95,22 +136,31 @@ function CandidateList() {
           }
         }
       }
-      setInsights(prev => ({
-        ...prev,
-        [candidateId]: { ...prev[candidateId], status: 'done' }
-      }));
+      if (aiNotesEnabledRef.current) {
+        setInsights(prev => ({
+          ...prev,
+          [candidateId]: { ...prev[candidateId], status: 'done' }
+        }));
+      }
     } catch (err) {
-      if (err.name === 'AbortError') {
-        setInsights(prev => ({
-          ...prev,
-          [candidateId]: { ...prev[candidateId], status: 'cancelled' }
-        }));
-      } else {
-        console.error('Insight generation failed:', err);
-        setInsights(prev => ({
-          ...prev,
-          [candidateId]: { ...prev[candidateId], status: 'error' }
-        }));
+      if (aiNotesEnabledRef.current) {
+        if (err.name === 'AbortError') {
+          setInsights(prev => ({
+            ...prev,
+            [candidateId]: { ...prev[candidateId], status: 'cancelled' }
+          }));
+        } else {
+          console.error('Insight generation failed:', err);
+          setInsights(prev => ({
+            ...prev,
+            [candidateId]: { ...prev[candidateId], status: 'error' }
+          }));
+        }
+      }
+    } finally {
+      const current = insightControllersRef.current.get(candidateId);
+      if (current === controller) {
+        insightControllersRef.current.delete(candidateId);
       }
     }
   };
@@ -334,6 +384,7 @@ function CandidateList() {
     setIsSearching(true);
     setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search...' });
     setCandidates([]);
+    lastSearchedQueryRef.current = query;
 
     try {
       const response = await fetch('/api/search/stream', {
@@ -386,9 +437,9 @@ function CandidateList() {
                       setCandidates(mapped);
                       
                       // Trigger AI insights for top 3 candidates
-                      mapped.slice(0, 3).forEach(c => {
-                        generateInsight(c.id, query);
-                      });
+                      if (aiNotesEnabledRef.current) {
+                        fireTopInsights(mapped, query);
+                      }
                     }
                   }
                   
@@ -563,6 +614,19 @@ function CandidateList() {
               </button>
             )}
           </div>
+          <button
+            type="button"
+            onClick={toggleAiNotes}
+            title={aiNotesEnabled ? 'AI notes on - click to disable' : 'AI notes off - click to enable'}
+            className="text-slate-400 hover:text-indigo-400 flex items-center gap-2 font-medium shrink-0 transition-colors"
+          >
+            {aiNotesEnabled ? (
+              <CheckSquare size={20} className="text-indigo-400" />
+            ) : (
+              <Square size={20} />
+            )}
+            <span className="text-sm whitespace-nowrap">AI Notes</span>
+          </button>
           <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-900/20">
             {isSearching ? 'Search' : 'Search'}
           </button>
@@ -750,7 +814,7 @@ function CandidateList() {
               </div>
               
               {/* AI Insight Box */}
-              {query.trim().length > 0 && (
+              {query.trim().length > 0 && aiNotesEnabled && (
                 <div className="mt-4 border-t border-slate-800 pt-4" onClick={e => e.stopPropagation()}>
                   {insights[candidate.id] ? (
                     <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-3 text-sm">
