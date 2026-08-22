@@ -18,56 +18,19 @@ from typing import Set, Dict, Any, Tuple, List, Optional
 from config.settings import Settings
 from api.dependencies import _get_sessionmaker, get_vector_db
 from storage.cas import CASManager
-from storage.db_models import Candidate, ResumeVersion, CandidateTimelineEvent
-from candidate_intelligence_platform.extraction.hybrid_extractor import extract_candidate_profile_hybrid
-from ingestion.entity_resolution import resolve, CandidateIdentifiers, ResolutionAction
-from ingestion.chunker import chunk_document
-from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
-from storage.vector_store import CandidateSectionVector
-from sqlalchemy import text
+from storage.db_models import Candidate, CandidateTimelineEvent
+from candidate_intelligence_platform.ingestion.intake import (
+    ingest_file,
+    IntakeSource,
+    IntakeStatus,
+    TimelineMode,
+)
+from ingestion.entity_resolution import ResolutionAction
 
 logger = structlog.get_logger(__name__)
 
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pdf", ".msg", ".eml", ".txt"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".jfif", ".gif"}
-
-# Non-resume pattern detectors
-LEGAL_CONTRACT_FILENAME_KEYWORDS = [
-    "agreement", "msa.pdf", "msa.docx", "c2c rtr", "vendor", "subcontractor", "nda.pdf", "nda.docx"
-]
-
-LEGAL_CONTRACT_CONTENT_KEYWORDS = [
-    "referral agreement", "subcontractor agreement", "vendor agreement",
-    "master services agreement", "non-disclosure agreement", "c2c rtr",
-    "indemnification", "governing law", "hereby agree", "confidentiality agreement",
-    "parties hereto", "independent contractor", "mutual non-disclosure"
-]
-
-IMMIGRATION_ID_FILENAME_KEYWORDS = [
-    "passport", "visa.pdf", "visa.docx", "dmv.pdf", "dmv.docx", "i-94", "opt -card",
-    "opt card", "driver license", "driving license", "dl_files", "h1 approval",
-    "h1b approval", "approval notice", "travel history", "ead card", "ead.pdf"
-]
-
-IMMIGRATION_ID_CONTENT_KEYWORDS = [
-    "form i-797", "form i-94", "department of homeland security",
-    "u.s. citizenship and immigration", "notice of action",
-    "alien registration", "arrival-departure record", "arrival/departure record",
-    "employment authorization document"
-]
-
-STUDY_TEMPLATE_KEYWORDS = [
-    "submission format", "question bank", "interview questions",
-    "key components of spring", "spring boot key components", "study guide",
-    "cheat sheet", "sample test", "client portal submission"
-]
-
-RESUME_SIGNALS = [
-    "experience", "employment", "work history", "professional experience",
-    "project experience", "education", "skills", "technical skills",
-    "summary", "objective", "certifications", "qualifications",
-    "profile", "curriculum vitae", "responsibilities", "academic background"
-]
 
 def get_file_hash(filepath: Path) -> str:
     hasher = hashlib.sha256()
@@ -75,50 +38,6 @@ def get_file_hash(filepath: Path) -> str:
         for chunk in iter(lambda: f.read(4096), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
-
-def classify_document(text: str, filename: str) -> Tuple[bool, str, str]:
-    """
-    Classify whether a document is a genuine candidate resume or a non-resume file.
-    Returns: (is_resume: bool, category: str, reason: str)
-    """
-    clean_text = text.lower()
-    clean_fname = filename.lower()
-    
-    # 1. Check for empty text / scanned PDF
-    if len(text.strip()) < 50:
-        return False, "SCANNED_IMAGE_REQUIRES_OCR", "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
-
-    # 2. Check Immigration / ID documents
-    for kw in IMMIGRATION_ID_FILENAME_KEYWORDS:
-        if kw in clean_fname:
-            return False, "NON_RESUME_IMMIGRATION_OR_ID", f"Document identified as government/visa/ID document from filename (matched: '{kw}')"
-
-    for kw in IMMIGRATION_ID_CONTENT_KEYWORDS:
-        if kw in clean_text:
-            return False, "NON_RESUME_IMMIGRATION_OR_ID", f"Document identified as government/visa/ID document from text (matched: '{kw}')"
-
-    # 3. Check Legal / Contracts / Vendor Agreements
-    for kw in LEGAL_CONTRACT_FILENAME_KEYWORDS:
-        if kw in clean_fname:
-            return False, "NON_RESUME_LEGAL_CONTRACT", f"Document identified as legal contract from filename (matched: '{kw}')"
-
-    legal_matches = [kw for kw in LEGAL_CONTRACT_CONTENT_KEYWORDS if kw in clean_text]
-    if len(legal_matches) >= 2:
-        return False, "NON_RESUME_LEGAL_CONTRACT", f"Document identified as legal contract from text (matched: {', '.join(legal_matches[:3])})"
-
-    # 4. Check Study Guides / Formats
-    for kw in STUDY_TEMPLATE_KEYWORDS:
-        if kw in clean_fname or kw in clean_text:
-            return False, "NON_RESUME_STUDY_OR_TEMPLATE", f"Document identified as interview prep/template format (matched keyword: '{kw}')"
-
-    # 5. Check Resume Signals (must have at least one structural resume section or standard candidate contact indicators)
-    signal_count = sum(1 for s in RESUME_SIGNALS if s in clean_text)
-    has_email_or_phone = bool(re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text) or re.search(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b", text))
-    
-    if signal_count == 0 and not has_email_or_phone:
-        return False, "NON_RESUME_INSUFFICIENT_SIGNALS", "Document lacks standard resume sections (no work experience, education, skills, or contact info)"
-
-    return True, "VALID_RESUME", "Passed candidate resume verification"
 
 def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path: Path) -> None:
     """
@@ -210,9 +129,23 @@ def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path:
     md_lines.append("")
     output_path.write_text("\n".join(md_lines), encoding="utf-8")
 
+def _derive_how_processed(ext: str, warnings: List[str]) -> str:
+    """Map extension (+ parser-fallback warning) to the legacy how_processed label."""
+    fallback = any(w.startswith("Structured parser failed") for w in warnings)
+    if ext == ".pdf":
+        return "Raw_Text_Fallback" if fallback else "PyMuPDF_Parser"
+    if ext == ".docx":
+        return "Raw_Text_Fallback" if fallback else "Docx_Parser"
+    if ext in [".eml", ".msg"]:
+        return "Raw_Text_Fallback" if fallback else "Email_Parser"
+    return "Raw_Text_Fallback"
+
 def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Process a single file through the full ingestion pipeline with fine-grained stage tracking.
+    Process a single file through the unified intake pipeline (issue #12), adapting
+    the IntakeResult into this script's legacy telemetry shape. Report statuses,
+    categories, and print strings are preserved byte-identically; a new optional
+    telemetry key `resolution_action` is added.
     Returns: (success: bool, hash: str, telemetry: Dict[str, Any])
     """
     ext = filepath.suffix.lower()
@@ -223,7 +156,7 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
     stages_succeeded: List[str] = []
     stages_failed: List[str] = []
     file_warnings: List[str] = []
-    
+
     telemetry: Dict[str, Any] = {
         "file_path": rel_path_str,
         "file_name": filepath.name,
@@ -239,7 +172,8 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
         "stages_failed": stages_failed,
         "warnings": file_warnings,
         "category": "UNKNOWN",
-        "error": None
+        "error": None,
+        "resolution_action": None
     }
 
     try:
@@ -254,250 +188,95 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
         })
         return False, "", telemetry
 
-    # 1. Deduplication via CAS Hash
-    existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
-    if existing_rv:
+    # Unified intake pipeline (D5 dedup-before-CAS included; D7 caller owns commit)
+    result = ingest_file(
+        content=content,
+        filename=filepath.name,
+        db=db,
+        cas_mgr=cas_mgr,
+        vector_db=get_vector_db(),
+        settings=Settings(),
+        source=IntakeSource.BULK,
+        timeline_mode=TimelineMode.NONE,
+        folder_tag=folder_tag,
+    )
+    telemetry["resolution_action"] = result.resolution_action.value if result.resolution_action else None
+
+    # 1. Deduplication via CAS Hash (handled before CAS store inside the pipeline, D5)
+    if result.status == IntakeStatus.SKIPPED_DUPLICATE:
         telemetry.update({
             "status": "SKIPPED_DUPLICATE",
-            "candidate_id": existing_rv.candidate_id,
+            "candidate_id": result.candidate_id,
             "category": "DUPLICATE_FILE",
             "reason": "Exact CAS file hash already ingested in database"
         })
         return True, file_hash, telemetry
 
-    # 2. Store in CAS
-    try:
-        _, cas_path = cas_mgr.store(content, extension=ext)
-        stages_succeeded.append("CAS_STORE")
-    except Exception as e:
-        stages_failed.append("CAS_STORE")
-        telemetry.update({
-            "category": "CAS_STORAGE_ERROR",
-            "error": f"CAS Storage failed: {str(e)}"
-        })
-        return False, file_hash, telemetry
-
-    # 3. Parse Document
-    raw_text = ""
-    how_processed = "None"
-    
-    try:
-        if ext == ".pdf":
-            from ingestion.parsers.pdf_parser import parse_pdf
-            doc = parse_pdf(Path(cas_path))
-            raw_text = doc.text
-            how_processed = "PyMuPDF_Parser"
-        elif ext == ".docx":
-            from ingestion.parsers.docx_parser import parse_docx
-            doc = parse_docx(Path(cas_path))
-            raw_text = doc.text
-            how_processed = "Docx_Parser"
-        elif ext in [".eml", ".msg"]:
-            from ingestion.parsers.email_parser import parse_email
-            doc = parse_email(Path(cas_path))
-            raw_text = doc.text
-            how_processed = "Email_Parser"
-        elif ext == ".doc":
-            raw_text = content.decode("utf-8", errors="ignore")
-            how_processed = "Raw_Text_Fallback"
-            file_warnings.append("Legacy .doc format extracted via raw text fallback.")
+    # 2. Non-resume rejection: nothing persisted by the pipeline
+    if result.status == IntakeStatus.SKIPPED_NON_RESUME:
+        category = result.classified_as or "UNKNOWN"
+        reason = result.warnings[0] if result.warnings else "Document rejected"
+        stages_succeeded.extend(["CAS_STORE", "TEXT_PARSING"])
+        if category == "AI_CLASSIFIED_NOT_RESUME":
+            stages_succeeded.append("DOCUMENT_CLASSIFICATION")
+            stages_failed.append("PROFILE_EXTRACTION")
         else:
-            raw_text = content.decode("utf-8", errors="ignore")
-            how_processed = "Raw_Text_Fallback"
-            
-        stages_succeeded.append("TEXT_PARSING")
-    except Exception as e:
-        if ext in [".pdf", ".docx", ".eml", ".msg"]:
-            raw_text = content.decode("utf-8", errors="ignore")
-            how_processed = "Raw_Text_Fallback"
-            file_warnings.append(f"Structured parser failed ({str(e)}), used raw text fallback.")
-            stages_succeeded.append("TEXT_PARSING")
-        else:
-            stages_failed.append("TEXT_PARSING")
-            telemetry.update({
-                "how_processed": how_processed,
-                "category": "PARSING_FAILED",
-                "error": f"Parsing failed: {str(e)}"
-            })
-            return False, file_hash, telemetry
-
-    telemetry["how_processed"] = how_processed
-
-    # 4. Classify Resume vs Non-Resume
-    is_resume, category, reason = classify_document(raw_text, filepath.name)
-    if not is_resume:
-        stages_failed.append("DOCUMENT_CLASSIFICATION")
+            stages_failed.append("DOCUMENT_CLASSIFICATION")
         telemetry.update({
+            "how_processed": _derive_how_processed(ext, result.warnings),
             "status": "SKIPPED_NON_RESUME",
             "category": category,
             "error": reason
         })
+        file_warnings.extend(result.warnings[1:])
         return False, file_hash, telemetry
 
-    stages_succeeded.append("DOCUMENT_CLASSIFICATION")
-
-    # 5. Entity Extraction & Profile Extraction
-    try:
-        extracted = extract_candidate_profile_hybrid(raw_text, confidence_threshold=0.40)
-        if extracted.get("warnings"):
-            file_warnings.extend(extracted["warnings"])
-
-        first_name = extracted.get("first_name", "").strip()
-        last_name = extracted.get("last_name", "").strip()
-        email = extracted.get("primary_email")
-        phone = extracted.get("primary_phone")
-        full_name = f"{first_name} {last_name}".strip()
-        
-        telemetry["candidate_name"] = full_name
-        telemetry["ai_used"] = extracted.get("used_ai_fallback", False)
-        telemetry["confidence_score"] = extracted.get("confidence_score", 0.0)
-
-        # Reject dummy names with no contact details
-        is_dummy_name = (first_name.lower() in ["uploaded", ""] and last_name.lower() in ["candidate", ""])
-        if is_dummy_name and not email and not phone:
-            stages_failed.append("PROFILE_EXTRACTION")
-            telemetry.update({
-                "status": "SKIPPED_NON_RESUME",
-                "category": "AI_CLASSIFIED_NOT_RESUME",
-                "error": "No identifiable candidate name or contact information found in document"
-            })
-            return False, file_hash, telemetry
-
-        stages_succeeded.append("PROFILE_EXTRACTION")
-
-        cand_id = None
-        cand = None
-
-        # Entity Resolution (only if real identifier exists)
-        if not is_dummy_name or email or phone:
-            incoming_identifiers = CandidateIdentifiers(
-                candidate_id="temp",
-                email=email,
-                phone=phone,
-                full_name="" if is_dummy_name else full_name
-            )
-
-            existing_cands = db.query(Candidate).all()
-            existing_identifiers = [
-                CandidateIdentifiers(
-                    c.id, c.primary_email, c.primary_phone, None,
-                    "" if f"{c.first_name} {c.last_name}".strip() == "Uploaded Candidate" else f"{c.first_name} {c.last_name}".strip()
-                )
-                for c in existing_cands
-            ]
-
-            resolution = resolve(incoming_identifiers, existing_identifiers)
-            if resolution.action == ResolutionAction.MERGE and resolution.matched_id:
-                cand_id = resolution.matched_id
-                stages_succeeded.append("ENTITY_MERGE")
-                db.query(ResumeVersion).filter(
-                    ResumeVersion.candidate_id == cand_id,
-                    ResumeVersion.is_primary == True
-                ).update({"is_primary": False})
-
-        if not cand_id:
-            cand_id = str(uuid.uuid4())
-            cand = Candidate(
-                id=cand_id,
-                first_name=first_name if first_name else "Candidate",
-                last_name=last_name if last_name else "",
-                primary_email=email,
-                primary_phone=phone,
-                availability_status="ACTIVE",
-                current_title=extracted.get("current_title", "Candidate")
-            )
-            db.add(cand)
-            stages_succeeded.append("CANDIDATE_CREATION")
-
-        telemetry["candidate_id"] = cand_id
-
-        layout_metadata = {"source_folder": folder_tag}
-        
-        rv = ResumeVersion(
-            id=str(uuid.uuid4()),
-            candidate_id=cand_id,
-            cas_file_hash=file_hash,
-            original_filename=filepath.name,
-            file_type=ext.replace(".", "").upper(),
-            raw_text=raw_text,
-            layout_metadata=layout_metadata,
-            is_primary=True
-        )
-        db.add(rv)
-
-        # Timeline Event
-        event = CandidateTimelineEvent(
-            id=str(uuid.uuid4()),
-            candidate_id=cand_id,
-            event_type="RESUME_INGESTED",
-            title="Resume Ingested (Batch)",
-            description=f"File {filepath.name} imported from folder '{folder_tag}'",
-            created_by="System"
-        )
-        db.add(event)
-        
-        # 6. SQLite FTS Insertion
-        db.execute(
-            text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
-            {
-                "cid": cand_id,
-                "fname": full_name,
-                "title": extracted.get("current_title", ""),
-                "company": extracted.get("current_company", ""),
-                "content": raw_text
-            }
-        )
-
-        db.flush()
-        stages_succeeded.append("DATABASE_INSERTION")
-        stages_succeeded.append("FTS_INDEXING")
-        
-    except Exception as e:
-        stages_failed.append("DATABASE_INSERTION")
+    if result.status == IntakeStatus.ERROR:
         telemetry.update({
-            "category": "DATABASE_ERROR",
-            "error": f"Database insertion failed: {str(e)}"
+            "how_processed": _derive_how_processed(ext, result.warnings),
+            "category": "UNKNOWN",
+            "error": result.warnings[0] if result.warnings else "Ingestion error"
         })
         return False, file_hash, telemetry
 
-    # 7. Vector Store (LanceDB)
-    vector_succeeded = False
-    try:
-        from ingestion.parsers.models import ParsedDocument
-        doc_model = ParsedDocument(text=raw_text, pages=1)
-        chunks = chunk_document(doc_model, cand_id, "SUMMARY")
-        
-        if chunks:
-            texts = [c.text for c in chunks]
-            embeddings = generate_embeddings(texts)
-            vector_db = get_vector_db()
-            if vector_db:
-                table = vector_db.create_table("candidate_vectors", schema=CandidateSectionVector, exist_ok=True)
-                records = []
-                for i, chunk in enumerate(chunks):
-                    records.append({
-                        "chunk_id": chunk.chunk_id,
-                        "candidate_id": chunk.candidate_id,
-                        "resume_version_id": rv.id,
-                        "section_type": chunk.section_name,
-                        "chunk_text": chunk.text,
-                        "vector": embeddings[i],
-                        "start_offset": chunk.start_offset,
-                        "end_offset": chunk.end_offset
-                    })
-                table.add(records)
-                stages_succeeded.append("VECTOR_INDEXING")
-                vector_succeeded = True
-    except Exception as e:
-        stages_failed.append("VECTOR_INDEXING")
-        file_warnings.append(f"Vector indexing skipped: {str(e)}")
-
-    if file_warnings or not vector_succeeded:
-        telemetry["status"] = "PARTIAL_SUCCESS"
+    # 3. Ingested / merged / partial success
+    stages_succeeded.extend(["CAS_STORE", "TEXT_PARSING", "DOCUMENT_CLASSIFICATION", "PROFILE_EXTRACTION"])
+    if result.resolution_action == ResolutionAction.MERGE:
+        stages_succeeded.append("ENTITY_MERGE")
     else:
-        telemetry["status"] = "SUCCESS"
+        stages_succeeded.append("CANDIDATE_CREATION")
+    stages_succeeded.extend(["DATABASE_INSERTION", "FTS_INDEXING"])
 
-    telemetry["category"] = "VALID_RESUME"
+    cand = db.query(Candidate).filter(Candidate.id == result.candidate_id).first() if result.candidate_id else None
+    full_name = f"{cand.first_name} {cand.last_name}".strip() if cand else None
+
+    file_warnings.extend(result.warnings)
+
+    vector_ok = not any(w.startswith("Vector indexing skipped") for w in result.warnings)
+    if vector_ok:
+        stages_succeeded.append("VECTOR_INDEXING")
+
+    if ext == ".doc":
+        file_warnings.append("Legacy .doc format extracted via raw text fallback.")
+
+    # Bulk keeps writing its own diary rows (D3: TimelineMode.NONE above)
+    db.add(CandidateTimelineEvent(
+        id=str(uuid.uuid4()),
+        candidate_id=result.candidate_id,
+        event_type="RESUME_INGESTED",
+        title="Resume Ingested (Batch)",
+        description=f"File {filepath.name} imported from folder '{folder_tag}'",
+        created_by="System"
+    ))
+
+    telemetry.update({
+        "candidate_id": result.candidate_id,
+        "candidate_name": full_name,
+        "ai_used": result.used_ai_fallback,
+        "how_processed": _derive_how_processed(ext, result.warnings),
+        "status": "PARTIAL_SUCCESS" if (file_warnings or not vector_ok) else "SUCCESS",
+        "category": "VALID_RESUME"
+    })
     return True, file_hash, telemetry
 
 def run_bulk_ingest(

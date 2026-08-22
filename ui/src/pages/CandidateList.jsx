@@ -853,6 +853,15 @@ function CandidateList() {
                           </span>
                         )
                       )}
+                      {item.status === 'SUCCESS' && item.resolution_action === 'REVIEW' && item.matched_candidate_id && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/candidate/${item.matched_candidate_id}`); }}
+                          className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                          title={`Possible duplicate of candidate ${item.matched_candidate_id}`}
+                        >
+                          Possible duplicate?
+                        </button>
+                      )}
                       {item.status === 'FAILED' && <span className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-1 rounded border border-red-500/20"><AlertCircle size={14}/> Failed</span>}
                       {item.status === 'SKIPPED_DUPLICATE' && <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20"><RefreshCw size={14}/> Duplicate</span>}
                       {item.status === 'IN_PROGRESS' && (

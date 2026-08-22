@@ -64,7 +64,12 @@ def _resolve_tier_1(incoming: CandidateIdentifiers, existing: List[CandidateIden
         )
     return None
 
-def _resolve_tier_2(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]) -> Optional[ResolutionResult]:
+def _resolve_tier_2(
+    incoming: CandidateIdentifiers,
+    existing: List[CandidateIdentifiers],
+    auto_merge_threshold: float = AUTO_MERGE_THRESHOLD,
+    review_threshold: float = REVIEW_THRESHOLD
+) -> Optional[ResolutionResult]:
     if not incoming.full_name:
         return None
 
@@ -78,7 +83,7 @@ def _resolve_tier_2(incoming: CandidateIdentifiers, existing: List[CandidateIden
             best_tier2_match = cand
 
     if best_tier2_match:
-        if best_tier2_score >= AUTO_MERGE_THRESHOLD:
+        if best_tier2_score >= auto_merge_threshold:
             return ResolutionResult(
                 action=ResolutionAction.MERGE,
                 tier=2,
@@ -86,7 +91,7 @@ def _resolve_tier_2(incoming: CandidateIdentifiers, existing: List[CandidateIden
                 matched_id=best_tier2_match.candidate_id,
                 matching_keys={"full_name"}
             )
-        elif best_tier2_score >= REVIEW_THRESHOLD:
+        elif best_tier2_score >= review_threshold:
             return ResolutionResult(
                 action=ResolutionAction.REVIEW,
                 tier=2,
@@ -96,7 +101,12 @@ def _resolve_tier_2(incoming: CandidateIdentifiers, existing: List[CandidateIden
             )
     return None
 
-def resolve(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]) -> ResolutionResult:
+def resolve(
+    incoming: CandidateIdentifiers,
+    existing: List[CandidateIdentifiers],
+    auto_merge_threshold: float = AUTO_MERGE_THRESHOLD,
+    review_threshold: float = REVIEW_THRESHOLD
+) -> ResolutionResult:
     if not existing:
         return ResolutionResult(action=ResolutionAction.NEW, tier=0, confidence=0.0)
 
@@ -104,7 +114,7 @@ def resolve(incoming: CandidateIdentifiers, existing: List[CandidateIdentifiers]
     if tier1_result:
         return tier1_result
 
-    tier2_result = _resolve_tier_2(incoming, existing)
+    tier2_result = _resolve_tier_2(incoming, existing, auto_merge_threshold, review_threshold)
     if tier2_result:
         return tier2_result
 
