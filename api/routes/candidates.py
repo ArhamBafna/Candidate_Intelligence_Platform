@@ -447,7 +447,7 @@ async def upload_stream_resumes(
                 if p.stage == "SAVING":
                     return {"stage": "SAVING", "status": "IN_PROGRESS", "progress": 90}
                 if p.stage == "GENERATING_VECTORS":
-                    return {"stage": "CHUNKING", "status": "IN_PROGRESS", "progress": 95}
+                    return {"stage": "CHUNKING", "status": "IN_PROGRESS", "progress": 80}
                 return None
 
             def on_progress(p: IntakeProgress) -> None:

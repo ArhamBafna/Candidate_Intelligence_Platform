@@ -19,7 +19,7 @@ def get_engine(db_path: str) -> Engine:
             cursor.execute("PRAGMA temp_store=MEMORY;")
             cursor.execute("PRAGMA page_size=4096;")
             cursor.execute("PRAGMA cache_size=-64000;")
-            cursor.execute("PRAGMA busy_timeout=5000;")
+            cursor.execute("PRAGMA busy_timeout=30000;")
             cursor.close()
             
     return engine

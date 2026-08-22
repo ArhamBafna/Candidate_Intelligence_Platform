@@ -303,10 +303,12 @@ def ingest_file(
       4. classify_document -> SKIPPED_NON_RESUME on reject, nothing persisted
       5. extraction exactly once with settings.extraction_confidence_threshold (D13)
       6. entity resolution vs current candidates, thresholds from Settings (D4)
-      7. persist + flush, NO commit - caller commits once and owns rollback (D7)
-      8. audit rows per #8 (MERGE and REVIEW write; NEW silent)
-      9. FTS via CandidateService.update_fts_index (single SQL copy, D8)
-     10. vectors via CandidateService.update_vector_index (failure is never fatal)
+      7. vector embeddings via CandidateService.update_vector_index BEFORE any
+         DB write, keeping the SQLite write txn short under parallel uploads
+         (failure is never fatal)
+      8. persist + flush, NO commit - caller commits once and owns rollback (D7)
+      9. audit rows per #8 (MERGE and REVIEW write; NEW silent)
+     10. FTS via CandidateService.update_fts_index (single SQL copy, D8)
      11. timeline per timeline_mode (D3)
     """
     warnings: List[str] = []
@@ -396,30 +398,17 @@ def ingest_file(
         cand_id: Optional[str] = None
         matched_candidate_id: Optional[str] = None
         target_candidate: Optional[Candidate] = None
+        is_merge = resolution.action == ResolutionAction.MERGE and resolution.matched_id
+        is_new_candidate = False
 
-        if resolution.action == ResolutionAction.MERGE and resolution.matched_id:
-            # D12: demote current primary RV(s); incoming RV becomes primary
+        if is_merge:
             cand_id = resolution.matched_id
-            db.query(ResumeVersion).filter(
-                ResumeVersion.candidate_id == cand_id,
-                ResumeVersion.is_primary == True,  # noqa: E712
-            ).update({"is_primary": False})
-            target_candidate = db.query(Candidate).filter(Candidate.id == cand_id).first()
         elif resolution.action == ResolutionAction.REVIEW and resolution.matched_id:
             matched_candidate_id = resolution.matched_id
 
         if not cand_id:
             cand_id = str(uuid.uuid4())
-            target_candidate = Candidate(
-                id=cand_id,
-                first_name=first_name if first_name else "Candidate",
-                last_name=last_name if last_name else "",
-                primary_email=email,
-                primary_phone=phone,
-                availability_status="ACTIVE",
-                current_title=extracted.get("current_title", "Candidate"),
-            )
-            db.add(target_candidate)
+            is_new_candidate = True
 
         layout_metadata: Dict[str, Any] = {}
         if folder_tag is not None:
@@ -435,6 +424,43 @@ def ingest_file(
             layout_metadata=layout_metadata,
             is_primary=True,
         )
+
+        # Vectors BEFORE any DB write: update_vector_index never touches the SQL
+        # session (LanceDB + ids only), and embedding generation can take many
+        # seconds. Holding the SQLite write lock across it starves parallel
+        # upload pipelines past busy_timeout ("database is locked").
+        vector_failed = False
+        if vector_db:
+            _emit(on_progress, "GENERATING_VECTORS", 75, "Generating vector embeddings")
+            try:
+                CandidateService.update_vector_index(vector_db, cand_id, raw_text, rv.id)
+            except Exception:
+                vector_failed = True
+                warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
+        else:
+            vector_failed = True
+            warnings.append("Vector indexing skipped (vector store connection unavailable).")
+
+        if is_merge:
+            # D12: demote current primary RV(s); incoming RV becomes primary
+            db.query(ResumeVersion).filter(
+                ResumeVersion.candidate_id == cand_id,
+                ResumeVersion.is_primary == True,  # noqa: E712
+            ).update({"is_primary": False})
+            target_candidate = db.query(Candidate).filter(Candidate.id == cand_id).first()
+
+        if is_new_candidate:
+            target_candidate = Candidate(
+                id=cand_id,
+                first_name=first_name if first_name else "Candidate",
+                last_name=last_name if last_name else "",
+                primary_email=email,
+                primary_phone=phone,
+                availability_status="ACTIVE",
+                current_title=extracted.get("current_title", "Candidate"),
+            )
+            db.add(target_candidate)
+
         db.add(rv)
 
         # 7/8. Persist + audit rows (#8): MERGE and REVIEW write; NEW silent
@@ -477,19 +503,6 @@ def ingest_file(
             CandidateService.update_fts_index(db, cand_id, display_name, target_candidate, raw_text)
         except Exception as e:
             warnings.append(f"Full-Text Search (FTS) index update failed ({str(e)}).")
-
-        # 10. Vectors via CandidateService (failure never fatal)
-        vector_failed = False
-        if vector_db:
-            _emit(on_progress, "GENERATING_VECTORS", 90, "Generating vector embeddings")
-            try:
-                CandidateService.update_vector_index(vector_db, cand_id, raw_text, rv.id)
-            except Exception:
-                vector_failed = True
-                warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
-        else:
-            vector_failed = True
-            warnings.append("Vector indexing skipped (vector store connection unavailable).")
 
         # 11. Timeline per mode (D3)
         if timeline_mode == TimelineMode.LEDGER:
@@ -570,6 +583,20 @@ def reprocess_text(
                 "used_ai": True, "model_name": settings.llm_model,
             })
 
+        # Vector refresh BEFORE any DB write so the SQLite write txn stays short
+        # under parallel reprocessing (same rationale as ingest_file).
+        vector_failed = False
+        if vector_db:
+            _emit(on_progress, "GENERATING_VECTORS", 75, "Chunking document and re-generating vector embeddings")
+            try:
+                CandidateService.update_vector_index(vector_db, candidate_id, raw_text, resume_version_id)
+            except Exception:
+                vector_failed = True
+                warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
+        else:
+            vector_failed = True
+            warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
+
         candidate.first_name = extracted.get("first_name", candidate.first_name)
         candidate.last_name = extracted.get("last_name", candidate.last_name)
         if extracted.get("primary_email"):
@@ -586,19 +613,6 @@ def reprocess_text(
             CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
         except Exception as e:
             warnings.append(f"Full-Text Search (FTS) index update failed ({str(e)}).")
-
-        # Vector refresh (never fatal)
-        vector_failed = False
-        if vector_db:
-            _emit(on_progress, "GENERATING_VECTORS", 75, "Chunking document and re-generating vector embeddings")
-            try:
-                CandidateService.update_vector_index(vector_db, candidate_id, raw_text, resume_version_id)
-            except Exception:
-                vector_failed = True
-                warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
-        else:
-            vector_failed = True
-            warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
 
         # Timeline event
         _emit(on_progress, "LOGGING_TIMELINE", 90, "Logging timeline audit event")
