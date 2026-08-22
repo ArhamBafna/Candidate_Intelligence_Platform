@@ -11,7 +11,7 @@ from api.schemas.candidates import (
     BatchCandidateIds,
     BatchReprocessRequest
 )
-from storage.db_models import Candidate, ResumeVersion, CandidateClaim, CandidateTimelineEvent
+from storage.db_models import Candidate, ResumeVersion, CandidateTimelineEvent
 from crm.state_machine import CandidateStateMachine, TransitionContext
 from crm.timeline_ledger import TimelineLedger
 from api.services.candidate_service import CandidateService
