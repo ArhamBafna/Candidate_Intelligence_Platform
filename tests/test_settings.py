@@ -12,4 +12,6 @@ def test_default_settings(monkeypatch):
     assert settings.cas_root_dir.endswith("documents")
     assert settings.vector_db_path.endswith("lancedb")
     assert settings.embedding_model == "BAAI/bge-small-en-v1.5"
-    assert settings.entity_resolution_auto_merge_threshold == 0.92
+    assert settings.extraction_confidence_threshold == 0.40
+    assert settings.entity_res_auto_merge_threshold == 0.85
+    assert settings.entity_res_review_threshold == 0.70

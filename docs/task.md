@@ -1,5 +1,15 @@
 # Task Tracker
 
+## Unified Intake Pipeline (Issue #12)
+
+- [ ] Ticket U1: Spec — unified resume intake pipeline (Deepening #1)
+  - [x] Add Ticket U1 checklist to docs/task.md
+  - [ ] Commit 1: intake module (`src/candidate_intelligence_platform/ingestion/intake.py`) + settings dials + `classify_document` move + `tests/test_intake.py` units
+  - [ ] Commit 2: `/upload` + `/upload-stream` doors onto `ingest_file`, SSE progress adapter, possible-duplicate UI chip
+  - [ ] Commit 3: three reprocess doors onto `reprocess_text`
+  - [ ] Commit 4: bulk script delegates to `ingest_file`, legacy report strings preserved
+  - [ ] Full suite green after each commit
+
 ## Performance Optimization Tickets
 
 - [x] Ticket P0: Baseline & benchmark harness

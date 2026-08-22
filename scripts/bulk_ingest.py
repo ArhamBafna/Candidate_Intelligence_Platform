@@ -20,6 +20,7 @@ from api.dependencies import _get_sessionmaker, get_vector_db
 from storage.cas import CASManager
 from storage.db_models import Candidate, ResumeVersion, CandidateTimelineEvent
 from candidate_intelligence_platform.extraction.hybrid_extractor import extract_candidate_profile_hybrid
+from candidate_intelligence_platform.ingestion.intake import classify_document
 from ingestion.entity_resolution import resolve, CandidateIdentifiers, ResolutionAction
 from ingestion.chunker import chunk_document
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
@@ -31,94 +32,12 @@ logger = structlog.get_logger(__name__)
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pdf", ".msg", ".eml", ".txt"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".jfif", ".gif"}
 
-# Non-resume pattern detectors
-LEGAL_CONTRACT_FILENAME_KEYWORDS = [
-    "agreement", "msa.pdf", "msa.docx", "c2c rtr", "vendor", "subcontractor", "nda.pdf", "nda.docx"
-]
-
-LEGAL_CONTRACT_CONTENT_KEYWORDS = [
-    "referral agreement", "subcontractor agreement", "vendor agreement",
-    "master services agreement", "non-disclosure agreement", "c2c rtr",
-    "indemnification", "governing law", "hereby agree", "confidentiality agreement",
-    "parties hereto", "independent contractor", "mutual non-disclosure"
-]
-
-IMMIGRATION_ID_FILENAME_KEYWORDS = [
-    "passport", "visa.pdf", "visa.docx", "dmv.pdf", "dmv.docx", "i-94", "opt -card",
-    "opt card", "driver license", "driving license", "dl_files", "h1 approval",
-    "h1b approval", "approval notice", "travel history", "ead card", "ead.pdf"
-]
-
-IMMIGRATION_ID_CONTENT_KEYWORDS = [
-    "form i-797", "form i-94", "department of homeland security",
-    "u.s. citizenship and immigration", "notice of action",
-    "alien registration", "arrival-departure record", "arrival/departure record",
-    "employment authorization document"
-]
-
-STUDY_TEMPLATE_KEYWORDS = [
-    "submission format", "question bank", "interview questions",
-    "key components of spring", "spring boot key components", "study guide",
-    "cheat sheet", "sample test", "client portal submission"
-]
-
-RESUME_SIGNALS = [
-    "experience", "employment", "work history", "professional experience",
-    "project experience", "education", "skills", "technical skills",
-    "summary", "objective", "certifications", "qualifications",
-    "profile", "curriculum vitae", "responsibilities", "academic background"
-]
-
 def get_file_hash(filepath: Path) -> str:
     hasher = hashlib.sha256()
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
-
-def classify_document(text: str, filename: str) -> Tuple[bool, str, str]:
-    """
-    Classify whether a document is a genuine candidate resume or a non-resume file.
-    Returns: (is_resume: bool, category: str, reason: str)
-    """
-    clean_text = text.lower()
-    clean_fname = filename.lower()
-    
-    # 1. Check for empty text / scanned PDF
-    if len(text.strip()) < 50:
-        return False, "SCANNED_IMAGE_REQUIRES_OCR", "Document text is empty or contains fewer than 50 characters (scanned image without OCR text layer)"
-
-    # 2. Check Immigration / ID documents
-    for kw in IMMIGRATION_ID_FILENAME_KEYWORDS:
-        if kw in clean_fname:
-            return False, "NON_RESUME_IMMIGRATION_OR_ID", f"Document identified as government/visa/ID document from filename (matched: '{kw}')"
-
-    for kw in IMMIGRATION_ID_CONTENT_KEYWORDS:
-        if kw in clean_text:
-            return False, "NON_RESUME_IMMIGRATION_OR_ID", f"Document identified as government/visa/ID document from text (matched: '{kw}')"
-
-    # 3. Check Legal / Contracts / Vendor Agreements
-    for kw in LEGAL_CONTRACT_FILENAME_KEYWORDS:
-        if kw in clean_fname:
-            return False, "NON_RESUME_LEGAL_CONTRACT", f"Document identified as legal contract from filename (matched: '{kw}')"
-
-    legal_matches = [kw for kw in LEGAL_CONTRACT_CONTENT_KEYWORDS if kw in clean_text]
-    if len(legal_matches) >= 2:
-        return False, "NON_RESUME_LEGAL_CONTRACT", f"Document identified as legal contract from text (matched: {', '.join(legal_matches[:3])})"
-
-    # 4. Check Study Guides / Formats
-    for kw in STUDY_TEMPLATE_KEYWORDS:
-        if kw in clean_fname or kw in clean_text:
-            return False, "NON_RESUME_STUDY_OR_TEMPLATE", f"Document identified as interview prep/template format (matched keyword: '{kw}')"
-
-    # 5. Check Resume Signals (must have at least one structural resume section or standard candidate contact indicators)
-    signal_count = sum(1 for s in RESUME_SIGNALS if s in clean_text)
-    has_email_or_phone = bool(re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text) or re.search(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b", text))
-    
-    if signal_count == 0 and not has_email_or_phone:
-        return False, "NON_RESUME_INSUFFICIENT_SIGNALS", "Document lacks standard resume sections (no work experience, education, skills, or contact info)"
-
-    return True, "VALID_RESUME", "Passed candidate resume verification"
 
 def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path: Path) -> None:
     """

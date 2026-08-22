@@ -6,9 +6,9 @@ from unittest.mock import patch, MagicMock
 from scripts.bulk_ingest import (
     run_bulk_ingest,
     get_file_hash,
-    process_single_file,
-    classify_document
+    process_single_file
 )
+from candidate_intelligence_platform.ingestion.intake import classify_document
 
 def test_get_file_hash(tmp_path):
     test_file = tmp_path / "test.txt"
