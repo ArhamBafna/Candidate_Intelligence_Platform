@@ -12,6 +12,7 @@ function CandidateDetail() {
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const saveTimeoutRef = useRef(null);
 
   // Reprocess Manager State
@@ -105,7 +106,7 @@ function CandidateDetail() {
       stage: 'STARTING',
       status: 'IN_PROGRESS',
       progress: 5,
-      message: 'Initiating re-processing...'
+      message: 'Initiating re-processing…'
     });
 
     try {
@@ -163,23 +164,24 @@ function CandidateDetail() {
 
   const handleDeleteCandidate = async () => {
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/candidates/${id}`, { method: 'DELETE' });
       if (res.ok || res.status === 204) {
         navigate('/');
       } else {
-        alert('Failed to delete candidate.');
+        setDeleteError('Failed to delete candidate.');
       }
     } catch (err) {
       console.error('Error deleting candidate:', err);
-      alert('An error occurred while deleting candidate.');
+      setDeleteError('An error occurred while deleting candidate.');
     } finally {
       setIsDeleting(false);
     }
   };
 
   if (loading) {
-    return <div className="p-8 text-slate-400">Loading candidate profile...</div>;
+    return <div className="p-8 text-neutral-400">Loading candidate profile...</div>;
   }
 
   if (!candidate) {
@@ -187,20 +189,20 @@ function CandidateDetail() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-black text-neutral-100">
       {/* Header */}
-      <header className="px-6 py-4 border-b border-slate-800 bg-slate-900 flex justify-between items-center z-10">
+      <header className="px-6 py-4 border-b border-neutral-800 bg-neutral-900 flex justify-between items-center z-10">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate('/')}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-neutral-200 transition-colors"
             title="Back to Candidates"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-100">{candidate.first_name} {candidate.last_name}</h1>
-            <p className="text-sm text-slate-400">{candidate.current_title || 'Candidate Profile'}</p>
+            <h1 className="text-xl font-bold text-neutral-100">{candidate.first_name} {candidate.last_name}</h1>
+            <p className="text-sm text-neutral-400">{candidate.current_title || 'Candidate Profile'}</p>
           </div>
         </div>
 
@@ -208,13 +210,13 @@ function CandidateDetail() {
           <a
             href={`/api/candidates/${id}/file`}
             download
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-900/20"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20"
           >
             <Download size={16} /> Download Resume
           </a>
           <button 
             onClick={handleReprocess}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-slate-700"
+            className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-neutral-700"
           >
             <RefreshCw size={16} /> Re-process Data
           </button>
@@ -229,7 +231,7 @@ function CandidateDetail() {
 
       {/* Top Save Status Bar */}
       <div className={`px-6 py-2.5 border-b text-xs font-medium transition-colors ${
-        saveStatus === 'saving' ? 'bg-indigo-950/80 border-indigo-800/80 text-indigo-300' :
+        saveStatus === 'saving' ? 'bg-emerald-950/80 border-emerald-800/80 text-emerald-300' :
         saveStatus === 'typing' ? 'bg-amber-950/80 border-amber-800/80 text-amber-300' :
         saveStatus === 'error' ? 'bg-red-950/80 border-red-800/80 text-red-300' :
         'bg-emerald-950/60 border-emerald-900/50 text-emerald-300'
@@ -238,7 +240,7 @@ function CandidateDetail() {
           <div className="flex items-center gap-2">
             {saveStatus === 'saving' && (
               <>
-                <RefreshCw size={14} className="animate-spin text-indigo-400" />
+                <RefreshCw size={14} className="animate-spin text-emerald-400" />
                 <span>Saving changes...</span>
               </>
             )}
@@ -261,7 +263,7 @@ function CandidateDetail() {
               </>
             )}
           </div>
-          <span className="text-slate-400/80 text-[11px]">Real-time Status Bar</span>
+          <span className="text-neutral-400/80 text-[11px]">Real-time Status Bar</span>
         </div>
       </div>
 
@@ -270,20 +272,20 @@ function CandidateDetail() {
         <div className="max-w-4xl mx-auto space-y-6">
           
           {/* Download Resume Quick Access Card */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
+          <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-indigo-950/80 border border-indigo-500/30 rounded-xl text-indigo-400">
+              <div className="p-3 bg-emerald-950/80 border border-emerald-500/30 rounded-xl text-emerald-400">
                 <FileText size={24} />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-100">Original Resume Document</h3>
-                <p className="text-xs text-slate-400">Download the uploaded resume file directly to your device</p>
+                <h3 className="font-semibold text-neutral-100">Original Resume Document</h3>
+                <p className="text-xs text-neutral-400">Download the uploaded resume file directly to your device</p>
               </div>
             </div>
             <a
               href={`/api/candidates/${id}/file`}
               download
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2 transition-colors shadow-lg shadow-indigo-900/20"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/20"
             >
               <Download size={18} />
               Download Resume
@@ -291,77 +293,77 @@ function CandidateDetail() {
           </div>
 
           {/* Profile Data Card */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-200 mb-6 flex items-center gap-2 border-b border-slate-800 pb-4">
-              <User size={18} className="text-indigo-400" /> Candidate Details & Profile
+          <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-8 shadow-xl">
+            <h2 className="text-lg font-semibold text-neutral-200 mb-6 flex items-center gap-2 border-b border-neutral-800 pb-4">
+              <User size={18} className="text-emerald-400" /> Candidate Details & Profile
             </h2>
             
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">First Name</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">First Name</label>
                   <input 
                     type="text" name="first_name" value={formData.first_name} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Last Name</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Last Name</label>
                   <input 
                     type="text" name="last_name" value={formData.last_name} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5"><Mail size={14}/> Email Address</label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 mb-1.5"><Mail size={14}/> Email Address</label>
                   <input 
                     type="email" name="primary_email" value={formData.primary_email} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5"><Phone size={14}/> Phone Number</label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 mb-1.5"><Phone size={14}/> Phone Number</label>
                   <input 
                     type="text" name="primary_phone" value={formData.primary_phone} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5"><Briefcase size={14}/> Current Title</label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 mb-1.5"><Briefcase size={14}/> Current Title</label>
                   <input 
                     type="text" name="current_title" value={formData.current_title} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Current Company</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Current Company</label>
                   <input 
                     type="text" name="current_company" value={formData.current_company} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5"><MapPin size={14}/> City / Location</label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 mb-1.5"><MapPin size={14}/> City / Location</label>
                   <input 
                     type="text" name="current_city" value={formData.current_city} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Availability Status</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">Availability Status</label>
                   <select 
                     name="availability_status" value={formData.availability_status} onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-neutral-950 border border-neutral-700/80 rounded-xl px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-[border-color,box-shadow]"
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="PLACED">PLACED</option>
@@ -378,27 +380,33 @@ function CandidateDetail() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
-          <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-confirm">
+          <div className="bg-neutral-900 border border-neutral-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
             <div className="flex items-center gap-3 text-red-400 mb-4">
               <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-lg font-bold text-slate-100">Delete Candidate</h3>
+              <h3 className="text-lg font-bold text-neutral-100">Delete Candidate</h3>
             </div>
             
-            <p className="text-slate-300 text-sm mb-2">
-              Are you sure you want to delete <span className="font-semibold text-slate-100">{candidate.first_name} {candidate.last_name}</span>?
+            <p className="text-neutral-300 text-sm mb-2">
+              Are you sure you want to delete <span className="font-semibold text-neutral-100">{candidate.first_name} {candidate.last_name}</span>?
             </p>
-            <p className="text-slate-400 text-xs mb-6">
+            <p className="text-neutral-400 text-xs mb-6">
               This action will permanently remove candidate details, timeline events, and search index vectors.
             </p>
-            
+
+            {deleteError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4 text-xs text-red-300" role="alert">
+                {deleteError}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-xl transition-colors"
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-medium rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -415,15 +423,15 @@ function CandidateDetail() {
       )}
       {/* Reprocess Manager Modal */}
       {reprocessState?.show && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="glass-panel border-slate-700 max-w-lg w-full rounded-2xl p-6 relative flex flex-col gap-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-modal">
+          <div className="surface-panel border-neutral-700 max-w-lg w-full rounded-2xl p-6 relative flex flex-col gap-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <RefreshCw size={22} className={`text-indigo-400 ${reprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                <h2 className="text-xl font-bold text-neutral-100 flex items-center gap-2">
+                  <RefreshCw size={22} className={`text-emerald-400 ${reprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
                   Reprocessing Candidate
                 </h2>
-                <p className="text-sm text-slate-400 mt-0.5">Re-indexing resume and vector embeddings</p>
+                <p className="text-sm text-neutral-400 mt-0.5">Re-indexing resume and vector embeddings</p>
               </div>
               <button 
                 onClick={() => {
@@ -431,23 +439,23 @@ function CandidateDetail() {
                   fetchCandidate();
                 }}
                 disabled={reprocessState.status === 'IN_PROGRESS'}
-                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 {reprocessState.status === 'SUCCESS' ? 'Done' : 'Close'}
               </button>
             </div>
             
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+            <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-5 flex flex-col gap-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold text-slate-200 text-base">{reprocessState.candidateName}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">ID: {reprocessState.candidateId}</p>
+                  <h3 className="font-semibold text-neutral-200 text-base">{reprocessState.candidateName}</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">ID: {reprocessState.candidateId}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium">
                   {reprocessState.status === 'SUCCESS' && (
                     reprocessState.used_ai_fallback ? (
-                      <span className="flex items-center gap-1 text-indigo-300 bg-indigo-500/15 px-2.5 py-1 rounded-full border border-indigo-500/30">
-                        <span className="font-bold text-[9px] uppercase bg-indigo-500/30 px-1 rounded-sm text-indigo-200">AI</span> AI Re-indexed ({reprocessState.model_name || 'llama3.2'})
+                      <span className="flex items-center gap-1 text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                        <span className="font-bold text-[9px] uppercase bg-emerald-500/30 px-1 rounded-sm text-emerald-200">AI</span> AI Re-indexed ({reprocessState.model_name || 'llama3.2'})
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
@@ -462,11 +470,11 @@ function CandidateDetail() {
                   )}
                   {reprocessState.status === 'IN_PROGRESS' && (
                     reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? (
-                      <span className="text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-full border border-indigo-500/40 animate-pulse flex items-center gap-1">
-                        <span className="font-bold text-[9px] uppercase bg-indigo-500/30 px-1 rounded-sm text-indigo-200">AI</span> Active ({reprocessState.model_name || 'llama3.2'})
+                      <span className="text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/40 animate-pulse flex items-center gap-1">
+                        <span className="font-bold text-[9px] uppercase bg-emerald-500/30 px-1 rounded-sm text-emerald-200">AI</span> Active ({reprocessState.model_name || 'llama3.2'})
                       </span>
                     ) : (
-                      <span className="text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20 animate-pulse">
+                      <span className="text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 animate-pulse">
                         {reprocessState.stage_detail || reprocessState.stage}...
                       </span>
                     )
@@ -475,18 +483,18 @@ function CandidateDetail() {
               </div>
               
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-slate-400 font-medium">
+                <div className="flex justify-between text-xs text-neutral-400 font-medium">
                   <span>{reprocessState.message || 'Processing...'}</span>
                   <span>{reprocessState.progress}%</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
                   <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
+                    className={`h-2 rounded-full transition-[width] duration-300 ${
                       reprocessState.status === 'FAILED' ? 'bg-red-500' : 
-                      reprocessState.status === 'SUCCESS' && reprocessState.used_ai_fallback ? 'bg-indigo-500' :
+                      reprocessState.status === 'SUCCESS' && reprocessState.used_ai_fallback ? 'bg-emerald-500' :
                       reprocessState.status === 'SUCCESS' ? 'bg-emerald-500' : 
-                      reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? 'bg-indigo-500 animate-pulse shadow-md shadow-indigo-500/30' :
-                      'bg-indigo-500'
+                      reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? 'bg-emerald-500 animate-pulse shadow-md shadow-emerald-500/30' :
+                      'bg-emerald-500'
                     }`} 
                     style={{ width: `${reprocessState.progress}%` }}
                   ></div>
@@ -494,27 +502,27 @@ function CandidateDetail() {
               </div>
 
               {reprocessState.stage === 'AI_EXTRACTION' && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-950/50 border border-indigo-500/40 text-indigo-200 text-xs shadow-inner animate-pulse">
-                  <span className="font-bold text-[10px] uppercase bg-indigo-500/30 px-1.5 py-0.5 rounded-sm text-indigo-200">AI Process</span>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 text-xs shadow-inner animate-pulse">
+                  <span className="font-bold text-[10px] uppercase bg-emerald-500/30 px-1.5 py-0.5 rounded-sm text-emerald-200">AI Process</span>
                   <span><strong>Model Active:</strong> Extracting missing profile fields using local LLM ({reprocessState.model_name || 'llama3.2'})...</span>
                 </div>
               )}
 
               {/* Stage Stepper Badges */}
-              <div className="grid grid-cols-5 gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 text-center font-medium">
-                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'ENTITY_RESOLUTION', 'AI_EXTRACTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+              <div className="grid grid-cols-5 gap-2 pt-2 border-t border-neutral-800/80 text-[11px] text-neutral-400 text-center font-medium">
+                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'ENTITY_RESOLUTION', 'AI_EXTRACTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   1. Profile
                 </div>
-                <div className={`p-1.5 rounded-lg border ${reprocessState.stage === 'AI_EXTRACTION' ? 'bg-indigo-950/80 border-indigo-500/60 text-indigo-200 font-bold animate-pulse flex items-center justify-center gap-1' : ['ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${reprocessState.stage === 'AI_EXTRACTION' ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-200 font-bold animate-pulse flex items-center justify-center gap-1' : ['ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   {reprocessState.stage === 'AI_EXTRACTION' ? '2. AI Model' : '2. Entities'}
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   3. FTS Search
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   4. Vectors
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   5. Timeline
                 </div>
               </div>

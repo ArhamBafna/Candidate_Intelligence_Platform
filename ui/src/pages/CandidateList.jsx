@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X, Sparkle as Sparkles } from '@phosphor-icons/react';
+import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AI_NOTES_ENABLED_KEY = 'cip_ai_notes_enabled';
@@ -42,6 +42,8 @@ function CandidateList() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [listDeleteError, setListDeleteError] = useState(null);
+  const [batchDeleteError, setBatchDeleteError] = useState(null);
   const [batchReprocessState, setBatchReprocessState] = useState(null);
 
   const toggleSelectCandidate = (e, id) => {
@@ -182,6 +184,7 @@ function CandidateList() {
   const confirmBatchDelete = async () => {
     if (!selectedIds.length) return;
     setIsBatchDeleting(true);
+    setBatchDeleteError(null);
     try {
       const res = await fetch('/api/candidates/batch-delete', {
         method: 'POST',
@@ -193,11 +196,11 @@ function CandidateList() {
         setSelectedIds([]);
         setShowBatchDeleteModal(false);
       } else {
-        alert('Failed to delete selected candidates.');
+        setBatchDeleteError('Failed to delete selected candidates.');
       }
     } catch (err) {
       console.error('Batch delete failed:', err);
-      alert('An error occurred during batch delete.');
+      setBatchDeleteError('An error occurred during batch delete.');
     } finally {
       setIsBatchDeleting(false);
     }
@@ -214,7 +217,7 @@ function CandidateList() {
         stage: 'QUEUED',
         status: 'PENDING',
         progress: 0,
-        message: 'Queued for reprocessing...',
+        message: 'Queued for reprocessing…',
         warnings: []
       };
     });
@@ -382,7 +385,7 @@ function CandidateList() {
     }
 
     setIsSearching(true);
-    setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search...' });
+    setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search…' });
     setCandidates([]);
     lastSearchedQueryRef.current = query;
 
@@ -424,9 +427,9 @@ function CandidateList() {
                           id: resItem.candidate_id,
                           first_name: info.first_name || 'Candidate',
                           last_name: info.last_name || `#${resItem.candidate_id.substring(0, 6)}`,
-                          current_title: info.current_title || 'Software Engineer',
-                          current_company: info.current_company || 'Tech Corp',
-                          current_city: info.current_city || 'Remote',
+                          current_title: info.current_title || '',
+                          current_company: info.current_company || '',
+                          current_city: info.current_city || '',
                           availability_status: info.availability_status || 'ACTIVE',
                           rrf_score: resItem.rrf_score,
                           match_percentage: resItem.match_percentage,
@@ -483,17 +486,18 @@ function CandidateList() {
   const confirmDeleteCandidate = async () => {
     if (!deleteCandidate) return;
     setIsDeleting(true);
+    setListDeleteError(null);
     try {
       const res = await fetch(`/api/candidates/${deleteCandidate.id}`, { method: 'DELETE' });
       if (res.ok || res.status === 204) {
         setCandidates(prev => prev.filter(c => c.id !== deleteCandidate.id));
         setDeleteCandidate(null);
       } else {
-        alert('Failed to delete candidate.');
+        setListDeleteError('Failed to delete candidate.');
       }
     } catch (err) {
       console.error('Error deleting candidate:', err);
-      alert('An error occurred while deleting candidate.');
+      setListDeleteError('An error occurred while deleting candidate.');
     } finally {
       setIsDeleting(false);
     }
@@ -512,7 +516,7 @@ function CandidateList() {
       stage: 'STARTING',
       status: 'IN_PROGRESS',
       progress: 5,
-      message: 'Initiating re-processing...'
+      message: 'Initiating re-processing…'
     });
 
     try {
@@ -569,11 +573,11 @@ function CandidateList() {
       {/* Header */}
       <header className="flex justify-between items-center mb-2">
         <div>
-          <h1 className="text-3xl font-bold font-display tracking-tight text-slate-100">Candidate Intelligence Platform</h1>
-          <p className="text-slate-400 mt-1">Local-first, zero-cloud candidate retrieval & CRM platform.</p>
+          <h1 className="text-3xl font-bold font-display tracking-tight text-neutral-100">Candidate Intelligence Platform</h1>
+          <p className="text-neutral-400 mt-1">Local-first, zero-cloud candidate retrieval & CRM platform.</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2 text-sm">
+          <label className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-colors shadow-lg shadow-emerald-900/20 flex items-center gap-2 text-sm">
             <Upload size={18} />
             <span>Upload Resume(s)</span>
             <input type="file" accept=".pdf,.docx,.doc,.txt" multiple className="hidden" onChange={handleFileUpload} />
@@ -582,16 +586,16 @@ function CandidateList() {
       </header>
 
       {/* Search Bar */}
-      <section className="glass-panel p-6 rounded-2xl">
+      <section className="surface-panel p-6 rounded-2xl">
         <form onSubmit={handleSearch} className="flex gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-500" />
+            <Search className="absolute left-4 top-3.5 h-5 w-5 text-neutral-500" />
             <input 
               type="text" 
               placeholder="Search candidates by skills, location, or experience..." 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              className="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl pl-12 pr-4 py-3 text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-[border-color,box-shadow]"
             />
             {query.length > 0 && (
               <button 
@@ -608,7 +612,7 @@ function CandidateList() {
                     })
                     .catch((err) => console.error(err));
                 }}
-                className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-200"
+                className="absolute right-4 top-3.5 text-neutral-400 hover:text-neutral-200"
               >
                 <X size={20} />
               </button>
@@ -618,34 +622,37 @@ function CandidateList() {
             type="button"
             onClick={toggleAiNotes}
             title={aiNotesEnabled ? 'AI notes on - click to disable' : 'AI notes off - click to enable'}
-            className="text-slate-400 hover:text-indigo-400 flex items-center gap-2 font-medium shrink-0 transition-colors"
+            role="checkbox"
+            aria-checked={aiNotesEnabled}
+            aria-label="Toggle AI Notes"
+            className="text-neutral-400 hover:text-emerald-400 flex items-center gap-2 font-medium shrink-0 transition-colors"
           >
             {aiNotesEnabled ? (
-              <CheckSquare size={20} className="text-indigo-400" />
+              <CheckSquare size={20} className="text-emerald-400" />
             ) : (
               <Square size={20} />
             )}
             <span className="text-sm whitespace-nowrap">AI Notes</span>
           </button>
-          <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-900/20">
-            {isSearching ? 'Search' : 'Search'}
+          <button type="submit" disabled={isSearching} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-emerald-900/20">
+            {isSearching ? 'Searching…' : 'Search'}
           </button>
         </form>
       </section>
 
       {/* Search Progress */}
       {searchProgress && (
-        <section className="glass-panel p-5 rounded-2xl border border-indigo-500/30 bg-indigo-950/20 shadow-[0_0_20px_rgba(99,102,241,0.1)] transition-all animate-in fade-in slide-in-from-top-4 duration-300">
+        <section className="surface-panel p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 transition-colors animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-indigo-300 flex items-center gap-2">
-              <RefreshCw size={16} className="animate-spin text-indigo-400" />
+            <span className="text-sm font-medium text-emerald-300 flex items-center gap-2">
+              <RefreshCw size={16} className="animate-spin text-emerald-400" />
               {searchProgress.message}
             </span>
-            <span className="text-sm font-bold text-indigo-400 font-mono bg-indigo-500/10 px-2 py-1 rounded-md">{searchProgress.progress}%</span>
+            <span className="text-sm font-bold text-emerald-400 font-mono bg-emerald-500/10 px-2 py-1 rounded-md">{searchProgress.progress}%</span>
           </div>
-          <div className="w-full bg-slate-900/80 rounded-full h-2.5 overflow-hidden shadow-inner">
+          <div className="w-full bg-neutral-900/80 rounded-full h-2.5 overflow-hidden shadow-inner">
             <div 
-              className="bg-indigo-500 h-full rounded-full transition-all duration-300 ease-out"
+              className="bg-emerald-500 h-full rounded-full transition-[width] duration-300 ease-out"
               style={{ width: `${searchProgress.progress}%` }}
             />
           </div>
@@ -668,17 +675,20 @@ function CandidateList() {
       )}
 
       {/* Master Select */}
-      <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+      <div className="flex justify-between items-center bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
         <div className="flex items-center gap-3">
           <button
             onClick={toggleSelectAll}
-            className="text-slate-400 hover:text-indigo-400 flex items-center gap-2 font-medium"
+            role="checkbox"
+            aria-checked={candidates.length > 0 && selectedIds.length === candidates.length}
+            aria-label="Select all candidates"
+            className="text-neutral-400 hover:text-emerald-400 flex items-center gap-2 font-medium"
           >
             {candidates.length > 0 && selectedIds.length === candidates.length ? (
-              <CheckSquare size={20} className="text-indigo-400" />
+              <CheckSquare size={20} className="text-emerald-400" />
             ) : selectedIds.length > 0 ? (
-              <div className="w-5 h-5 bg-indigo-500/20 border-2 border-indigo-400 rounded-sm flex items-center justify-center">
-                <div className="w-2.5 h-0.5 bg-indigo-400 rounded-full" />
+              <div className="w-5 h-5 bg-emerald-500/20 border-2 border-emerald-400 rounded-sm flex items-center justify-center">
+                <div className="w-2.5 h-0.5 bg-emerald-400 rounded-full" />
               </div>
             ) : (
               <Square size={20} />
@@ -687,7 +697,7 @@ function CandidateList() {
           </button>
           
           {selectedIds.length > 0 && (
-            <span className="text-sm text-indigo-300 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
+            <span className="text-sm text-emerald-300 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
               {selectedIds.length} selected
             </span>
           )}
@@ -703,10 +713,10 @@ function CandidateList() {
             <div 
               key={candidate.id} 
               onClick={() => navigate(`/candidate/${candidate.id}`)}
-              className={`glass-panel p-6 rounded-2xl transition-all cursor-pointer group flex flex-col justify-between relative border ${
-                isSelected 
-                  ? 'border-indigo-500 bg-indigo-950/20 ring-2 ring-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.15)]' 
-                  : 'hover:border-indigo-500/50 border-slate-800/80'
+              className={`surface-panel p-6 rounded-2xl transition-colors cursor-pointer group flex flex-col justify-between relative border ${
+                isSelected
+                  ? 'border-emerald-500 bg-emerald-950/20 ring-2 ring-emerald-500/40'
+                  : 'hover:border-emerald-500/50 border-neutral-800/80'
               }`}
             >
               <div>
@@ -714,38 +724,44 @@ function CandidateList() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={(e) => toggleSelectCandidate(e, candidate.id)}
-                      className="text-slate-400 hover:text-indigo-400 p-1 rounded-md transition-colors shrink-0"
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={isSelected ? "Deselect candidate" : "Select candidate"}
+                      className="text-neutral-400 hover:text-emerald-400 p-1 rounded-md transition-colors shrink-0"
                       title={isSelected ? "Deselect candidate" : "Select candidate"}
                     >
                       {isSelected ? (
-                        <CheckSquare size={20} className="text-indigo-400 fill-indigo-500/20" />
+                        <CheckSquare size={20} className="text-emerald-400 fill-emerald-500/20" />
                       ) : (
-                        <Square size={20} className="text-slate-500 hover:text-slate-300" />
+                        <Square size={20} className="text-neutral-500 hover:text-neutral-300" />
                       )}
                     </button>
-                    <div className="bg-indigo-950/60 border border-indigo-500/30 p-2.5 rounded-full text-indigo-400 shrink-0">
+                    <div className="bg-emerald-950/60 border border-emerald-500/30 p-2.5 rounded-full text-emerald-400 shrink-0">
                       <User size={18} />
                     </div>
                     <div>
-                    <h3 className="font-semibold text-lg text-slate-100 group-hover:text-indigo-300 transition-colors">
+                    <h3 className="font-semibold text-lg text-neutral-100 group-hover:text-emerald-300 transition-colors">
                       {candidate.first_name} {candidate.last_name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         candidate.availability_status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                        'bg-slate-700 text-slate-300 border border-slate-600'
+                        'bg-neutral-700 text-neutral-300 border border-neutral-600'
                       }`}>
                         {candidate.availability_status}
                       </span>
                       {candidate.match_percentage != null && candidate.match_percentage > 0 && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border ${
-                          candidate.match_percentage >= 80 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
-                          candidate.match_percentage >= 50 ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' :
+                          candidate.match_percentage >= 80 ? 'bg-emerald-500 text-black border-emerald-400' :
+                          candidate.match_percentage >= 50 ? 'bg-transparent text-emerald-300 border-emerald-400/60' :
                           'bg-amber-500/15 text-amber-300 border-amber-500/30'
                         }`}>
-                          <span className="font-extrabold text-[9px] uppercase tracking-wider bg-slate-800/80 px-1 rounded-sm border border-slate-700/80 text-slate-300">Match</span>
+                          <span className="font-extrabold text-[9px] uppercase tracking-wider bg-neutral-800/80 px-1 rounded-sm border border-neutral-700/80 text-neutral-300">Match</span>
                           {candidate.match_percentage}%
                         </span>
+                      )}
+                      {candidate.rank != null && (
+                        <span className="text-[10px] font-mono font-bold text-neutral-400 bg-neutral-800/80 border border-neutral-700 px-1.5 py-0.5 rounded">#{candidate.rank}</span>
                       )}
                     </div>
                   </div>
@@ -755,16 +771,16 @@ function CandidateList() {
                 <div className="relative">
                   <button 
                     onClick={(e) => toggleMenu(e, candidate.id)}
-                    className="text-slate-400 hover:text-slate-200 p-1 rounded hover:bg-slate-800 transition-colors"
+                    className="text-neutral-400 hover:text-neutral-200 p-1 rounded hover:bg-neutral-800 transition-colors"
                   >
                     <MoreVertical size={18} />
                   </button>
                   
                   {openMenuId === candidate.id && (
-                    <div className="absolute right-0 top-8 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-10" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute right-0 top-8 w-44 bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl overflow-hidden z-10" onClick={(e) => e.stopPropagation()}>
                       <button 
                         onClick={(e) => { e.stopPropagation(); navigate(`/candidate/${candidate.id}`); }}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-colors flex items-center gap-2"
                       >
                         <User size={14} /> View Details
                       </button>
@@ -772,13 +788,13 @@ function CandidateList() {
                         href={`/api/candidates/${candidate.id}/file`}
                         download
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-colors flex items-center gap-2"
                       >
                         <Download size={14} /> Download Resume
                       </a>
                       <button 
                         onClick={(e) => handleReprocess(e, candidate.id)}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-colors flex items-center gap-2"
                       >
                         <RefreshCw size={14} /> Re-process Data
                       </button>
@@ -788,7 +804,7 @@ function CandidateList() {
                           setOpenMenuId(null);
                           setDeleteCandidate(candidate);
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 hover:text-red-300 transition-colors flex items-center gap-2 border-t border-slate-800"
+                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-950/40 hover:text-red-300 transition-colors flex items-center gap-2 border-t border-neutral-800"
                       >
                         <Trash2 size={14} /> Delete Candidate
                       </button>
@@ -798,16 +814,16 @@ function CandidateList() {
 
               </div>
               
-              <div className="space-y-3 mt-4 text-sm text-slate-400">
+              <div className="space-y-3 mt-4 text-sm text-neutral-400">
                 {candidate.current_title && (
                   <div className="flex items-center gap-2">
-                    <Briefcase size={16} className="text-slate-500" />
+                    <Briefcase size={16} className="text-neutral-500" />
                     <span>{candidate.current_title} {candidate.current_company ? `at ${candidate.current_company}` : ''}</span>
                   </div>
                 )}
                 {candidate.current_city && (
                   <div className="flex items-center gap-2">
-                    <MapPin size={16} className="text-slate-500" />
+                    <MapPin size={16} className="text-neutral-500" />
                     <span>{candidate.current_city}</span>
                   </div>
                 )}
@@ -815,41 +831,41 @@ function CandidateList() {
               
               {/* AI Insight Box */}
               {query.trim().length > 0 && aiNotesEnabled && (
-                <div className="mt-4 border-t border-slate-800 pt-4" onClick={e => e.stopPropagation()}>
+                <div className="mt-4 border-t border-neutral-800 pt-4" onClick={e => e.stopPropagation()}>
                   {insights[candidate.id] ? (
-                    <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-3 text-sm">
+                    <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-3 text-sm">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-indigo-300 font-semibold flex items-center gap-1.5 text-xs uppercase tracking-wider">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                        <span className="text-emerald-300 font-semibold flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                           AI Rationale
                         </span>
                         {insights[candidate.id].status === 'loading' ? (
                           <button 
                             onClick={(e) => { e.stopPropagation(); insights[candidate.id].controller?.abort(); }}
-                            className="text-slate-400 hover:text-red-400 text-xs px-2 py-1 rounded transition-colors"
+                            className="text-neutral-400 hover:text-red-400 text-xs px-2 py-1 rounded transition-colors"
                           >
                             Cancel AI Note
                           </button>
                         ) : (
                           <button 
                             onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, query); }}
-                            className="text-indigo-400 hover:text-indigo-300 text-xs px-2 py-1 rounded transition-colors"
+                            className="text-emerald-400 hover:text-emerald-300 text-xs px-2 py-1 rounded transition-colors"
                           >
                             Regenerate
                           </button>
                         )}
                       </div>
-                      <div className="text-slate-300 leading-relaxed text-sm max-h-32 overflow-y-auto">
+                      <div className="text-neutral-300 leading-relaxed text-sm max-h-32 overflow-y-auto">
                         {insights[candidate.id].text}
-                        {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-indigo-400 animate-pulse"></span>}
-                        {insights[candidate.id].status === 'cancelled' && <span className="text-slate-500 italic block mt-1 text-xs">Generation cancelled.</span>}
+                        {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-emerald-400 animate-pulse"></span>}
+                        {insights[candidate.id].status === 'cancelled' && <span className="text-neutral-500 italic block mt-1 text-xs">Generation cancelled.</span>}
                         {insights[candidate.id].status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">Generation failed.</span>}
                       </div>
                     </div>
                   ) : (
                     <button 
                       onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, query); }}
-                      className="w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                     >
                       Generate AI Note
                     </button>
@@ -858,8 +874,8 @@ function CandidateList() {
               )}
             </div>
             
-            <div className="mt-6 pt-4 border-t border-slate-700/50 flex justify-end">
-              <button className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 font-medium">
+            <div className="mt-6 pt-4 border-t border-neutral-700/50 flex justify-end">
+              <button onClick={() => navigate(`/candidate/${candidate.id}`)} className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 font-medium">
                 View Profile <ChevronRight size={16} />
               </button>
             </div>
@@ -868,31 +884,31 @@ function CandidateList() {
       })}
         
         {candidates.length === 0 && (
-          <div className="col-span-full py-16 text-center text-slate-500 border-2 border-dashed border-slate-700/60 rounded-2xl bg-slate-900/30">
-            <User className="mx-auto h-10 w-10 text-slate-600 mb-3" />
-            <p className="text-slate-300 font-medium">No candidates found</p>
-            <p className="text-sm text-slate-500 mt-1">Ingest resumes or adjust your search filter.</p>
+          <div className="col-span-full py-16 text-center text-neutral-500 border-2 border-dashed border-neutral-700/60 rounded-2xl bg-neutral-900/30">
+            <User className="mx-auto h-10 w-10 text-neutral-600 mb-3" />
+            <p className="text-neutral-300 font-medium">No candidates found</p>
+            <p className="text-sm text-neutral-500 mt-1">Ingest resumes or adjust your search filter.</p>
           </div>
         )}
       </section>
 
       {/* Upload Manager Modal */}
       {showUploadManager && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="glass-panel border-slate-700 max-w-3xl w-full rounded-2xl p-6 relative max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-modal">
+          <div className="surface-panel border-neutral-700 max-w-3xl w-full rounded-2xl p-6 relative max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <Upload size={22} className="text-indigo-400" /> Upload Manager
+                <h2 className="text-xl font-bold text-neutral-100 flex items-center gap-2">
+                  <Upload size={22} className="text-emerald-400" /> Upload Manager
                 </h2>
-                <p className="text-sm text-slate-400 mt-1">Processing and ingesting candidates...</p>
+                <p className="text-sm text-neutral-400 mt-1">Processing and ingesting candidates…</p>
               </div>
               <button 
                 onClick={() => {
                   setShowUploadManager(false);
                   fetchCandidates();
                 }}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 Done
               </button>
@@ -900,16 +916,16 @@ function CandidateList() {
             
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               {uploadQueue.map((item, idx) => (
-                <div key={idx} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+                <div key={idx} className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 flex flex-col gap-3">
                   <div className="flex justify-between items-start">
-                    <div className="font-medium text-slate-200 text-sm truncate max-w-[240px]" title={item.file_name}>
+                    <div className="font-medium text-neutral-200 text-sm truncate max-w-[240px]" title={item.file_name}>
                       {item.file_name}
                     </div>
                     <div className="flex items-center gap-2 text-xs font-medium">
                       {item.status === 'SUCCESS' && (
                         item.used_ai_fallback ? (
-                          <span className="flex items-center gap-1 text-indigo-300 bg-indigo-500/15 px-2.5 py-1 rounded border border-indigo-500/30">
-                            <span className="font-bold text-[9px] uppercase bg-indigo-500/30 px-1 rounded-sm text-indigo-200">AI</span> Ingested (Model: {item.model_name || 'llama3.2'})
+                          <span className="flex items-center gap-1 text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded border border-emerald-500/30">
+                            <span className="font-bold text-[9px] uppercase bg-emerald-500/30 px-1 rounded-sm text-emerald-200">AI</span> Ingested (Model: {item.model_name || 'llama3.2'})
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
@@ -930,42 +946,42 @@ function CandidateList() {
                       {item.status === 'SKIPPED_DUPLICATE' && <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20"><RefreshCw size={14}/> Duplicate</span>}
                       {item.status === 'IN_PROGRESS' && (
                         item.stage === 'AI_EXTRACTION' || item.used_ai ? (
-                          <span className="flex items-center gap-1 text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded border border-indigo-500/40 animate-pulse font-medium">
-                            <span className="font-bold text-[9px] uppercase bg-indigo-500/30 px-1 rounded-sm text-indigo-200">AI</span> Extraction ({item.model_name || 'llama3.2'})
+                          <span className="flex items-center gap-1 text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded border border-emerald-500/40 animate-pulse font-medium">
+                            <span className="font-bold text-[9px] uppercase bg-emerald-500/30 px-1 rounded-sm text-emerald-200">AI</span> Extraction ({item.model_name || 'llama3.2'})
                           </span>
                         ) : (
-                          <span className="text-indigo-400 animate-pulse font-medium">{item.stage_detail || item.stage}...</span>
+                          <span className="text-emerald-400 animate-pulse font-medium">{item.stage_detail || item.stage}…</span>
                         )
                       )}
-                      {item.status === 'PENDING' && <span className="text-slate-500">Queued</span>}
+                      {item.status === 'PENDING' && <span className="text-neutral-500">Queued</span>}
                     </div>
                   </div>
                   
-                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
                     <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
+                      className={`h-2 rounded-full transition-[width] duration-300 ${
                         item.status === 'FAILED' ? 'bg-red-500' : 
                         item.status === 'SKIPPED_DUPLICATE' ? 'bg-amber-500' : 
-                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-indigo-500' :
+                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-emerald-500' :
                         item.status === 'SUCCESS' ? 'bg-emerald-500' :
-                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-indigo-500 animate-pulse' :
-                        'bg-indigo-500'
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-emerald-500 animate-pulse' :
+                        'bg-emerald-500'
                       }`} 
                       style={{ width: `${item.progress}%` }}
                     ></div>
                   </div>
                   
                   {item.stage === 'AI_EXTRACTION' && (
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-500/30 text-indigo-200 text-xs shadow-inner">
-                      <span className="font-bold text-[10px] uppercase bg-indigo-500/30 px-1.5 py-0.5 rounded-sm text-indigo-200">AI Process</span>
-                      <span>{item.message || `Extracting candidate facts using local AI model (${item.model_name || 'llama3.2'})...`}</span>
+                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-200 text-xs shadow-inner">
+                      <span className="font-bold text-[10px] uppercase bg-emerald-500/30 px-1.5 py-0.5 rounded-sm text-emerald-200">AI Process</span>
+                      <span>{item.message || `Extracting candidate facts using local AI model (${item.model_name || 'llama3.2'})…`}</span>
                     </div>
                   )}
 
                   {item.stage !== 'AI_EXTRACTION' && item.message && (
-                    <div className="text-xs text-slate-400 flex items-center justify-between">
+                    <div className="text-xs text-neutral-400 flex items-center justify-between">
                       <span>{item.message}</span>
-                      <span className="font-mono text-slate-500">{item.progress}%</span>
+                      <span className="font-mono text-neutral-500">{item.progress}%</span>
                     </div>
                   )}
 
@@ -998,27 +1014,33 @@ function CandidateList() {
 
       {/* Delete Confirmation Modal */}
       {deleteCandidate && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
-          <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-confirm">
+          <div className="bg-neutral-900 border border-neutral-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
             <div className="flex items-center gap-3 text-red-400 mb-4">
               <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-lg font-bold text-slate-100">Delete Candidate</h3>
+              <h3 className="text-lg font-bold text-neutral-100">Delete Candidate</h3>
             </div>
             
-            <p className="text-slate-300 text-sm mb-2">
-              Are you sure you want to delete <span className="font-semibold text-slate-100">{deleteCandidate.first_name} {deleteCandidate.last_name}</span>?
+            <p className="text-neutral-300 text-sm mb-2">
+              Are you sure you want to delete <span className="font-semibold text-neutral-100">{deleteCandidate.first_name} {deleteCandidate.last_name}</span>?
             </p>
-            <p className="text-slate-400 text-xs mb-6">
+            <p className="text-neutral-400 text-xs mb-6">
               This action will permanently remove candidate details, timeline events, and search index vectors.
             </p>
-            
+
+            {listDeleteError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4 text-xs text-red-300" role="alert">
+                {listDeleteError}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setDeleteCandidate(null)}
+                onClick={() => { setDeleteCandidate(null); setListDeleteError(null); }}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-xl transition-colors"
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-medium rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -1035,15 +1057,15 @@ function CandidateList() {
       )}
       {/* Reprocess Manager Modal */}
       {reprocessState?.show && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="glass-panel border-slate-700 max-w-lg w-full rounded-2xl p-6 relative flex flex-col gap-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-modal">
+          <div className="surface-panel border-neutral-700 max-w-lg w-full rounded-2xl p-6 relative flex flex-col gap-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <RefreshCw size={22} className={`text-indigo-400 ${reprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                <h2 className="text-xl font-bold text-neutral-100 flex items-center gap-2">
+                  <RefreshCw size={22} className={`text-emerald-400 ${reprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
                   Reprocessing Candidate
                 </h2>
-                <p className="text-sm text-slate-400 mt-0.5">Re-indexing resume and vector embeddings</p>
+                <p className="text-sm text-neutral-400 mt-0.5">Re-indexing resume and vector embeddings</p>
               </div>
               <button 
                 onClick={() => {
@@ -1051,23 +1073,23 @@ function CandidateList() {
                   fetchCandidates();
                 }}
                 disabled={reprocessState.status === 'IN_PROGRESS'}
-                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 {reprocessState.status === 'SUCCESS' ? 'Done' : 'Close'}
               </button>
             </div>
             
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+            <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-5 flex flex-col gap-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-semibold text-slate-200 text-base">{reprocessState.candidateName}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">ID: {reprocessState.candidateId}</p>
+                  <h3 className="font-semibold text-neutral-200 text-base">{reprocessState.candidateName}</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">ID: {reprocessState.candidateId}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium">
                   {reprocessState.status === 'SUCCESS' && (
                     reprocessState.used_ai_fallback ? (
-                      <span className="flex items-center gap-1 text-purple-300 bg-purple-500/15 px-2.5 py-1 rounded-full border border-purple-500/30">
-                        <Sparkles size={14} className="text-purple-400"/> AI Re-indexed ({reprocessState.model_name || 'llama3.2'})
+                      <span className="flex items-center gap-1 text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                        AI Re-indexed ({reprocessState.model_name || 'llama3.2'})
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
@@ -1082,12 +1104,12 @@ function CandidateList() {
                   )}
                   {reprocessState.status === 'IN_PROGRESS' && (
                     reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? (
-                      <span className="text-purple-300 bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/40 animate-pulse flex items-center gap-1">
-                        <Sparkles size={13} className="text-purple-400 animate-spin"/> AI Model Active ({reprocessState.model_name || 'llama3.2'})
+                      <span className="text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/40 animate-pulse flex items-center gap-1">
+                        AI Model Active ({reprocessState.model_name || 'llama3.2'})
                       </span>
                     ) : (
-                      <span className="text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20 animate-pulse">
-                        {reprocessState.stage_detail || reprocessState.stage}...
+                      <span className="text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 animate-pulse">
+                        {reprocessState.stage_detail || reprocessState.stage}…
                       </span>
                     )
                   )}
@@ -1095,18 +1117,18 @@ function CandidateList() {
               </div>
               
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-slate-400 font-medium">
-                  <span>{reprocessState.message || 'Processing...'}</span>
+                <div className="flex justify-between text-xs text-neutral-400 font-medium">
+                  <span>{reprocessState.message || 'Processing…'}</span>
                   <span>{reprocessState.progress}%</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
                   <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
+                    className={`h-2 rounded-full transition-[width] duration-300 ${
                       reprocessState.status === 'FAILED' ? 'bg-red-500' : 
-                      reprocessState.status === 'SUCCESS' && reprocessState.used_ai_fallback ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                      reprocessState.status === 'SUCCESS' && reprocessState.used_ai_fallback ? 'bg-emerald-500' :
                       reprocessState.status === 'SUCCESS' ? 'bg-emerald-500' : 
-                      reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse shadow-md shadow-purple-500/30' :
-                      'bg-indigo-500'
+                      reprocessState.stage === 'AI_EXTRACTION' || reprocessState.used_ai ? 'bg-emerald-500 animate-pulse shadow-md shadow-emerald-500/30' :
+                      'bg-emerald-500'
                     }`} 
                     style={{ width: `${reprocessState.progress}%` }}
                   ></div>
@@ -1114,27 +1136,27 @@ function CandidateList() {
               </div>
 
               {reprocessState.stage === 'AI_EXTRACTION' && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/50 border border-purple-500/40 text-purple-200 text-xs shadow-inner animate-pulse">
-                  <Sparkles size={16} className="text-purple-400 shrink-0 animate-bounce" />
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 text-xs shadow-inner animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
                   <span><strong>AI Model Active:</strong> Extracting missing profile fields using local LLM ({reprocessState.model_name || 'llama3.2'})...</span>
                 </div>
               )}
 
               {/* Stage Stepper Badges */}
-              <div className="grid grid-cols-5 gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 text-center font-medium">
-                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'ENTITY_RESOLUTION', 'AI_EXTRACTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+              <div className="grid grid-cols-5 gap-2 pt-2 border-t border-neutral-800/80 text-[11px] text-neutral-400 text-center font-medium">
+                <div className={`p-1.5 rounded-lg border ${['FETCHING_RESUME', 'ENTITY_RESOLUTION', 'AI_EXTRACTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   1. Profile
                 </div>
-                <div className={`p-1.5 rounded-lg border ${reprocessState.stage === 'AI_EXTRACTION' ? 'bg-purple-950/80 border-purple-500/60 text-purple-200 font-bold animate-pulse flex items-center justify-center gap-1' : ['ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${reprocessState.stage === 'AI_EXTRACTION' ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-200 font-bold animate-pulse flex items-center justify-center gap-1' : ['ENTITY_RESOLUTION', 'UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   {reprocessState.stage === 'AI_EXTRACTION' ? '2. AI Model' : '2. Entities'}
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['UPDATING_FTS', 'GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   3. FTS Search
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['GENERATING_VECTORS', 'LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   4. Vectors
                 </div>
-                <div className={`p-1.5 rounded-lg border ${['LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg border ${['LOGGING_TIMELINE', 'COMPLETED'].indexOf(reprocessState.stage) >= 0 ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300' : 'bg-neutral-900 border-neutral-800'}`}>
                   5. Timeline
                 </div>
               </div>
@@ -1159,19 +1181,19 @@ function CandidateList() {
 
       {/* Floating Action Bar for Multi-Selection */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[50] bg-slate-900/90 border border-indigo-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300 whitespace-nowrap max-w-fit">
-          <div className="flex items-center gap-3 border-r border-slate-700/80 pr-5 shrink-0">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-bar bg-neutral-900/90 border border-emerald-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300 whitespace-nowrap max-w-fit">
+          <div className="flex items-center gap-3 border-r border-neutral-700/80 pr-5 shrink-0">
             <button 
               onClick={toggleSelectAll}
-              className="text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors whitespace-nowrap shrink-0"
+              className="text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 bg-neutral-800/80 hover:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-700 transition-colors whitespace-nowrap shrink-0"
             >
               {selectedIds.length === candidates.length && candidates.length > 0 ? (
-                <> <CheckSquare size={15} className="text-indigo-400 shrink-0" /> Deselect All </>
+                <> <CheckSquare size={15} className="text-emerald-400 shrink-0" /> Deselect All </>
               ) : (
-                <> <Square size={15} className="text-slate-400 shrink-0" /> Select All </>
+                <> <Square size={15} className="text-neutral-400 shrink-0" /> Select All </>
               )}
             </button>
-            <span className="text-sm font-semibold text-indigo-300 whitespace-nowrap shrink-0">
+            <span className="text-sm font-semibold text-emerald-300 whitespace-nowrap shrink-0">
               {selectedIds.length} candidate{selectedIds.length > 1 ? 's' : ''} selected
             </span>
           </div>
@@ -1179,13 +1201,13 @@ function CandidateList() {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={handleBatchReprocess}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-indigo-900/30 border border-indigo-400/30 whitespace-nowrap shrink-0"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/30 border border-emerald-400/30 whitespace-nowrap shrink-0"
             >
               <RefreshCw size={16} className="shrink-0" /> Re-process ({selectedIds.length})
             </button>
             <button
               onClick={handleBatchDownloadResumes}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors border border-slate-700 whitespace-nowrap shrink-0"
+              className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors border border-neutral-700 whitespace-nowrap shrink-0"
             >
               <Download size={16} className="shrink-0" /> Download Resumes
             </button>
@@ -1197,7 +1219,7 @@ function CandidateList() {
             </button>
             <button
               onClick={clearSelection}
-              className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors ml-1 shrink-0"
+              className="text-neutral-400 hover:text-neutral-200 p-1.5 rounded-lg hover:bg-neutral-800 transition-colors ml-1 shrink-0"
               title="Clear selection"
             >
               <X size={18} />
@@ -1208,19 +1230,19 @@ function CandidateList() {
 
       {/* Batch Delete Confirmation Modal */}
       {showBatchDeleteModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
-          <div className="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-confirm">
+          <div className="bg-neutral-900 border border-neutral-700 max-w-md w-full rounded-2xl p-6 relative shadow-2xl">
             <div className="flex items-center gap-3 text-red-400 mb-4">
               <div className="p-2 bg-red-500/10 rounded-xl border border-red-500/20">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-lg font-bold text-slate-100">Delete {selectedIds.length} Candidates</h3>
+              <h3 className="text-lg font-bold text-neutral-100">Delete {selectedIds.length} Candidates</h3>
             </div>
             
-            <p className="text-slate-300 text-sm mb-2">
-              Are you sure you want to permanently delete <span className="font-semibold text-slate-100">{selectedIds.length} selected candidate(s)</span>?
+            <p className="text-neutral-300 text-sm mb-2">
+              Are you sure you want to permanently delete <span className="font-semibold text-neutral-100">{selectedIds.length} selected candidate(s)</span>?
             </p>
-            <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 max-h-32 overflow-y-auto my-3 text-xs text-slate-400 space-y-1">
+            <div className="bg-neutral-950/60 border border-neutral-800 rounded-xl p-3 max-h-32 overflow-y-auto my-3 text-xs text-neutral-400 space-y-1">
               {candidates
                 .filter(c => selectedIds.includes(c.id))
                 .map(c => (
@@ -1228,15 +1250,21 @@ function CandidateList() {
                 ))
               }
             </div>
-            <p className="text-slate-400 text-xs mb-6">
+            <p className="text-neutral-400 text-xs mb-6">
               This action will permanently purge their profile records, uploaded resumes, timeline logs, and vector search embeddings.
             </p>
-            
+
+            {batchDeleteError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4 text-xs text-red-300" role="alert">
+                {batchDeleteError}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowBatchDeleteModal(false)}
+                onClick={() => { setShowBatchDeleteModal(false); setBatchDeleteError(null); }}
                 disabled={isBatchDeleting}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-xl transition-colors"
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-medium rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -1254,15 +1282,15 @@ function CandidateList() {
 
       {/* Batch Reprocess Manager Modal */}
       {batchReprocessState?.show && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="glass-panel border-slate-700 max-w-2xl w-full rounded-2xl p-6 relative flex flex-col max-h-[80vh] shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+        <div className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-modal">
+          <div className="surface-panel border-neutral-700 max-w-2xl w-full rounded-2xl p-6 relative flex flex-col max-h-[80vh] shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <RefreshCw size={22} className={`text-indigo-400 ${batchReprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
+                <h2 className="text-xl font-bold text-neutral-100 flex items-center gap-2">
+                  <RefreshCw size={22} className={`text-emerald-400 ${batchReprocessState.status === 'IN_PROGRESS' ? 'animate-spin' : ''}`} />
                   Batch Reprocessing ({batchReprocessState.queue.filter(i => i.status === 'SUCCESS' || i.status === 'SKIPPED').length} / {batchReprocessState.total})
                 </h2>
-                <p className="text-sm text-slate-400 mt-0.5">Re-indexing profile entities, FTS, and vector embeddings in real time</p>
+                <p className="text-sm text-neutral-400 mt-0.5">Re-indexing profile entities, FTS, and vector embeddings in real time</p>
               </div>
               <button 
                 onClick={() => {
@@ -1271,7 +1299,7 @@ function CandidateList() {
                   setSelectedIds([]);
                 }}
                 disabled={batchReprocessState.status === 'IN_PROGRESS'}
-                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 {batchReprocessState.status === 'COMPLETED' ? 'Done' : 'Close'}
               </button>
@@ -1279,17 +1307,17 @@ function CandidateList() {
             
             <div className="flex-1 overflow-y-auto space-y-3 pr-2">
               {batchReprocessState.queue.map((item, idx) => (
-                <div key={item.candidate_id || idx} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+                <div key={item.candidate_id || idx} className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-4 flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h4 className="font-semibold text-slate-200 text-sm">{item.candidate_name}</h4>
-                      <p className="text-[11px] text-slate-500">{item.message}</p>
+                      <h4 className="font-semibold text-neutral-200 text-sm">{item.candidate_name}</h4>
+                      <p className="text-[11px] text-neutral-500">{item.message}</p>
                     </div>
                     <div className="flex items-center gap-2 text-xs font-medium">
                       {item.status === 'SUCCESS' && (
                         item.used_ai_fallback ? (
-                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded border border-purple-500/30 text-[11px]">
-                            <Sparkles size={12} className="text-purple-400"/> AI Re-indexed ({item.model_name || 'llama3.2'})
+                          <span className="flex items-center gap-1 text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30 text-[11px]">
+                            AI Re-indexed ({item.model_name || 'llama3.2'})
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
@@ -1309,39 +1337,39 @@ function CandidateList() {
                       )}
                       {item.status === 'IN_PROGRESS' && (
                         item.stage === 'AI_EXTRACTION' || item.used_ai ? (
-                          <span className="flex items-center gap-1 text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/40 animate-pulse text-[11px]">
-                            <Sparkles size={12} className="text-purple-400 animate-spin"/> AI Model Active ({item.model_name || 'llama3.2'})
+                          <span className="flex items-center gap-1 text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse text-[11px]">
+                            AI Model Active ({item.model_name || 'llama3.2'})
                           </span>
                         ) : (
-                          <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 animate-pulse">
-                            {item.stage_detail || item.stage}...
+                          <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 animate-pulse">
+                            {item.stage_detail || item.stage}…
                           </span>
                         )
                       )}
                       {item.status === 'PENDING' && (
-                        <span className="text-slate-500">Queued</span>
+                        <span className="text-neutral-500">Queued</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
                     <div 
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                      className={`h-1.5 rounded-full transition-[width] duration-300 ${
                         item.status === 'FAILED' ? 'bg-red-500' : 
-                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                        item.status === 'SUCCESS' && item.used_ai_fallback ? 'bg-emerald-500' :
                         item.status === 'SUCCESS' ? 'bg-emerald-500' : 
                         item.status === 'SKIPPED' ? 'bg-amber-500' : 
-                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse shadow-sm shadow-purple-500/30' :
-                        'bg-indigo-500'
+                        item.stage === 'AI_EXTRACTION' || item.used_ai ? 'bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/30' :
+                        'bg-emerald-500'
                       }`}
                       style={{ width: `${item.progress}%` }}
                     ></div>
                   </div>
 
                   {item.stage === 'AI_EXTRACTION' && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-purple-950/40 border border-purple-500/30 text-purple-300 text-[11px]">
-                      <Sparkles size={12} className="text-purple-400 shrink-0 animate-bounce" />
-                      <span>{item.message || `Running local AI Model (${item.model_name || 'llama3.2'})...`}</span>
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                      <span>{item.message || `Running local AI Model (${item.model_name || 'llama3.2'})…`}</span>
                     </div>
                   )}
 

@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import CandidateList from './pages/CandidateList';
 import CandidateDetail from './pages/CandidateDetail';
 import SystemLogDrawer from './components/SystemLogDrawer';
-import './App.css';
 
 function App() {
   return (

@@ -3,39 +3,43 @@
 
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
 
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 215 20.2% 65.1%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 65%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
 
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 216 34% 17%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 160 84% 39%;
 
     --radius: 0.5rem;
+
+    --z-bar: 50;
+    --z-modal: 60;
+    --z-confirm: 70;
   }
 
   body {
-    @apply bg-slate-900 text-slate-100 antialiased;
+    @apply bg-black text-neutral-100 antialiased;
     font-family: 'Roboto', sans-serif;
   }
 
@@ -44,10 +48,12 @@
   }
 }
 
-.glass-panel {
-  @apply bg-slate-800 border border-slate-700 shadow-xl;
+.surface-panel {
+  @apply bg-neutral-950 border border-neutral-800 shadow-xl;
 }
 
-.gradient-text {
-  @apply text-slate-100 font-bold tracking-tight;
+@layer utilities {
+  .z-bar { z-index: var(--z-bar); }
+  .z-modal { z-index: var(--z-modal); }
+  .z-confirm { z-index: var(--z-confirm); }
 }
