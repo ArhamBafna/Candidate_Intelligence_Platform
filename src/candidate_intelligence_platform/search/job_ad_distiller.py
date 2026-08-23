@@ -40,6 +40,16 @@ _TITLE_HINTS = (
     "technician", "recruiter", "director", "intern",
 )
 
+# Sentence filler words that must never leak into an extracted title phrase
+# (PR #25 review: "We are hiring a Senior Data Engineer to join our team"
+# must yield "Senior Data Engineer", not the whole sentence).
+_TITLE_PHRASE_STOPS = frozenset({
+    "we", "our", "us", "you", "your", "they", "their",
+    "are", "is", "was", "were", "be", "been",
+    "a", "an", "the", "and", "or", "for", "with", "to", "at", "on", "in", "of", "as", "by",
+    "hiring", "seeking", "join", "joining", "team", "role", "position", "job",
+})
+
 _STOPWORDS = frozenset("""
 a an and are as at be by for from has have how in is it its of on or our that
 the this to will with you your we us they their them who whom what when where
@@ -206,6 +216,30 @@ def _ai_distill(ad_text: str, model_name: str, timeout_seconds: float) -> Option
     return _coerce_recipe(data, ad_text, source="ai", warnings=[])
 
 
+def _extract_title_phrase(line: str) -> Optional[str]:
+    """Pull just the title phrase out of a line that mentions a title hint.
+
+    Walks left from the hint word across capitalized modifiers (seniority,
+    specialization) but stops at lowercase sentence filler, so a full
+    recruiting sentence never becomes the strict equality filter.
+    """
+    tokens = re.findall(r"[A-Za-z][A-Za-z+#./]*", line)
+    for idx, token in enumerate(tokens):
+        lowered = token.lower()
+        if not any(hint in lowered for hint in _TITLE_HINTS):
+            continue
+        start = idx
+        steps = 0
+        while start > 0 and steps < 3:
+            prev = tokens[start - 1]
+            if prev.lower() in _TITLE_PHRASE_STOPS or not prev[0].isupper():
+                break
+            start -= 1
+            steps += 1
+        return " ".join(tokens[start:idx + 1])
+    return None
+
+
 def _fallback_extract(ad_text: str) -> Tuple[List[str], Optional[float], Optional[str], Optional[str]]:
     """Simple non-AI extraction: yoe patterns, skill-like terms, location."""
     min_yoe_values: List[float] = []
@@ -239,12 +273,12 @@ def _fallback_extract(ad_text: str) -> Tuple[List[str], Optional[float], Optiona
 
     title = None
     for line in ad_text.splitlines():
-        candidate = line.strip().strip("*# ").rstrip(":")
-        lowered = candidate.lower()
-        if not candidate or len(candidate) > 80 or "\n" in candidate:
+        cleaned = line.strip().strip("*# ").rstrip(":")
+        if not cleaned or len(cleaned) > 120:
             continue
-        if any(hint in lowered for hint in _TITLE_HINTS):
-            title = candidate
+        phrase = _extract_title_phrase(cleaned)
+        if phrase:
+            title = phrase
             break
 
     return skills, min_yoe, location, title

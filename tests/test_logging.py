@@ -71,6 +71,28 @@ def test_memory_buffer_processor():
     assert LOG_BUFFER[0] == event_dict
 
 
+def test_buffer_redacts_candidate_identity_but_console_keeps_it():
+    """PR #25 review: /logs buffer drops PII; the console card keeps it."""
+    LOG_BUFFER.clear()
+
+    event = {
+        "event": "resume_upload_complete",
+        "status": "success",
+        "candidate_name": "Jane Doe",
+        "file_name": "jane-resume.pdf",
+        "classified_as": "VALID_RESUME",
+        "duration_s": 1.5,
+    }
+    line = _render(dict(event))
+    memory_buffer_processor(None, "info", event)
+
+    buffered = LOG_BUFFER[0]
+    assert "candidate_name" not in buffered
+    assert "file_name" not in buffered
+
+    assert "Candidate: Jane Doe (jane-resume.pdf)" in line
+
+
 def test_is_polling_path():
     assert is_polling_path("/logs") is True
     assert is_polling_path("/health") is True

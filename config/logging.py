@@ -4,7 +4,7 @@ import sys
 import threading
 from collections import deque
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 
@@ -12,6 +12,11 @@ LOG_BUFFER = deque(maxlen=100)
 _buffer_lock = threading.Lock()
 
 POLLING_PREFIXES = ("/logs", "/health")
+
+# GET /logs serves LOG_BUFFER without authentication, so candidate-identifying
+# fields are stripped from buffered copies only; the console renderer still
+# receives the full event dict and keeps its rich upload cards.
+REDACTED_BUFFER_KEYS = frozenset({"candidate_name", "file_name"})
 
 EVENT_PHRASES = {
     "embedding_model_loaded": "Embedding Model Loaded",
@@ -42,11 +47,11 @@ class UvicornAccessFilter(logging.Filter):
 
 def memory_buffer_processor(logger: Any, method_name: str, event_dict: structlog.types.EventDict) -> structlog.types.EventDict:
     with _buffer_lock:
-        LOG_BUFFER.appendleft(dict(event_dict))
+        LOG_BUFFER.appendleft({key: value for key, value in event_dict.items() if key not in REDACTED_BUFFER_KEYS})
     return event_dict
 
 
-def get_recent_logs(limit: int = 50) -> list:
+def get_recent_logs(limit: int = 50) -> List[Dict[str, Any]]:
     with _buffer_lock:
         return list(LOG_BUFFER)[:limit]
 
@@ -111,7 +116,7 @@ def _short_extras(event_dict: structlog.types.EventDict, enabled: bool) -> str:
     return _paint(f" {detail}", DIM, enabled) if detail else ""
 
 
-def _render_block(lines: list, color: str, enabled: bool) -> str:
+def _render_block(lines: List[str], color: str, enabled: bool) -> str:
     head = _paint(lines[0], f"{BOLD}{color}".strip(), enabled)
     body = [_paint(f"   {line}", RESET, False) for line in lines[1:]]
     return "\n".join([head] + body)

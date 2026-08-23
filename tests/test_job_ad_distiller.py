@@ -115,6 +115,36 @@ def test_nothing_useful_searches_raw_text_with_warning(monkeypatch):
     assert any("searching the pasted text directly" in w for w in recipe.warnings)
 
 
+# PR #25 review: a full sentence containing a title must never become the
+# strict equality filter.
+SENTENCE_AD = (
+    "About our company\n"
+    "We are hiring a Senior Data Engineer to join our team,\n"
+    "working on analytics and data platforms.\n\n"
+    "Requirements:\n"
+    "- At least 5+ years of experience with python and sql\n"
+    "- Experience with kubernetes and airflow\n"
+)
+
+
+def test_fallback_title_extracts_phrase_not_sentence(monkeypatch):
+    monkeypatch.setattr(jad, "resolve_chat_model", lambda force_refresh=False: None)
+
+    recipe = distill_job_ad(SENTENCE_AD)
+
+    assert recipe.source == "fallback"
+    assert recipe.title == "Senior Data Engineer"
+
+
+def test_fallback_sentence_title_dsl_stays_clean(monkeypatch):
+    monkeypatch.setattr(jad, "resolve_chat_model", lambda force_refresh=False: None)
+
+    recipe = distill_job_ad(SENTENCE_AD)
+    sql, params = parse_query_to_sql(build_search_dsl(recipe))
+
+    assert params["title"] == "Senior Data Engineer"
+
+
 def test_build_search_dsl_round_trips_through_parser():
     recipe = JobAdRecipe(
         title="Data Engineer",

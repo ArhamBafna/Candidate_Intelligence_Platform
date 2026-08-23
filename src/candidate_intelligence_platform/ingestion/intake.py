@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import structlog
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.services.candidate_service import CandidateService
@@ -30,6 +32,12 @@ from storage.cas import CASManager
 from storage.db_models import Candidate, EntityResolutionAudit, ResumeVersion
 
 logger = structlog.get_logger(__name__)
+
+# PR #25 review: identical uploads share one hash-derived CAS path. Track
+# active holders per hash so a rejecting/failing pipeline can never delete
+# the object another in-flight or already-committed pipeline still needs.
+_CAS_ACTIVE_REFS: Dict[str, int] = {}
+_CAS_REF_LOCK = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +247,68 @@ def _purge_cas_object(cas_mgr: CASManager, cas_path: Optional[str], warnings: Li
         logger.warning("cas_purge_failed", cas_path=cas_path, error=error)
 
 
+def _acquire_cas_ref(file_hash: str) -> None:
+    """Register this pipeline as an active holder of the shared CAS object."""
+    with _CAS_REF_LOCK:
+        _CAS_ACTIVE_REFS[file_hash] = _CAS_ACTIVE_REFS.get(file_hash, 0) + 1
+
+
+def _release_cas_ref(file_hash: str) -> None:
+    """Drop one active-holder registration (no-op when nothing registered)."""
+    with _CAS_REF_LOCK:
+        count = _CAS_ACTIVE_REFS.get(file_hash, 0)
+        if count > 1:
+            _CAS_ACTIVE_REFS[file_hash] = count - 1
+        else:
+            _CAS_ACTIVE_REFS.pop(file_hash, None)
+
+
+def _has_committed_reference(db: Session, file_hash: str) -> bool:
+    """True when a committed ResumeVersion already stores this hash.
+
+    Uses a fresh connection so the caller's own pending (uncommitted, about
+    to be rolled back) rows stay invisible. Failure fails safe by reporting
+    a reference so the object is kept.
+    """
+    try:
+        with db.get_bind().connect() as conn:
+            row = conn.execute(
+                select(ResumeVersion.id)
+                .where(ResumeVersion.cas_file_hash == file_hash)
+                .limit(1)
+            ).first()
+        return row is not None
+    except Exception:
+        return True
+
+
+def _release_and_purge_if_last(
+    cas_mgr: CASManager,
+    db: Session,
+    file_hash: Optional[str],
+    cas_path: Optional[str],
+    warnings: List[str],
+) -> None:
+    """Issue #14 + PR #25 review: reject/failure cleanup for the stored bytes.
+
+    Deletes only when this pipeline was the sole active holder of the hash
+    AND no committed ResumeVersion references it; otherwise another upload
+    may depend on the very same content-addressed file.
+    """
+    if not cas_path or not file_hash:
+        return
+    purge = False
+    with _CAS_REF_LOCK:
+        count = _CAS_ACTIVE_REFS.get(file_hash, 0)
+        if count > 1:
+            _CAS_ACTIVE_REFS[file_hash] = count - 1
+        else:
+            _CAS_ACTIVE_REFS.pop(file_hash, None)
+            purge = True
+    if purge and not _has_committed_reference(db, file_hash):
+        _purge_cas_object(cas_mgr, cas_path, warnings)
+
+
 def _load_existing_identifiers(db: Session) -> List[CandidateIdentifiers]:
     existing_cands = db.query(Candidate).all()
     identifiers: List[CandidateIdentifiers] = []
@@ -334,6 +404,7 @@ def ingest_file(
     """
     warnings: List[str] = []
     cas_path: Optional[str] = None
+    file_hash: Optional[str] = None
     try:
         # 1. Hash once + duplicate check before CAS store (D5)
         _emit(on_progress, "HASHING", 10, "Computing file hash and checking for duplicates")
@@ -348,9 +419,10 @@ def ingest_file(
                 classified_as="DUPLICATE_FILE",
             )
 
-        # 2. CAS store
+        # 2. CAS store, then register as active holder of the shared object
         ext = Path(filename).suffix if filename else ".txt"
         _, cas_path = cas_mgr.store(content, extension=ext)
+        _acquire_cas_ref(file_hash)
 
         # 3. Parse
         _emit(on_progress, "PARSING", 25, f"Parsing {ext} document")
@@ -363,7 +435,7 @@ def ingest_file(
             # Purge warnings isolated so the payload keeps reason as warnings[0]
             # and stays byte-identical to the pre-#14 contract on success.
             purge_warnings: List[str] = []
-            _purge_cas_object(cas_mgr, cas_path, purge_warnings)
+            _release_and_purge_if_last(cas_mgr, db, file_hash, cas_path, purge_warnings)
             logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category, file_name=filename or "")
             _emit(on_progress, "COMPLETED", 100, reason, {"status": "SKIPPED_NON_RESUME", "classified_as": category})
             return IntakeResult(
@@ -396,7 +468,7 @@ def ingest_file(
 
         if _is_dummy_profile(first_name, last_name, email, phone):
             purge_warnings = []
-            _purge_cas_object(cas_mgr, cas_path, purge_warnings)
+            _release_and_purge_if_last(cas_mgr, db, file_hash, cas_path, purge_warnings)
             category = "AI_CLASSIFIED_NOT_RESUME"
             reason = "No identifiable candidate name or contact information found in document"
             logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category, file_name=filename or "")
@@ -570,6 +642,9 @@ def ingest_file(
 
         final_status = IntakeStatus.PARTIAL if vector_failed else status
 
+        # Success: the committed RV now owns the object; just drop our hold.
+        _release_cas_ref(file_hash)
+
         _emit(on_progress, "COMPLETED", 100, "Intake completed", {
             "status": final_status.value,
             "candidate_id": cand_id,
@@ -588,9 +663,10 @@ def ingest_file(
         )
     except Exception as e:
         logger.error("resume_upload_complete", status="failed", file_name=filename or "", error=str(e))
-        # Issue #14: caller rolls the txn back (D7), so stored bytes must go too.
+        # Issue #14: caller rolls the txn back (D7), so stored bytes must go
+        # too - unless a concurrent/committed pipeline shares the same object.
         purge_warnings: List[str] = []
-        _purge_cas_object(cas_mgr, cas_path, purge_warnings)
+        _release_and_purge_if_last(cas_mgr, db, file_hash, cas_path, purge_warnings)
         return IntakeResult(status=IntakeStatus.ERROR, classified_as="", warnings=[str(e), *purge_warnings])
 
 

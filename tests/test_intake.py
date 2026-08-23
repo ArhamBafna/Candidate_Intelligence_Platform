@@ -1,9 +1,10 @@
+import hashlib
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from candidate_intelligence_platform.ingestion.intake import (
     IntakeProgress,
@@ -487,6 +488,112 @@ def test_purge_failure_degrades_to_warning(db_session, test_settings, cas_mgr, v
     )
     assert result.status == IntakeStatus.SKIPPED_NON_RESUME
     assert any("CAS purge failed" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# PR #25 review: shared CAS objects must survive other pipelines' failures
+# ---------------------------------------------------------------------------
+
+def test_rejection_keeps_file_while_another_holder_shares_hash(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    """Concurrent identical upload: the other pipeline's hold blocks the purge."""
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    content = RESUME_TEXT.encode("utf-8")
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    mock_extraction.update({
+        "first_name": "Uploaded",
+        "last_name": "Candidate",
+        "primary_email": None,
+        "primary_phone": None,
+        "current_title": "",
+    })
+
+    intake_module._acquire_cas_ref(file_hash)
+    try:
+        result = ingest_file(
+            content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+            vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+            timeline_mode=TimelineMode.LEDGER,
+        )
+        assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+        assert _cas_file_count(test_settings.cas_root_dir) == 1
+    finally:
+        intake_module._release_cas_ref(file_hash)
+
+    # Once no holder remains and nothing is committed, cleanup works again.
+    second = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    assert second.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+
+
+def test_error_never_deletes_committed_duplicate_object(db_session, test_settings, cas_mgr, vector_db, mock_extraction, monkeypatch):
+    """A committed RV sharing the hash pins the CAS file against later purges.
+
+    Simulates the PR #25 race: upload B commits the same bytes while upload A
+    is still running; A then fails and must not delete the shared object.
+    """
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    content = RESUME_TEXT.encode("utf-8")
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    def commit_twin_then_resume(db: Session) -> List[Any]:
+        twin = sessionmaker(autocommit=False, autoflush=False, bind=db.get_bind())()
+        try:
+            owner_id = str(uuid.uuid4())
+            twin.add(Candidate(id=owner_id, first_name="Concurrent", last_name="Upload"))
+            twin.add(ResumeVersion(
+                id=str(uuid.uuid4()), candidate_id=owner_id, cas_file_hash=file_hash,
+                original_filename="twin.txt", file_type="TXT", raw_text="same bytes",
+                layout_metadata={}, is_primary=True,
+            ))
+            twin.commit()
+        finally:
+            twin.close()
+        return []
+
+    def boom(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("resolution exploded")
+
+    monkeypatch.setattr(intake_module, "_load_existing_identifiers", commit_twin_then_resume)
+    monkeypatch.setattr(intake_module, "resolve", boom)
+
+    result = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+
+    assert result.status == IntakeStatus.ERROR
+    stored = [
+        p for p in Path(test_settings.cas_root_dir).rglob("*")
+        if p.is_file() and p.name.startswith(file_hash)
+    ]
+    assert len(stored) == 1
+
+
+def test_success_release_allows_later_cleanup_of_other_files(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    """Success drops the hold, so unrelated rejections still purge their bytes."""
+    ok = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+    assert ok.status == IntakeStatus.INGESTED
+
+    rejected = ingest_file(
+        content=CONTRACT_TEXT.encode("utf-8"), filename="REFERRAL AGREEMENT.pdf", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert rejected.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
 
 
 # ---------------------------------------------------------------------------

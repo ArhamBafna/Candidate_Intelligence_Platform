@@ -12,9 +12,9 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-def _describe_strict_filters(params: dict) -> list:
+def _describe_strict_filters(params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Turn parsed query filter params into scorecard descriptors."""
-    descriptors = []
+    descriptors: List[Dict[str, Any]] = []
     if "location" in params:
         descriptors.append({"field": "current_city", "operator": "=", "value": params["location"]})
     if "title" in params:
@@ -23,13 +23,13 @@ def _describe_strict_filters(params: dict) -> list:
         descriptors.append({"field": "total_yoe", "operator": ">=", "value": params["yoe"]})
     return descriptors
 
-def _keyword_hits(fts_query: str, document: str) -> list:
+def _keyword_hits(fts_query: str, document: str) -> List[str]:
     """Free-text terms from the query that appear in the candidate document."""
     if not fts_query or not document:
         return []
     doc_lower = document.lower()
-    seen = set()
-    hits = []
+    seen: set = set()
+    hits: List[str] = []
     for term in fts_query.split():
         key = term.lower()
         if key and key not in seen and key in doc_lower:
@@ -37,17 +37,17 @@ def _keyword_hits(fts_query: str, document: str) -> list:
             hits.append(term)
     return hits
 
-def _semantic_signals(candidate_id: str, vector_ranks: Dict[str, int]) -> list:
+def _semantic_signals(candidate_id: str, vector_ranks: Dict[str, int]) -> List[Dict[str, Any]]:
     """Semantic contribution of a candidate based on vector search placement."""
     if candidate_id not in vector_ranks:
         return []
     return [{"signal": "semantic_similarity", "vector_rank": vector_ranks[candidate_id]}]
 
-def execute_fts_query(sql: str, params: dict, db: Session) -> Dict[str, int]:
+def execute_fts_query(sql: str, params: Dict[str, Any], db: Session) -> Dict[str, int]:
     if not sql:
         return {}
     results = db.execute(text(sql), params).fetchall()
-    ranks = {}
+    ranks: Dict[str, int] = {}
     for rank, row in enumerate(results, start=1):
         ranks[row[0]] = rank
     return ranks
@@ -123,7 +123,7 @@ def fetch_candidate_documents(candidate_ids: List[str], db: Session) -> List[str
     return [doc_map.get(cid, "") for cid in candidate_ids]
 
 def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: bool = False, semantic_query: Optional[str] = None) -> Generator[Tuple[str, int, str, Any], None, None]:
-    warnings = []
+    warnings: List[str] = []
     
     yield ("STARTING", 0, "Initializing search...", None)
     yield ("FTS_SEARCH", 20, "Executing keyword and filter query...", None)

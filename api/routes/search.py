@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import json
+from typing import Any, Dict, List
 from api.dependencies import get_db, get_vector_db, get_settings
 from api.schemas.search import SearchQueryRequest, SearchResponse, SearchResultItem
 from candidate_intelligence_platform.search.hybrid_searcher import search_candidates
@@ -46,7 +47,7 @@ def _build_structured_filter_suffix(request: SearchQueryRequest) -> str:
         query_parts.append(f"title:'{request.title}'")
     return " AND ".join(query_parts)
 
-def _prepare_query(request: SearchQueryRequest) -> tuple[str, "str | None", dict | None]:
+def _prepare_query(request: SearchQueryRequest) -> tuple:
     """Resolve the search DSL, semantic override, and job-ad recipe.
 
     A long pasted text is treated as a full job ad: it is distilled locally
@@ -66,12 +67,12 @@ def _prepare_query(request: SearchQueryRequest) -> tuple[str, "str | None", dict
 def _resolve_top_k(request: SearchQueryRequest, settings: Settings) -> int:
     return request.top_k if request.top_k is not None else settings.default_top_k
 
-def _hydrate_candidates(db: Session, raw_results: list) -> dict:
+def _hydrate_candidates(db: Session, raw_results: List[Dict[str, Any]]) -> Dict[str, Candidate]:
     top_ids = [raw.get("candidate_id") for raw in raw_results if raw.get("candidate_id")]
     candidates = db.query(Candidate).filter(Candidate.id.in_(top_ids)).all()
     return {c.id: c for c in candidates}
 
-def _format_search_results(raw_results: list, candidate_map: dict) -> list[SearchResultItem]:
+def _format_search_results(raw_results: List[Dict[str, Any]], candidate_map: Dict[str, Candidate]) -> List[SearchResultItem]:
     items = []
     for raw in raw_results:
         cid = raw.get("candidate_id", "")
@@ -100,7 +101,7 @@ def _format_search_results(raw_results: list, candidate_map: dict) -> list[Searc
         items.append(item)
     return items
 
-def _ai_explanation_warning(warnings: list[str]) -> list[str]:
+def _ai_explanation_warning(warnings: List[str]) -> List[str]:
     """Append a visible AI-unavailable warning when no chat model is usable."""
     updated = list(warnings)
     try:
@@ -114,7 +115,7 @@ def _ai_explanation_warning(warnings: list[str]) -> list[str]:
 router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("", response_model=SearchResponse)
-def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db = Depends(get_vector_db), settings: Settings = Depends(get_settings)):
+def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db: Any = Depends(get_vector_db), settings: Settings = Depends(get_settings)) -> SearchResponse:
     full_query, semantic_query, job_ad_recipe = _prepare_query(request)
 
     t0 = time.perf_counter()
@@ -158,8 +159,8 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), v
     return response
 
 @router.post("/stream")
-def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db = Depends(get_vector_db), settings: Settings = Depends(get_settings)):
-    def event_generator():
+def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db: Any = Depends(get_vector_db), settings: Settings = Depends(get_settings)) -> StreamingResponse:
+    def event_generator() -> Any:
         try:
             full_query, semantic_query, job_ad_recipe = _prepare_query(request)
 

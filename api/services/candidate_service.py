@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from storage.db_models import Candidate, ResumeVersion, CandidateClaim, CandidateTimelineEvent
@@ -7,7 +9,7 @@ from ingestion.parsers.models import ParsedDocument
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
 
 
-def _has_candidate_vectors_table(vector_db) -> bool:
+def _has_candidate_vectors_table(vector_db: Any) -> bool:
     """Check for the candidate_vectors table across lancedb API variants."""
     try:
         if hasattr(vector_db, "list_tables"):
@@ -22,7 +24,7 @@ def _has_candidate_vectors_table(vector_db) -> bool:
 
 class CandidateService:
     @staticmethod
-    def delete_candidate(db: Session, candidate_id: str, vector_db, commit: bool = True) -> bool:
+    def delete_candidate(db: Session, candidate_id: str, vector_db: Any, commit: bool = True) -> bool:
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if not candidate:
             return False
@@ -51,7 +53,7 @@ class CandidateService:
         return True
 
     @staticmethod
-    def update_fts_index(db: Session, candidate_id: str, candidate_name: str, candidate: Candidate, raw_text: str):
+    def update_fts_index(db: Session, candidate_id: str, candidate_name: str, candidate: Candidate, raw_text: str) -> None:
         db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
         db.execute(
             text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
@@ -66,7 +68,7 @@ class CandidateService:
         # Note: caller is responsible for committing the transaction
 
     @staticmethod
-    def update_vector_index(vector_db, candidate_id: str, raw_text: str, rv_id: str):
+    def update_vector_index(vector_db: Any, candidate_id: str, raw_text: str, rv_id: str) -> None:
         if hasattr(vector_db, "delete_candidate_vectors"):
             vector_db.delete_candidate_vectors(candidate_id)
         elif _has_candidate_vectors_table(vector_db):
