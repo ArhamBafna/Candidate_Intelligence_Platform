@@ -98,7 +98,9 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     yield ("FTS_SEARCH", 20, "Executing keyword and filter query...", None)
     
     sql, params = parse_query_to_sql(query)
-    fts_query = params.get("fts_query", query)
+    # Embed ONLY the cleaned free-text portion; structured filter values
+    # (city, title, min yoe) must never ride along into the embedding input.
+    fts_query = params.get("fts_query", "")
     
     fts_ranks = execute_fts_query(sql, params, db)
     filtered_ids = list(fts_ranks.keys())

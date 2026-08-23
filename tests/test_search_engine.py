@@ -386,6 +386,97 @@ def test_fetch_candidate_documents_empty():
     docs = fetch_candidate_documents([], None)
     assert docs == []
 
+
+def _run_pipeline_capturing_embedding(monkeypatch, query: str):
+    """Run search_candidates with mocked stores; return the embedded text."""
+    captured = {}
+
+    class FakeSearch:
+        def where(self, clause, prefilter=None):
+            return self
+        def limit(self, n):
+            return self
+        def to_list(self):
+            return []
+
+    class FakeTable:
+        def search(self, vector):
+            captured["vector_dim"] = len(vector)
+            return FakeSearch()
+
+    class FakeVectorDB:
+        def open_table(self, name):
+            return FakeTable()
+
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+
+    def fake_embed(text):
+        captured["embedded_text"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr(hs, "generate_single_embedding", fake_embed)
+    monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: {"cand_1": 1})
+    monkeypatch.setattr(hs, "reciprocal_rank_fusion", lambda fts, vec, **kw: ([("cand_1", 0.05)] if fts or vec else []))
+    monkeypatch.setattr(hs, "rerank_candidates", lambda q, docs: [0.9])
+    monkeypatch.setattr(hs, "build_match_rationale", lambda p: {"candidate_id": p.candidate_id})
+    monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: ["doc"])
+
+    gen = search_candidates(query, None, FakeVectorDB())
+    for stage, progress, message, data in gen:
+        if stage == "COMPLETE":
+            pass
+    return captured.get("embedded_text")
+
+
+def test_embedding_input_excludes_filter_values(monkeypatch):
+    """Direct DSL query: only free text reaches the embedding step."""
+    embedded = _run_pipeline_capturing_embedding(
+        monkeypatch,
+        "python AND location:'NYC' AND title:'senior engineer' AND yoe >= 2.5",
+    )
+
+    assert embedded == "python"
+    lowered = (embedded or "").lower()
+    assert "nyc" not in lowered
+    assert "senior" not in lowered
+    assert "engineer" not in lowered
+    assert "yoe" not in lowered
+    assert "2.5" not in lowered
+
+
+def test_embedding_input_clean_for_structured_api_flatten(monkeypatch):
+    """Structured API request flattened to DSL still embeds free text only."""
+    from api.routes.search import _build_search_query
+    from api.schemas.search import SearchQueryRequest
+
+    request = SearchQueryRequest(
+        query_text="react developer",
+        city="New York",
+        min_yoe=3,
+        title="frontend engineer",
+    )
+    flattened = _build_search_query(request)
+    assert "location:'New York'" in flattened  # sanity: filters present in DSL
+
+    embedded = _run_pipeline_capturing_embedding(monkeypatch, flattened)
+
+    assert embedded == "react developer"
+    lowered = (embedded or "").lower()
+    assert "new york" not in lowered
+    assert "frontend" not in lowered
+    assert "engineer" not in lowered
+    assert "3" != embedded
+
+
+def test_pure_filter_query_skips_embedding(monkeypatch):
+    """No free text at all: nothing gets embedded."""
+    embedded = _run_pipeline_capturing_embedding(
+        monkeypatch,
+        "location:'NYC' AND yoe >= 3",
+    )
+
+    assert embedded is None
+
 def test_execute_vector_search_missing_table(monkeypatch):
     from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
     
