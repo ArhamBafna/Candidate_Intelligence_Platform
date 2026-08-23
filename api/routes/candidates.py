@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import AsyncGenerator, List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from api.dependencies import get_db, get_vector_db, get_settings, _get_sessionmaker
 from config.settings import Settings
@@ -31,6 +31,7 @@ from candidate_intelligence_platform.extraction.hybrid_extractor import (
     normalize_name,
     normalize_title
 )
+from candidate_intelligence_platform.intelligence.chat_model import chat_retry_candidates, resolve_chat_model
 import structlog
 import json
 import time
@@ -731,6 +732,11 @@ async def stream_ollama_generate(prompt: str, model_name: str, **kwargs):
         logger.info("Ollama streaming cancelled by client disconnect")
         raise
 
+AI_INSIGHT_UNAVAILABLE_MESSAGE = (
+    "AI explanations are unavailable right now (the configured chat model and its "
+    "fallback could not be reached). Search results are unaffected."
+)
+
 @router.get("/{candidate_id}/insight")
 async def get_candidate_insight(
     candidate_id: str,
@@ -751,13 +757,72 @@ async def get_candidate_insight(
     
     prompt = f"Given the candidate profile and resume text:\n{raw_text}\n\nExplain why this candidate is a good match for the search query: '{query}'. Provide a concise match rationale."
 
+    async def stream_tokens(model_name: str) -> AsyncGenerator[str, None]:
+        async for token in stream_ollama_generate(prompt=prompt, model_name=model_name):
+            yield token
+
+    def _unavailable_event() -> str:
+        return f"data: {json.dumps({'error': 'AI_EXPLANATION_UNAVAILABLE', 'message': AI_INSIGHT_UNAVAILABLE_MESSAGE})}\n\n"
+
     async def event_generator():
         try:
-            async for token in stream_ollama_generate(prompt=prompt, model_name=settings.llm_model):
-                yield f"data: {json.dumps({'token': token})}\n\n"
+            resolved = await asyncio.to_thread(resolve_chat_model)
+            
+            if resolved is None:
+                logger.warning(
+                    "ai_chat_insight_failed",
+                    configured_model=settings.llm_model,
+                    fallback_model=settings.fallback_llm_model,
+                    reason="no_usable_chat_model",
+                    action="serving_visible_unavailable_message"
+                )
+                yield _unavailable_event()
+                return
+            
+            model_used = resolved
+            tokens_sent = 0
+            try:
+                async for token in stream_tokens(model_used):
+                    tokens_sent += 1
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+            except asyncio.CancelledError:
+                raise
+            except Exception as first_error:
+                if tokens_sent > 0:
+                    raise
+                recovered = False
+                last_error: Exception = first_error
+                for candidate in chat_retry_candidates(settings.llm_model, settings.fallback_llm_model, failed_model=model_used):
+                    logger.warning(
+                        "ai_chat_model_fallback",
+                        configured_model=model_used,
+                        fallback_model=candidate,
+                        error=str(last_error),
+                        action="retrying_with_fallback_model"
+                    )
+                    try:
+                        async for token in stream_tokens(candidate):
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+                        recovered = True
+                        break
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as retry_error:
+                        last_error = retry_error
+                if not recovered:
+                    raise last_error
         except asyncio.CancelledError:
             logger.info("SSE connection closed by client")
             raise
+        except Exception as e:
+            logger.warning(
+                "ai_chat_insight_failed",
+                configured_model=settings.llm_model,
+                fallback_model=settings.fallback_llm_model,
+                error=str(e),
+                action="serving_visible_unavailable_message"
+            )
+            yield _unavailable_event()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

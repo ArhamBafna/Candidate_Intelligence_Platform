@@ -2,6 +2,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import Optional, Callable, Dict, List, Any, Generator, Tuple
 import json
+from config.settings import Settings
 from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql
 from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_fusion
 from candidate_intelligence_platform.search.reranker import rerank_candidates
@@ -48,7 +49,7 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], v
         return {}
         
     try:
-        results = table.search(query_vector).limit(100).to_list()
+        results = table.search(query_vector).limit(Settings().vector_pool_size).to_list()
     except Exception as e:
         logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
         if warnings is not None:
@@ -101,14 +102,21 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
-    rrf_results = reciprocal_rank_fusion(fts_ranks, vector_ranks)
+    settings = Settings()
+    rrf_results = reciprocal_rank_fusion(
+        fts_ranks,
+        vector_ranks,
+        k=settings.rrf_k,
+        keyword_weight=settings.keyword_weight,
+        vector_weight=settings.vector_weight
+    )
     
     if not rrf_results:
         final_result = ([], warnings) if return_warnings else []
         yield ("COMPLETE", 100, "Search complete. No matches found.", final_result)
         return
         
-    top_candidates = [cid for cid, score in rrf_results[:50]]
+    top_candidates = [cid for cid, score in rrf_results[:settings.rerank_pool_size]]
     
     yield ("DB_HYDRATION", 70, "Fetching candidate profiles...", None)
         

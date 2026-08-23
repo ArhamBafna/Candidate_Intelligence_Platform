@@ -6,7 +6,7 @@ class SearchQueryRequest(BaseModel):
     min_yoe: Optional[float] = None
     city: Optional[str] = None
     title: Optional[str] = None
-    top_k: int = 10
+    top_k: Optional[int] = None
 
 class SearchResultItem(BaseModel):
     candidate_id: str

@@ -1,9 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
-from config.logging import get_recent_logs
+from config.logging import LOG_BUFFER, get_recent_logs
 
 
 def test_search_emits_wide_event(client: TestClient):
+    LOG_BUFFER.clear()
+
     response = client.post("/search", json={"query_text": "test query"})
     assert response.status_code == 200, response.text
 

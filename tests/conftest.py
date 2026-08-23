@@ -133,7 +133,7 @@ def test_settings(tmp_path):
     )
 
 @pytest.fixture
-def client(db_engine, mock_vector_db, test_settings, mock_heavy_models):
+def client(db_engine, mock_vector_db, test_settings, mock_heavy_models, monkeypatch):
     """Provides a FastAPI TestClient configured with overridden database and vector dependencies."""
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 
@@ -153,6 +153,15 @@ def client(db_engine, mock_vector_db, test_settings, mock_heavy_models):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_vector_db] = override_get_vector_db
     app.dependency_overrides[get_settings] = override_get_settings
+
+    monkeypatch.setattr(
+        "api.routes.search.resolve_chat_model",
+        lambda force_refresh=False: "llama3.2",
+    )
+    monkeypatch.setattr(
+        "api.routes.candidates.resolve_chat_model",
+        lambda force_refresh=False: "llama3.2",
+    )
 
     import api.routes.candidates as cand_routes
     import api.dependencies as deps

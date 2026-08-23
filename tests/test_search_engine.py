@@ -1,8 +1,9 @@
 import pytest
+from config.settings import Settings
 from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql
 from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_fusion
 from candidate_intelligence_platform.search.reranker import rerank_candidates
-from candidate_intelligence_platform.search.hybrid_searcher import search_candidates
+from candidate_intelligence_platform.search.hybrid_searcher import search_candidates, execute_vector_search
 
 def test_parse_query_to_sql():
     query = "python AND location:'NYC' AND yoe >= 5"
@@ -106,6 +107,23 @@ def test_reciprocal_rank_fusion():
     assert results[1][0] == "cand_1"
     assert results[2][0] == "cand_2"
 
+def test_reciprocal_rank_fusion_weights():
+    fts_ranks = {"kw_only": 1}
+    vector_ranks = {"vec_only": 1}
+
+    equal = dict(reciprocal_rank_fusion(fts_ranks, vector_ranks))
+    assert equal["kw_only"] == pytest.approx(equal["vec_only"])
+
+    keyword_heavy = dict(
+        reciprocal_rank_fusion(fts_ranks, vector_ranks, k=60, keyword_weight=2.0, vector_weight=1.0)
+    )
+    assert keyword_heavy["kw_only"] > keyword_heavy["vec_only"]
+
+    vector_heavy = dict(
+        reciprocal_rank_fusion(fts_ranks, vector_ranks, k=60, keyword_weight=1.0, vector_weight=3.0)
+    )
+    assert vector_heavy["vec_only"] > vector_heavy["kw_only"]
+
 def test_rerank_candidates(monkeypatch):
     class MockReranker:
         def rerank(self, query, documents):
@@ -136,7 +154,10 @@ def test_hybrid_search_candidates(monkeypatch):
     def mock_vector_search(query_text, candidate_ids, vector_db, warnings=None):
         return {"cand_2": 1, "cand_1": 2}
 
-    def mock_fusion(fts, vec):
+    fusion_calls = {}
+
+    def mock_fusion(fts, vec, **kwargs):
+        fusion_calls.update(kwargs)
         return [("cand_2", 0.05), ("cand_1", 0.04)]
 
     def mock_rerank(q, docs):
@@ -163,6 +184,78 @@ def test_hybrid_search_candidates(monkeypatch):
     assert len(results) == 2
     assert results[0]["candidate_id"] == "cand_2"
     assert results[0]["rank"] == 1
+    assert fusion_calls["k"] == Settings().rrf_k
+    assert fusion_calls["keyword_weight"] == Settings().keyword_weight
+    assert fusion_calls["vector_weight"] == Settings().vector_weight
+
+def test_hybrid_search_candidates_applies_tuning_knobs(monkeypatch):
+    """rrf_k / weights / rerank_pool_size come from settings with env overrides."""
+    query = "python"
+
+    def mock_parse(q):
+        return "", {"fts_query": "python"}
+
+    def mock_db_fts(sql, params, db):
+        return {}
+
+    def mock_vector_search(query_text, candidate_ids, vector_db, warnings=None):
+        return {"cand_1": 1, "cand_2": 2, "cand_3": 3}
+
+    def mock_fusion(fts, vec, **kwargs):
+        assert kwargs["k"] == 42
+        assert kwargs["keyword_weight"] == 0.7
+        assert kwargs["vector_weight"] == 1.3
+        return [("cand_1", 0.05), ("cand_2", 0.04), ("cand_3", 0.03)]
+
+    def mock_explainer(params):
+        return {"candidate_id": params.candidate_id, "rank": params.rank, "rrf_score": params.rrf_score}
+
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    monkeypatch.setenv("CIP_RRF_K", "42")
+    monkeypatch.setenv("CIP_KEYWORD_WEIGHT", "0.7")
+    monkeypatch.setenv("CIP_VECTOR_WEIGHT", "1.3")
+    monkeypatch.setenv("CIP_RERANK_POOL_SIZE", "2")
+    monkeypatch.setattr(hs, "parse_query_to_sql", mock_parse)
+    monkeypatch.setattr(hs, "execute_fts_query", mock_db_fts)
+    monkeypatch.setattr(hs, "execute_vector_search", mock_vector_search)
+    monkeypatch.setattr(hs, "reciprocal_rank_fusion", mock_fusion)
+    monkeypatch.setattr(hs, "build_match_rationale", mock_explainer)
+    monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: ["d1", "d2"])
+
+    gen = search_candidates(query, None, None)
+    results = None
+    for stage, progress, message, data in gen:
+        if stage == "COMPLETE":
+            results = data
+
+    assert len(results) == 2
+
+def test_execute_vector_search_respects_pool_size(monkeypatch):
+    captured = {}
+
+    class FakeSearch:
+        def limit(self, n):
+            captured["limit"] = n
+            return self
+        def to_list(self):
+            return [{"candidate_id": f"c{i}"} for i in range(captured["limit"])]
+
+    class FakeTable:
+        def search(self, vector):
+            return FakeSearch()
+
+    class FakeVectorDB:
+        def open_table(self, name):
+            return FakeTable()
+
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.1, 0.2])
+    monkeypatch.setenv("CIP_VECTOR_POOL_SIZE", "3")
+
+    ranks = execute_vector_search("python dev", None, FakeVectorDB())
+
+    assert captured["limit"] == 3
+    assert len(ranks) == 3
 
 def test_fetch_candidate_documents_empty():
     from candidate_intelligence_platform.search.hybrid_searcher import fetch_candidate_documents

@@ -122,7 +122,16 @@ function CandidateList() {
             if (line.startsWith('data: ')) {
               try {
                 const event = JSON.parse(line.substring(6));
-                if (event.token && aiNotesEnabledRef.current) {
+                if (event.error) {
+                  setInsights(prev => ({
+                    ...prev,
+                    [candidateId]: {
+                      ...prev[candidateId],
+                      status: 'error',
+                      errorMessage: event.message || 'Generation failed.'
+                    }
+                  }));
+                } else if (event.token && aiNotesEnabledRef.current) {
                   setInsights(prev => ({
                     ...prev,
                     [candidateId]: { 
@@ -859,7 +868,7 @@ function CandidateList() {
                         {insights[candidate.id].text}
                         {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-emerald-400 animate-pulse"></span>}
                         {insights[candidate.id].status === 'cancelled' && <span className="text-neutral-500 italic block mt-1 text-xs">Generation cancelled.</span>}
-                        {insights[candidate.id].status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">Generation failed.</span>}
+                        {insights[candidate.id].status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">{insights[candidate.id].errorMessage || 'Generation failed.'}</span>}
                       </div>
                     </div>
                   ) : (
