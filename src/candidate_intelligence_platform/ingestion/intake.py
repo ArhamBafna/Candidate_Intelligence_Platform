@@ -310,20 +310,21 @@ def _release_and_purge_if_last(
 
     Deletes only when this pipeline was the sole active holder of the hash
     AND no committed ResumeVersion references it; otherwise another upload
-    may depend on the very same content-addressed file.
+    may depend on the very same content-addressed file. The committed check
+    and the delete run inside the reference lock, so a concurrent identical
+    upload either acquires before this point (count > 1, no delete) or after
+    it (its store() recreates the bytes fresh) - never in between.
     """
     if not cas_path or not file_hash:
         return
-    purge = False
     with _CAS_REF_LOCK:
         count = _CAS_ACTIVE_REFS.get(file_hash, 0)
         if count > 1:
             _CAS_ACTIVE_REFS[file_hash] = count - 1
-        else:
-            _CAS_ACTIVE_REFS.pop(file_hash, None)
-            purge = True
-    if purge and not _has_committed_reference(db, file_hash):
-        _purge_cas_object(cas_mgr, cas_path, warnings)
+            return
+        _CAS_ACTIVE_REFS.pop(file_hash, None)
+        if not _has_committed_reference(db, file_hash):
+            _purge_cas_object(cas_mgr, cas_path, warnings)
 
 
 def _load_existing_identifiers(db: Session) -> List[CandidateIdentifiers]:
