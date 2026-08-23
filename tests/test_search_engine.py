@@ -24,6 +24,77 @@ def test_parse_query_to_sql_special_chars():
     # The special characters should be stripped or replaced by spaces
     assert params["fts_query"] == "Java J2EE hands on C"
 
+def test_parse_title_filter_is_sql_equality():
+    query = "python AND title:'senior engineer'"
+    sql, params = parse_query_to_sql(query)
+
+    assert "candidates.current_title = :title" in sql
+    assert params["title"] == "senior engineer"
+    assert params["fts_query"] == "python"
+    assert "title" not in params["fts_query"].lower()
+    assert "engineer" not in params["fts_query"].lower()
+
+def test_parse_title_filter_not_confused_by_substring_field_names():
+    query = "subtitle:'junk' python"
+    sql, params = parse_query_to_sql(query)
+
+    assert ":title" not in sql
+    assert "title" not in params
+    assert params["fts_query"] == "subtitle 'junk' python"
+
+def test_parse_and_substring_words_preserved():
+    sql, params = parse_query_to_sql("SANDPAPER AND python")
+
+    assert "SANDPAPER" in params["fts_query"]
+    assert "SPAPER" not in params["fts_query"]
+    assert "python" in params["fts_query"]
+
+def test_parse_yoe_accepts_float():
+    sql, params = parse_query_to_sql("python AND yoe >= 2.5")
+
+    assert "candidates.total_yoe >= :yoe" in sql
+    assert params["yoe"] == 2.5
+    assert params["fts_query"] == "python"
+
+def test_keyword_only_query_orders_by_bm25(db_session):
+    from storage.db_models import Candidate
+    from sqlalchemy import text as sql_text
+    from candidate_intelligence_platform.search.hybrid_searcher import execute_fts_query
+
+    db_session.add_all([
+        Candidate(id="cand_weak", first_name="Weak", last_name="Match"),
+        Candidate(id="cand_strong", first_name="Strong", last_name="Match"),
+        Candidate(id="cand_mid", first_name="Mid", last_name="Match"),
+    ])
+    db_session.commit()
+
+    fts_rows = [
+        {"candidate_id": "cand_weak", "full_name": "Weak Match", "current_title": "",
+         "current_company": "", "resume_content": "salesperson who once heard about python"},
+        {"candidate_id": "cand_strong", "full_name": "Strong Match", "current_title": "Python Engineer",
+         "current_company": "PyTools",
+         "resume_content": "python python python python python python python python python python"},
+        {"candidate_id": "cand_mid", "full_name": "Mid Match", "current_title": "Python Developer",
+         "current_company": "", "resume_content": "developer with python and go experience"},
+    ]
+    for row in fts_rows:
+        db_session.execute(
+            sql_text(
+                "INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) "
+                "VALUES (:candidate_id, :full_name, :current_title, :current_company, :resume_content)"
+            ),
+            row,
+        )
+    db_session.commit()
+
+    sql, params = parse_query_to_sql("python")
+    assert "ORDER BY bm25(candidate_fts)" in sql
+
+    ranks = execute_fts_query(sql, params, db_session)
+
+    assert set(ranks) == {"cand_weak", "cand_strong", "cand_mid"}
+    assert ranks["cand_strong"] < ranks["cand_mid"] < ranks["cand_weak"]
+
 def test_reciprocal_rank_fusion():
     fts_ranks = {"cand_1": 1, "cand_2": 2, "cand_3": 3}
     vector_ranks = {"cand_3": 1, "cand_1": 4}
