@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from api.services.candidate_service import CandidateService
@@ -263,6 +263,23 @@ def _release_cas_ref(file_hash: str) -> None:
             _CAS_ACTIVE_REFS.pop(file_hash, None)
 
 
+def _bind_release_on_commit(db: Session, file_hash: str) -> None:
+    """Keep the hash hold until the caller's commit makes the row visible.
+
+    PR #25 review round 2: releasing at the end of ingest_file leaves a gap
+    where the RV is still uncommitted; a rejecting twin pipeline could then
+    see zero holders and zero committed rows and delete the shared object.
+    Tying the release to the session's after_commit event closes that gap.
+    Idempotent: extra commits/rollbacks release a missing key as a no-op.
+    """
+
+    def _release(session: Session) -> None:
+        _release_cas_ref(file_hash)
+
+    event.listen(db, "after_commit", _release)
+    event.listen(db, "after_rollback", _release)
+
+
 def _has_committed_reference(db: Session, file_hash: str) -> bool:
     """True when a committed ResumeVersion already stores this hash.
 
@@ -406,12 +423,16 @@ def ingest_file(
     cas_path: Optional[str] = None
     file_hash: Optional[str] = None
     try:
-        # 1. Hash once + duplicate check before CAS store (D5)
+        # 1. Hash once + duplicate check before CAS store (D5). The hash
+        # reference is taken BEFORE the check so a concurrent identical
+        # upload can never slip between "check" and "hold".
         _emit(on_progress, "HASHING", 10, "Computing file hash and checking for duplicates")
         file_hash = hashlib.sha256(content).hexdigest()
+        _acquire_cas_ref(file_hash)
         existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
         if existing_rv:
             logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", file_hash=file_hash, file_name=filename or "")
+            _release_cas_ref(file_hash)
             _emit(on_progress, "COMPLETED", 100, "File already exists", {"status": "SKIPPED_DUPLICATE"})
             return IntakeResult(
                 status=IntakeStatus.SKIPPED_DUPLICATE,
@@ -419,10 +440,9 @@ def ingest_file(
                 classified_as="DUPLICATE_FILE",
             )
 
-        # 2. CAS store, then register as active holder of the shared object
+        # 2. CAS store (object may already exist from a concurrent upload)
         ext = Path(filename).suffix if filename else ".txt"
         _, cas_path = cas_mgr.store(content, extension=ext)
-        _acquire_cas_ref(file_hash)
 
         # 3. Parse
         _emit(on_progress, "PARSING", 25, f"Parsing {ext} document")
@@ -642,8 +662,9 @@ def ingest_file(
 
         final_status = IntakeStatus.PARTIAL if vector_failed else status
 
-        # Success: the committed RV now owns the object; just drop our hold.
-        _release_cas_ref(file_hash)
+        # Success: the hold transfers to the caller's commit (D7). The CAS
+        # object stays pinned until the RV row is actually visible.
+        _bind_release_on_commit(db, file_hash)
 
         _emit(on_progress, "COMPLETED", 100, "Intake completed", {
             "status": final_status.value,

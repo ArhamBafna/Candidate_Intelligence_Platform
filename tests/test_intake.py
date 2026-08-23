@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+import candidate_intelligence_platform.ingestion.intake as intake_module
 from candidate_intelligence_platform.ingestion.intake import (
     IntakeProgress,
     IntakeResult,
@@ -65,6 +66,14 @@ def make_settings(tmp_path, **overrides: Any) -> Settings:
         vector_db_path=str(tmp_path / "vector"),
         **overrides,
     )
+
+
+@pytest.fixture(autouse=True)
+def reset_cas_ref_registry():
+    """Success paths pin their hash until the caller commits; tests that
+    skip the commit must not leak holds into later tests."""
+    yield
+    intake_module._CAS_ACTIVE_REFS.clear()
 
 
 @pytest.fixture
@@ -593,6 +602,50 @@ def test_success_release_allows_later_cleanup_of_other_files(db_session, test_se
         source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
     )
     assert rejected.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+def test_success_holds_reference_until_caller_commits(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    """PR #25 review round 2: the hold must survive until the caller's commit.
+
+    While upload A is done-but-uncommitted, a rejecting identical upload B
+    must not be able to delete the shared CAS object.
+    """
+    content = RESUME_TEXT.encode("utf-8")
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    first = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    assert first.status == IntakeStatus.INGESTED
+    assert file_hash in intake_module._CAS_ACTIVE_REFS
+
+    mock_extraction.update({
+        "first_name": "Uploaded",
+        "last_name": "Candidate",
+        "primary_email": None,
+        "primary_phone": None,
+        "current_title": "",
+    })
+    # Real overlap uses separate sessions per upload; a shared session would
+    # see the first pipeline's flushed-but-uncommitted row in the dup check.
+    twin_db = sessionmaker(autocommit=False, autoflush=False, bind=db_session.get_bind())()
+    try:
+        twin = ingest_file(
+            content=content, filename="twin.txt", db=twin_db, cas_mgr=cas_mgr,
+            vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+            timeline_mode=TimelineMode.LEDGER,
+        )
+    finally:
+        twin_db.rollback()
+        twin_db.close()
+    assert twin.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+    db_session.commit()
+    assert file_hash not in intake_module._CAS_ACTIVE_REFS
     assert _cas_file_count(test_settings.cas_root_dir) == 1
 
 
