@@ -12,6 +12,37 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+def _describe_strict_filters(params: dict) -> list:
+    """Turn parsed query filter params into scorecard descriptors."""
+    descriptors = []
+    if "location" in params:
+        descriptors.append({"field": "current_city", "operator": "=", "value": params["location"]})
+    if "title" in params:
+        descriptors.append({"field": "current_title", "operator": "=", "value": params["title"]})
+    if "yoe" in params:
+        descriptors.append({"field": "total_yoe", "operator": ">=", "value": params["yoe"]})
+    return descriptors
+
+def _keyword_hits(fts_query: str, document: str) -> list:
+    """Free-text terms from the query that appear in the candidate document."""
+    if not fts_query or not document:
+        return []
+    doc_lower = document.lower()
+    seen = set()
+    hits = []
+    for term in fts_query.split():
+        key = term.lower()
+        if key and key not in seen and key in doc_lower:
+            seen.add(key)
+            hits.append(term)
+    return hits
+
+def _semantic_signals(candidate_id: str, vector_ranks: Dict[str, int]) -> list:
+    """Semantic contribution of a candidate based on vector search placement."""
+    if candidate_id not in vector_ranks:
+        return []
+    return [{"signal": "semantic_similarity", "vector_rank": vector_ranks[candidate_id]}]
+
 def execute_fts_query(sql: str, params: dict, db: Session) -> Dict[str, int]:
     if not sql:
         return {}
@@ -132,22 +163,33 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     documents = fetch_candidate_documents(top_candidates, db)
     
     yield ("RERANKING", 80, "Reranking top matches...", None)
-        
+
+    doc_map = dict(zip(top_candidates, documents))
+    strict_filters = _describe_strict_filters(params)
     try:
         rerank_scores = rerank_candidates(query, documents)
+        reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
     except Exception as e:
-        logger.warning("ai_reranking_failed", query=query, error=str(e), action="falling_back_to_rrf_scores")
-        rerank_scores = [0.0] * len(top_candidates)
-    
-    reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
-    
+        logger.warning("ai_reranking_failed", query=query, error=str(e), action="keeping_fusion_order")
+        warnings.append("AI reranking failed; showing fused ranking without AI re-ordering.")
+        # Honest degradation: keep fusion order, no synthetic rerank scores.
+        reranked = [(cid, None) for cid in top_candidates]
+
     from candidate_intelligence_platform.intelligence.explainer import MatchParameters
-    
+
     results = []
     rrf_dict = dict(rrf_results)
     for rank, (cid, score) in enumerate(reranked, start=1):
         rrf = rrf_dict.get(cid, 0.0)
-        params_obj = MatchParameters(candidate_id=cid, rank=rank, rrf_score=rrf, rerank_score=score)
+        params_obj = MatchParameters(
+            candidate_id=cid,
+            rank=rank,
+            rrf_score=rrf,
+            rerank_score=score,
+            strict_filters=strict_filters,
+            keyword_matches=_keyword_hits(fts_query, doc_map.get(cid, "")),
+            semantic_matches=_semantic_signals(cid, vector_ranks),
+        )
         rationale = build_match_rationale(params_obj)
         results.append(rationale)
         

@@ -86,3 +86,36 @@ def test_upload_and_search_exact_keyword_integration(client: TestClient, monkeyp
     assert search_data["total_results"] >= 1
     assert search_data["results"][0]["candidate_id"] == cand_id
     assert search_data["results"][0]["candidate_info"]["first_name"] == "Java"
+
+@patch("api.routes.search.search_candidates")
+def test_search_response_passes_through_populated_scorecard(mock_search, client: TestClient):
+    scorecard = {
+        "strict_filters": [{"field": "current_city", "operator": "=", "value": "NYC"}],
+        "keyword_matches": ["python"],
+        "semantic_matches": [{"signal": "semantic_similarity", "vector_rank": 1}],
+        "ai_inferences": [],
+    }
+
+    def mock_generator(*args, **kwargs):
+        yield ("COMPLETE", 100, "Search complete", (
+            [{
+                "candidate_id": "cand-x",
+                "rank": 1,
+                "rrf_score": 0.03,
+                "rerank_score": None,
+                "match_percentage": 72.5,
+                "match_scorecard": scorecard,
+            }],
+            []
+        ))
+
+    mock_search.side_effect = mock_generator
+
+    response = client.post("/search", json={"query_text": "python", "city": "NYC"})
+
+    assert response.status_code == 200
+    item = response.json()["results"][0]
+    assert item["match_scorecard"]["keyword_matches"] == ["python"]
+    assert item["match_scorecard"]["strict_filters"][0]["value"] == "NYC"
+    assert item["rerank_score"] is None
+    assert item["match_percentage"] == 72.5

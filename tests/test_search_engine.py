@@ -477,6 +477,77 @@ def test_pure_filter_query_skips_embedding(monkeypatch):
 
     assert embedded is None
 
+
+def _run_pipeline(monkeypatch, query: str, fts_ranks: dict, vector_ranks: dict, docs: dict):
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+
+    class FakeSearch:
+        def where(self, clause, prefilter=None):
+            return self
+        def limit(self, n):
+            return self
+        def to_list(self):
+            return [{"candidate_id": cid} for cid in vector_ranks]
+
+    class FakeTable:
+        def search(self, vector):
+            return FakeSearch()
+
+    class FakeVectorDB:
+        def open_table(self, name):
+            return FakeTable()
+
+    monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.1, 0.2])
+    monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: fts_ranks)
+    monkeypatch.setattr(hs, "execute_vector_search", lambda q, ids, vdb, warnings=None: vector_ranks)
+    monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: [docs.get(cid, "") for cid in ids])
+
+    gen = search_candidates(query, None, FakeVectorDB(), return_warnings=True)
+    for stage, progress, message, data in gen:
+        if stage == "COMPLETE":
+            results, warnings = data
+    return results, warnings
+
+
+def test_reranker_failure_preserves_fusion_order_and_warns(monkeypatch):
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+
+    def boom(q, docs):
+        raise RuntimeError("cross-encoder exploded")
+
+    monkeypatch.setattr(hs, "rerank_candidates", boom)
+
+    results, warnings = _run_pipeline(
+        monkeypatch,
+        "python",
+        fts_ranks={"cand_a": 1, "cand_b": 2, "cand_c": 3},
+        vector_ranks={"cand_b": 1},
+        docs={},
+    )
+
+    assert [r["candidate_id"] for r in results] == ["cand_b", "cand_a", "cand_c"]
+    assert all(r["rerank_score"] is None for r in results)
+    percentages = [r["match_percentage"] for r in results]
+    assert len(set(percentages)) > 1
+    assert any("reranking" in w.lower() for w in warnings)
+
+
+def test_match_scorecards_populated_from_query_and_data(monkeypatch):
+    results, _ = _run_pipeline(
+        monkeypatch,
+        "python AND location:'NYC' AND title:'senior engineer' AND yoe >= 2.5",
+        fts_ranks={"cand_1": 1},
+        vector_ranks={"cand_1": 2},
+        docs={"cand_1": "Senior engineer fluent in python and docker"},
+    )
+
+    card = results[0]["match_scorecard"]
+    assert {"field": "current_city", "operator": "=", "value": "NYC"} in card["strict_filters"]
+    assert {"field": "current_title", "operator": "=", "value": "senior engineer"} in card["strict_filters"]
+    assert {"field": "total_yoe", "operator": ">=", "value": 2.5} in card["strict_filters"]
+    assert "python" in card["keyword_matches"]
+    assert card["semantic_matches"][0]["vector_rank"] == 2
+
 def test_execute_vector_search_missing_table(monkeypatch):
     from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
     

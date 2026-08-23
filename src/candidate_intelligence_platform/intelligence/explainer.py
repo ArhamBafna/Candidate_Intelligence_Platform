@@ -18,12 +18,16 @@ def build_match_rationale(params: MatchParameters) -> dict:
     Builds the Match Rationale scorecard for a candidate search result,
     including a 0.0 - 100.0 percentage match score.
     """
+    pct_from_rerank: Optional[float] = None
     if params.rerank_score is not None:
         try:
             sigmoid = 1.0 / (1.0 + math.exp(-params.rerank_score))
-            match_percentage = round(sigmoid * 100.0, 1)
-        except Exception:
-            match_percentage = 50.0
+            pct_from_rerank = round(sigmoid * 100.0, 1)
+        except (OverflowError, ValueError):
+            pct_from_rerank = None
+
+    if pct_from_rerank is not None:
+        match_percentage = pct_from_rerank
     elif params.rrf_score > 0.0:
         max_rrf = 2.0 / 61.0
         pct = (params.rrf_score / max_rrf) * 100.0
