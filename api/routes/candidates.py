@@ -33,6 +33,7 @@ from candidate_intelligence_platform.extraction.hybrid_extractor import (
 )
 import structlog
 import json
+import time
 import asyncio
 import hashlib
 import uuid
@@ -94,6 +95,7 @@ def delete_candidate(
     if not success:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
+    logger.info("candidate_deleted", candidate_id=candidate_id)
     return None
 
 @router.patch("/{candidate_id}/status")
@@ -354,10 +356,11 @@ async def upload_resume(
             timeline_mode=TimelineMode.LEDGER,
         )
 
+    upload_started = time.perf_counter()
     result = await asyncio.to_thread(run_pipeline)
+    duration_s = round(time.perf_counter() - upload_started, 1)
 
     if result.status == IntakeStatus.SKIPPED_DUPLICATE:
-        logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", candidate_id=result.candidate_id)
         return {
             "status": "skipped",
             "message": "File already exists",
@@ -381,7 +384,17 @@ async def upload_resume(
     db.commit()
 
     cand = db.query(Candidate).filter(Candidate.id == result.candidate_id).first() if result.candidate_id else None
-    logger.info("resume_upload_complete", status="success", file_hash=hashlib.sha256(content).hexdigest(), candidate_id=result.candidate_id, classified_as=result.classified_as)
+    candidate_name = f"{cand.first_name} {cand.last_name}".strip() if cand else ""
+    logger.info(
+        "resume_upload_complete",
+        status="success",
+        file_hash=hashlib.sha256(content).hexdigest(),
+        candidate_id=result.candidate_id,
+        candidate_name=candidate_name,
+        file_name=file.filename or "",
+        classified_as=result.classified_as,
+        duration_s=duration_s
+    )
     return {
         "status": "success",
         "candidate_id": result.candidate_id,
@@ -475,16 +488,16 @@ async def upload_stream_resumes(
                         on_progress=on_progress
                     )
 
+                upload_started = time.perf_counter()
                 result = await asyncio.to_thread(run_pipeline)
+                duration_s = round(time.perf_counter() - upload_started, 1)
 
                 if result.status == IntakeStatus.SKIPPED_DUPLICATE:
-                    logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate")
                     await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'HASHING', 'status': 'SKIPPED_DUPLICATE', 'message': 'File already exists', 'progress': 100, 'warnings': []}))
                     return
 
                 if result.status == IntakeStatus.SKIPPED_NON_RESUME:
                     reason = result.warnings[0] if result.warnings else ""
-                    logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", classified_as=result.classified_as)
                     await event_queue.put(json.dumps({
                         'file_name': file.filename, 'stage': 'COMPLETED', 'status': 'SKIPPED_NON_RESUME',
                         'message': reason, 'progress': 100, 'warnings': [reason], 'classified_as': result.classified_as
@@ -501,7 +514,15 @@ async def upload_stream_resumes(
                 cand = task_db.query(Candidate).filter(Candidate.id == result.candidate_id).first() if result.candidate_id else None
                 candidate_name = f"{cand.first_name} {cand.last_name}".strip() if cand else ""
 
-                logger.info("resume_upload_complete", status="success", candidate_id=result.candidate_id, classified_as=result.classified_as)
+                logger.info(
+                    "resume_upload_complete",
+                    status="success",
+                    candidate_id=result.candidate_id,
+                    candidate_name=candidate_name,
+                    file_name=file.filename or "",
+                    classified_as=result.classified_as,
+                    duration_s=duration_s
+                )
                 await event_queue.put(json.dumps({
                     'file_name': file.filename,
                     'stage': 'COMPLETED',
@@ -519,7 +540,12 @@ async def upload_stream_resumes(
 
             except Exception as e:
                 task_db.rollback()
-                logger.error("resume_upload_complete", status="failed", error=str(e))
+                logger.error(
+                    "resume_upload_complete",
+                    status="failed",
+                    file_name=file.filename or "",
+                    error=str(e)
+                )
                 await event_queue.put(json.dumps({'file_name': file.filename, 'stage': 'ERROR', 'status': 'FAILED', 'message': str(e), 'progress': 100, 'warnings': []}))
             finally:
                 task_db.close()
@@ -559,6 +585,12 @@ def batch_delete_candidates(
     except Exception:
         db.rollback()
         raise
+
+    logger.info(
+        "candidates_deleted",
+        requested_count=len(payload.candidate_ids),
+        deleted_count=len(deleted_ids)
+    )
 
     return {
         "status": "success",

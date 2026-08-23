@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import structlog
-from config.logging import setup_logging
+from config.logging import setup_logging, is_polling_path
 import time
 import uuid
 
@@ -58,6 +58,14 @@ async def structlog_middleware(request: Request, call_next):
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start_time) * 1000
     structlog.contextvars.bind_contextvars(duration_ms=round(duration_ms, 2))
+    if not is_polling_path(request.url.path):
+        logger.info(
+            "http_request",
+            http_method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_s=round(duration_ms / 1000, 2),
+        )
     return response
 
 from api.routes.candidates import router as candidates_router

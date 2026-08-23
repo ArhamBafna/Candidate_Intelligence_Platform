@@ -340,7 +340,7 @@ def ingest_file(
         file_hash = hashlib.sha256(content).hexdigest()
         existing_rv = db.query(ResumeVersion).filter(ResumeVersion.cas_file_hash == file_hash).first()
         if existing_rv:
-            logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", file_hash=file_hash)
+            logger.info("resume_upload_complete", status="skipped", skip_reason="cas_duplicate", file_hash=file_hash, file_name=filename or "")
             _emit(on_progress, "COMPLETED", 100, "File already exists", {"status": "SKIPPED_DUPLICATE"})
             return IntakeResult(
                 status=IntakeStatus.SKIPPED_DUPLICATE,
@@ -364,7 +364,7 @@ def ingest_file(
             # and stays byte-identical to the pre-#14 contract on success.
             purge_warnings: List[str] = []
             _purge_cas_object(cas_mgr, cas_path, purge_warnings)
-            logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category)
+            logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category, file_name=filename or "")
             _emit(on_progress, "COMPLETED", 100, reason, {"status": "SKIPPED_NON_RESUME", "classified_as": category})
             return IntakeResult(
                 status=IntakeStatus.SKIPPED_NON_RESUME,
@@ -399,7 +399,7 @@ def ingest_file(
             _purge_cas_object(cas_mgr, cas_path, purge_warnings)
             category = "AI_CLASSIFIED_NOT_RESUME"
             reason = "No identifiable candidate name or contact information found in document"
-            logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category)
+            logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category, file_name=filename or "")
             _emit(on_progress, "COMPLETED", 100, reason, {"status": "SKIPPED_NON_RESUME", "classified_as": category})
             return IntakeResult(
                 status=IntakeStatus.SKIPPED_NON_RESUME,
@@ -587,7 +587,7 @@ def ingest_file(
             model_name=model_name,
         )
     except Exception as e:
-        logger.error("resume_upload_complete", status="failed", error=str(e))
+        logger.error("resume_upload_complete", status="failed", file_name=filename or "", error=str(e))
         # Issue #14: caller rolls the txn back (D7), so stored bytes must go too.
         purge_warnings: List[str] = []
         _purge_cas_object(cas_mgr, cas_path, purge_warnings)
