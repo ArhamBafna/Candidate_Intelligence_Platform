@@ -1,368 +1,470 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>How Candidate Intelligence Platform Works | Visual Explainer</title>
-  
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Google Fonts: Bricolage Grotesque & Instrument Serif -->
+  <title>How Candidate Intelligence Works</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            paper: '#FBF9F5',
-            'paper-dark': '#F4EFE6',
-            card: '#FFFFFF',
-            ink: '#1C1A17',
-            'ink-muted': '#524F4A',
-            rust: '#C2593F',
-            'rust-light': '#FDF1EE',
-            teal: '#2A7B72',
-            'teal-light': '#EFF8F7',
-            line: '#E7E0D3'
-          },
-          fontFamily: {
-            sans: ['Bricolage Grotesque', 'sans-serif'],
-            serif: ['Instrument Serif', 'serif']
-          }
-        }
-      }
-    }
-  </script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script>Chart.defaults.animation = false;</script>
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { 
+      interpolate-size: allow-keywords;
+      --bg: #0A0A0A; --surface: #141414; --surface-hover: #1C1C1C;
+      --border: rgba(255,255,255,0.08);
+      --text: #EDEDED; --text-secondary: #A1A1AA;
+      --accent: #3b82f6; --accent-secondary: #8b5cf6;
+      --positive: #10b981; --negative: #f43f5e; --warning: #f59e0b;
+      --gradient-start: #1e1b4b; --gradient-end: #1e3a5f;
+    }
+
     body {
-      background-color: #FBF9F5;
-      color: #1C1A17;
-      font-family: 'Bricolage Grotesque', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em; font-feature-settings: 'cv11', 'ss01';
+      transition: background 0.3s, color 0.3s;
+      scrollbar-gutter: stable;
     }
-    .font-serif-title {
-      font-family: 'Instrument Serif', serif;
+    h1,h2,h3,h4,h5,h6 { 
+      color: var(--text); 
+      letter-spacing: -0.03em; 
+      line-height: 1.1;
+      text-wrap: balance;
     }
-    .diagram-box {
-      box-shadow: 0 4px 20px -2px rgba(28, 26, 23, 0.05);
+    h1 { font-weight: 800; font-size: clamp(2.5rem, 6vw, 4.5rem); margin-bottom: 1.5rem; }
+    h2 { font-weight: 700; font-size: clamp(1.8rem, 4vw, 2.5rem); margin-bottom: 1rem; }
+    h3 { font-weight: 600; font-size: clamp(1.2rem, 3vw, 1.5rem); margin-bottom: 0.75rem; }
+    body, p, li, td, th, span, label { font-weight: 400; font-size: 1rem; }
+    p,li,td,th,span,label { color: var(--text); }
+    .text-secondary { color: var(--text-secondary); }
+
+    /* ===== CARD ===== */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 32px;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+      height: 100%;
     }
+    .card:hover {
+      box-shadow: 0 0 0 1px var(--border), 0 8px 24px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; }
+    
+    section { padding: 80px 24px; max-width: 1200px; margin: 0 auto; border-bottom: 1px solid var(--border); }
+    section:last-of-type { border-bottom: none; }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 120px 24px 80px;
+      background: linear-gradient(135deg, var(--gradient-start) 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 100px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .delay-1 { animation-delay: 0.1s; } .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; } .delay-4 { animation-delay: 0.4s; }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+
+    /* ===== PRINT ===== */
+    @media print {
+      body { background: white !important; color: black !important; }
+      .reveal { display: revert; opacity: 1 !important; transform: none !important; }
+      .card { break-inside: avoid; border: 1px solid #ddd; box-shadow: none; }
+      section { padding: 40px 0; border: none; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+    @page { margin: 1in; }
+
+    .skip-to-content {
+      position: absolute; top: -40px; left: 6px; background: var(--accent);
+      color: white; padding: 8px 12px; text-decoration: none;
+      border-radius: 4px; opacity: 0; pointer-events: none;
+      transition: all 0.2s; z-index: 10000;
+    }
+    .skip-to-content:focus { top: 6px; opacity: 1; pointer-events: auto; }
+
+    /* ===== DETAILS ACCORDION FOR DEEP DIVES ===== */
+    details.tech-dive {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 24px;
+      overflow: hidden;
+    }
+    details.tech-dive summary {
+      padding: 16px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+    }
+    details.tech-dive summary::-webkit-details-marker { display: none; }
+    details.tech-dive summary::before { content: '⚡'; font-size: 1.1rem; }
+    details.tech-dive summary::after { content: '+'; margin-left: auto; font-size: 1.25rem; transition: transform 0.2s; }
+    details[open].tech-dive summary::after { transform: rotate(45deg); }
+    
+    .tech-dive-content {
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 0;
+      padding-top: 16px;
+    }
+    .tech-dive-content p { font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); }
+    
+    .tech-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--text);
+      margin: 0 4px;
+    }
+
+    /* Pipeline Process Steps */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+    .pipeline::before {
+      content: '';
+      position: absolute;
+      left: 24px;
+      top: 24px;
+      bottom: 24px;
+      width: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+    @media (max-width: 768px) { .pipeline::before { left: 16px; } }
+    
+    .step-card {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    @media (max-width: 768px) { .step-card { flex-direction: column; gap: 16px; padding: 20px; } }
+    
+    .step-number {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 700;
+      box-shadow: 0 0 0 4px var(--bg);
+    }
+    @media (max-width: 768px) {
+      .step-number { width: 36px; height: 36px; font-size: 1rem; position: absolute; top: -12px; left: -2px; }
+      .step-content { margin-top: 12px; }
+    }
+    
+    .step-content { flex-grow: 1; }
+    .step-content h3 { display: flex; align-items: center; justify-content: space-between; }
+    
+    /* Comparison Grid */
+    .comparison-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; }
+    @media (max-width: 768px) { .comparison-row { grid-template-columns: 1fr; } }
+    
+    /* Footer */
+    footer { padding: 60px 24px; text-align: center; background: var(--surface); border-top: 1px solid var(--border); }
   </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col justify-between selection:bg-rust selection:text-white">
+<body>
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
 
-  <!-- Navigation / Header -->
-  <header class="w-full border-b border-line bg-paper/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <span class="w-3 h-3 rounded-full bg-rust inline-block"></span>
-        <span class="font-semibold tracking-tight text-ink text-sm md:text-base">Candidate Intelligence Platform</span>
-      </div>
-      <span class="text-xs md:text-sm font-medium px-3 py-1 rounded-full bg-paper-dark text-ink-muted border border-line">Visual Explainer</span>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-16 space-y-16 md:space-y-24">
-
-    <!-- HERO SECTION -->
-    <section class="space-y-6 text-left max-w-4xl">
-      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rust-light text-rust text-xs md:text-sm font-medium border border-rust/20">
-        <span>Core Architectural Guide</span>
-      </div>
-      <h1 class="text-4xl md:text-6xl lg:text-7xl font-serif-title tracking-tight text-ink leading-none">
-        How Resumes are Uploaded &amp; Searched
-      </h1>
-      <p class="text-lg md:text-2xl text-ink-muted leading-relaxed font-normal">
-        From raw PDF files to instant, meaning-aware candidate retrieval—explained step by step for recruitment teams and product leaders.
-      </p>
-    </section>
-
-    <!-- BEFORE VS AFTER TRANSFORMATION -->
-    <section class="space-y-6">
-      <div class="border-b border-line pb-3">
-        <h2 class="text-2xl md:text-3xl font-serif-title text-ink">1. The Core Transformation</h2>
-        <p class="text-sm md:text-base text-ink-muted">Why traditional file search fails and how intelligent ingestion solves it.</p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Old Way -->
-        <div class="p-6 md:p-8 rounded-2xl bg-white border border-line space-y-4">
-          <div class="flex items-center space-x-2 text-rust font-semibold text-sm uppercase tracking-wider">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            <span>Traditional Keyword Search</span>
-          </div>
-          <h3 class="text-xl font-bold text-ink">Rigid Text Matching</h3>
-          <ul class="space-y-3 text-sm md:text-base text-ink-muted">
-            <li class="flex items-start space-x-2">
-              <span class="text-rust font-bold">•</span>
-              <span>Duplicate candidates created whenever a candidate re-applies with a slightly updated resume file.</span>
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="text-rust font-bold">•</span>
-              <span>Misses qualified candidates if they use "React/TypeScript Lead" instead of your exact query term "Frontend Engineer".</span>
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="text-rust font-bold">•</span>
-              <span>Requires tedious manual data entry for candidate names, phone numbers, and work experience.</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- New Way -->
-        <div class="p-6 md:p-8 rounded-2xl bg-teal-light/50 border border-teal/30 space-y-4">
-          <div class="flex items-center space-x-2 text-teal font-semibold text-sm uppercase tracking-wider">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            <span>Candidate Intelligence System</span>
-          </div>
-          <h3 class="text-xl font-bold text-ink">Semantic Concept Intelligence</h3>
-          <ul class="space-y-3 text-sm md:text-base text-ink-muted">
-            <li class="flex items-start space-x-2">
-              <span class="text-teal font-bold">•</span>
-              <span><strong>SHA-256 Fingerprinting:</strong> Prevents duplicate files instantly before parsing begins.</span>
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="text-teal font-bold">•</span>
-              <span><strong>Entity Resolution:</strong> Automatically merges new resumes into existing candidate records by email or phone.</span>
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="text-teal font-bold">•</span>
-              <span><strong>Hybrid AI Search:</strong> Combines precise keyword rules with 3D concept maps so relevant candidates are never missed.</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- PHASE 1: UPLOADING & INGESTION -->
-    <section class="space-y-8">
-      <div class="border-b border-line pb-3">
-        <h2 class="text-2xl md:text-3xl font-serif-title text-ink">2. How Resume Uploading Works (Ingestion Pipeline)</h2>
-        <p class="text-sm md:text-base text-ink-muted">When a file is uploaded, 5 precise automated steps transform raw text into structured intelligence.</p>
-      </div>
-
-      <!-- Ingestion Teaching SVG Diagram -->
-      <div class="w-full bg-white p-4 md:p-8 rounded-2xl border border-line diagram-box overflow-x-auto">
-        <div class="min-w-[680px]">
-          <h4 class="text-sm font-semibold uppercase text-ink-muted tracking-wider mb-6 text-center">Resume Ingestion Flow</h4>
-          <svg viewBox="0 0 800 240" class="w-full h-auto font-sans" fill="none">
-            <!-- Step 1: File Upload -->
-            <g transform="translate(10, 40)">
-              <rect width="130" height="120" rx="12" fill="#F4EFE6" stroke="#E7E0D3" stroke-width="2"/>
-              <text x="65" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="#1C1A17">1. File Upload</text>
-              <text x="65" y="60" text-anchor="middle" font-size="11" fill="#524F4A">PDF / DOCX / MSG</text>
-              <text x="65" y="80" text-anchor="middle" font-size="11" fill="#C2593F" font-weight="600">Drag &amp; Drop</text>
-            </g>
-
-            <!-- Arrow 1 -->
-            <path d="M 145 100 L 175 100" stroke="#C2593F" stroke-width="2" stroke-dasharray="4 4"/>
-            <polygon points="175,95 185,100 175,105" fill="#C2593F"/>
-
-            <!-- Step 2: Fingerprint Check -->
-            <g transform="translate(190, 40)">
-              <rect width="130" height="120" rx="12" fill="#FFFFFF" stroke="#C2593F" stroke-width="2"/>
-              <text x="65" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="#1C1A17">2. Fingerprint</text>
-              <text x="65" y="60" text-anchor="middle" font-size="11" fill="#524F4A">SHA-256 CAS</text>
-              <text x="65" y="80" text-anchor="middle" font-size="11" fill="#C2593F">Deduplicate File</text>
-            </g>
-
-            <!-- Arrow 2 -->
-            <path d="M 325 100 L 355 100" stroke="#2A7B72" stroke-width="2"/>
-            <polygon points="355,95 365,100 355,105" fill="#2A7B72"/>
-
-            <!-- Step 3: Multi-Format Parser -->
-            <g transform="translate(370, 40)">
-              <rect width="130" height="120" rx="12" fill="#F4EFE6" stroke="#E7E0D3" stroke-width="2"/>
-              <text x="65" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="#1C1A17">3. Parsing</text>
-              <text x="65" y="60" text-anchor="middle" font-size="11" fill="#524F4A">Extract Layout</text>
-              <text x="65" y="80" text-anchor="middle" font-size="11" fill="#2A7B72" font-weight="600">PyMuPDF / Docx</text>
-            </g>
-
-            <!-- Arrow 3 -->
-            <path d="M 505 100 L 535 100" stroke="#2A7B72" stroke-width="2"/>
-            <polygon points="535,95 545,100 535,105" fill="#2A7B72"/>
-
-            <!-- Step 4: Entity Resolution & Vector -->
-            <g transform="translate(550, 40)">
-              <rect width="230" height="120" rx="12" fill="#EFF8F7" stroke="#2A7B72" stroke-width="2"/>
-              <text x="115" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="#1C1A17">4. Linking &amp; Vector Index</text>
-              <text x="115" y="60" text-anchor="middle" font-size="11" fill="#524F4A">Match Email/Phone -> Link Profile</text>
-              <text x="115" y="85" text-anchor="middle" font-size="11" fill="#2A7B72" font-weight="600">Generate LanceDB Vector Map</text>
-            </g>
-
-            <!-- Bottom Caption -->
-            <text x="400" y="210" text-anchor="middle" font-size="12" font-weight="500" fill="#524F4A">Automated Pipeline: File Ingested → Deduplicated → Parsed → Profile Linked → Embedded in Vector Store</text>
-          </svg>
-        </div>
-      </div>
-
-      <!-- Explanatory Cards Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="p-6 rounded-xl bg-white border border-line space-y-2">
-          <span class="text-xs font-bold text-rust uppercase tracking-wider">Step 1 &amp; 2</span>
-          <h4 class="text-lg font-bold text-ink">Digital Fingerprinting</h4>
-          <p class="text-sm text-ink-muted leading-relaxed">
-            Before extracting text, the system calculates a unique SHA-256 cryptographic hash of the document bytes. If the file is already stored in the Content Addressable Storage (CAS), it skips re-parsing.
-          </p>
-        </div>
-
-        <div class="p-6 rounded-xl bg-white border border-line space-y-2">
-          <span class="text-xs font-bold text-teal uppercase tracking-wider">Step 3 &amp; 4</span>
-          <h4 class="text-lg font-bold text-ink">Entity Resolution</h4>
-          <p class="text-sm text-ink-muted leading-relaxed">
-            Pulls names, emails, and phone numbers. If a candidate already exists in the database with the same email or phone, the new resume version is linked to their profile card automatically.
-          </p>
-        </div>
-
-        <div class="p-6 rounded-xl bg-white border border-line space-y-2">
-          <span class="text-xs font-bold text-ink-muted uppercase tracking-wider">Step 5</span>
-          <h4 class="text-lg font-bold text-ink">Vector Embedding</h4>
-          <p class="text-sm text-ink-muted leading-relaxed">
-            The resume text is divided into section-aware chunks and mapped into numerical vector coordinates in an embedded LanceDB vector database for semantic search.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- PHASE 2: SEARCHING & HYBRID RANKING -->
-    <section class="space-y-8">
-      <div class="border-b border-line pb-3">
-        <h2 class="text-2xl md:text-3xl font-serif-title text-ink">3. How Resume Searching Works (Hybrid Ranking)</h2>
-        <p class="text-sm md:text-base text-ink-muted">Combining strict SQL filters with AI semantic similarity vectors for maximum precision.</p>
-      </div>
-
-      <!-- Search Teaching SVG Diagram -->
-      <div class="w-full bg-white p-4 md:p-8 rounded-2xl border border-line diagram-box overflow-x-auto">
-        <div class="min-w-[680px]">
-          <h4 class="text-sm font-semibold uppercase text-ink-muted tracking-wider mb-6 text-center">Hybrid Search &amp; Ranking Architecture</h4>
-          <svg viewBox="0 0 800 260" class="w-full h-auto font-sans" fill="none">
-            <!-- User Query Input -->
-            <g transform="translate(10, 70)">
-              <rect width="150" height="100" rx="12" fill="#F4EFE6" stroke="#E7E0D3" stroke-width="2"/>
-              <text x="75" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="#1C1A17">User Search Bar</text>
-              <text x="75" y="60" text-anchor="middle" font-size="11" fill="#C2593F">"Python Dev in NY"</text>
-            </g>
-
-            <!-- Split Arrows -->
-            <path d="M 160 100 L 220 60" stroke="#C2593F" stroke-width="2"/>
-            <polygon points="220,55 230,60 222,67" fill="#C2593F"/>
-
-            <path d="M 160 120 L 220 160" stroke="#2A7B72" stroke-width="2"/>
-            <polygon points="222,153 230,160 220,165" fill="#2A7B72"/>
-
-            <!-- Branch A: Structured Filters -->
-            <g transform="translate(230, 20)">
-              <rect width="210" height="80" rx="10" fill="#FDF1EE" stroke="#C2593F" stroke-width="1.5"/>
-              <text x="105" y="30" text-anchor="middle" font-size="12" font-weight="700" fill="#C2593F">1. Strict SQL Filter</text>
-              <text x="105" y="52" text-anchor="middle" font-size="11" fill="#524F4A">Filters: Location = 'NY'</text>
-            </g>
-
-            <!-- Branch B: Vector Semantic Distance -->
-            <g transform="translate(230, 130)">
-              <rect width="210" height="80" rx="10" fill="#EFF8F7" stroke="#2A7B72" stroke-width="1.5"/>
-              <text x="105" y="30" text-anchor="middle" font-size="12" font-weight="700" fill="#2A7B72">2. LanceDB Semantic Distance</text>
-              <text x="105" y="52" text-anchor="middle" font-size="11" fill="#524F4A">Measures meaning coordinates</text>
-            </g>
-
-            <!-- Join Arrows to Fusion -->
-            <path d="M 440 60 L 500 100" stroke="#C2593F" stroke-width="2"/>
-            <path d="M 440 170 L 500 120" stroke="#2A7B72" stroke-width="2"/>
-            <polygon points="495,103 508,110 495,117" fill="#1C1A17"/>
-
-            <!-- Hybrid Score Fusion -->
-            <g transform="translate(510, 60)">
-              <rect width="270" height="120" rx="12" fill="#1C1A17"/>
-              <text x="135" y="35" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">3. Combined Score Ranking</text>
-              <text x="135" y="60" text-anchor="middle" font-size="11" fill="#E7E0D3">Keywords + Vector Similarity %</text>
-              <rect x="35" y="75" width="200" height="24" rx="6" fill="#2A7B72"/>
-              <text x="135" y="91" text-anchor="middle" font-size="11" font-weight="700" fill="#FFFFFF">Top Ranked Candidates Output</text>
-            </g>
-
-            <text x="400" y="240" text-anchor="middle" font-size="12" font-weight="500" fill="#524F4A">Dual-Path Query Engine: Ensures 100% filter accuracy while ranking candidates by semantic fit</text>
-          </svg>
-        </div>
-      </div>
-
-      <!-- Mental Model Section -->
-      <div class="p-6 md:p-8 rounded-2xl bg-paper-dark border border-line space-y-4">
-        <h3 class="text-xl font-bold text-ink">Mental Model: The "Meaning Map" Analogy</h3>
-        <p class="text-sm md:text-base text-ink-muted leading-relaxed">
-          Think of traditional keyword search as a <strong>strict index card box</strong>—if a resume doesn't have the exact word typed, it gets ignored. 
-          <br><br>
-          In Candidate Intelligence, every candidate is pinned onto a <strong>3D Map of Ideas</strong>. Searching for <em>"Machine Learning Architect"</em> places a search pin on the map. The system simply measures which candidate profile pins are physically closest to your search pin, scoring their match percentage automatically.
+  <main id="main-content" role="main">
+    
+    <!-- HERO -->
+    <section class="hero">
+      <div class="animate">
+        <span class="hero-badge">System Architecture</span>
+        <h1>Candidate Intelligence</h1>
+        <p class="text-secondary" style="font-size: 1.25rem; max-width: 600px; margin: 0 auto;">
+          From raw uploaded resumes to instant, meaning-aware candidate retrieval. A recruiter's guide to how the engine actually works.
         </p>
       </div>
     </section>
 
-    <!-- CONCRETE EXAMPLE -->
-    <section class="space-y-6">
-      <div class="border-b border-line pb-3">
-        <h2 class="text-2xl md:text-3xl font-serif-title text-ink">4. Real World Search Example</h2>
-        <p class="text-sm md:text-base text-ink-muted">How candidate scoring works under the hood when searching.</p>
+    <!-- TRADITIONAL VS HYBRID -->
+    <section>
+      <div class="animate delay-1" style="text-align: center; margin-bottom: 48px;">
+        <h2>The Core Transformation</h2>
+        <p class="text-secondary">Why old systems fail, and why intelligence wins.</p>
       </div>
 
-      <div class="bg-white rounded-2xl border border-line overflow-hidden">
-        <div class="p-4 bg-paper-dark border-b border-line flex justify-between items-center">
-          <span class="text-xs font-bold text-ink-muted uppercase">Query: "Lead Cloud Engineer skilled in AWS &amp; Kubernetes"</span>
-          <span class="text-xs font-semibold text-teal px-2 py-0.5 rounded bg-teal-light border border-teal/20">Hybrid Search Active</span>
+      <div class="comparison-row animate delay-2">
+        <!-- Old System -->
+        <div class="card" style="border-top: 4px solid var(--negative);">
+          <h3 style="color: var(--negative); display: flex; align-items: center; gap: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            Traditional Keyword Search
+          </h3>
+          <p class="text-secondary" style="margin-bottom: 24px;">Matches exact words typed into a search box.</p>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+            <li style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="color: var(--negative);">✕</span>
+              <span class="text-secondary">Misses great candidates if they say "TypeScript Lead" instead of "Frontend Engineer".</span>
+            </li>
+            <li style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="color: var(--negative);">✕</span>
+              <span class="text-secondary">Creates messy duplicate profiles when a candidate uploads a slightly tweaked resume.</span>
+            </li>
+          </ul>
         </div>
 
-        <div class="divide-y divide-line">
-          <!-- Candidate 1 -->
-          <div class="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="font-bold text-ink text-lg">Alex Rivera</span>
-                <span class="text-xs px-2 py-0.5 rounded bg-teal-light text-teal font-semibold">Matched via Concept</span>
-              </div>
-              <p class="text-sm text-ink-muted">Resume Title: <em>"Senior DevOps Specialist (Amazon Web Services, EKS)"</em></p>
-            </div>
-            <div class="text-right">
-              <span class="text-2xl font-bold text-teal">96% Match</span>
-              <p class="text-xs text-ink-muted">High Vector Proximity + Keyword Hit</p>
-            </div>
-          </div>
-
-          <!-- Candidate 2 -->
-          <div class="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2">
-                <span class="font-bold text-ink text-lg">Jordan Chen</span>
-                <span class="text-xs px-2 py-0.5 rounded bg-paper-dark text-ink-muted font-semibold">Matched via Exact Keyword</span>
-              </div>
-              <p class="text-sm text-ink-muted">Resume Title: <em>"Cloud Engineer with AWS background"</em></p>
-            </div>
-            <div class="text-right">
-              <span class="text-2xl font-bold text-ink">84% Match</span>
-              <p class="text-xs text-ink-muted">Exact Keyword Hit (Missing Kubernetes)</p>
-            </div>
-          </div>
+        <!-- New System -->
+        <div class="card" style="border-top: 4px solid var(--positive);">
+          <h3 style="color: var(--positive); display: flex; align-items: center; gap: 8px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+            Concept Intelligence
+          </h3>
+          <p class="text-secondary" style="margin-bottom: 24px;">Understands the <em>meaning</em> of a resume.</p>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+            <li style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="color: var(--positive);">✓</span>
+              <span class="text-secondary">Recognizes that "TypeScript Lead" and "Frontend Engineer" live in the same neighborhood of skills.</span>
+            </li>
+            <li style="display: flex; gap: 12px; align-items: flex-start;">
+              <span style="color: var(--positive);">✓</span>
+              <span class="text-secondary">Automatically blocks exact duplicate files instantly before they clog up the system.</span>
+            </li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <!-- NEXT ACTION FOR READER -->
-    <section class="p-8 md:p-12 rounded-3xl bg-ink text-white space-y-6 text-center">
-      <h2 class="text-3xl md:text-5xl font-serif-title leading-tight">Ready to Test Ingestion &amp; Search?</h2>
-      <p class="text-sm md:text-base text-line/80 max-w-2xl mx-auto">
-        Your Candidate Intelligence Platform environment is live locally. You can upload candidate PDFs via the UI or ingest files via API to test real-time deduplication and concept search.
-      </p>
-      <div class="pt-2 flex flex-col sm:flex-row justify-center items-center gap-4">
-        <a href="http://localhost:5173" target="_blank" class="px-6 py-3 rounded-xl bg-rust text-white font-semibold hover:bg-rust/90 transition">Open Recruiter UI</a>
-        <span class="text-xs text-line/60">Local API running at http://127.0.0.1:8000</span>
+    <!-- INGESTION PIPELINE -->
+    <section>
+      <div class="reveal" style="text-align: center; margin-bottom: 48px;">
+        <h2>The Upload Pipeline</h2>
+        <p class="text-secondary">What happens the moment you drag-and-drop a resume.</p>
+      </div>
+
+      <div class="pipeline reveal">
+        
+        <!-- Step 1 -->
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Preventing Duplicates</h3>
+            <p>Before reading a single word, the system takes a unique "digital fingerprint" of the file. If that exact file was already uploaded, it stops immediately. No more duplicate records from the exact same PDF.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Fingerprinting</summary>
+              <div class="tech-dive-content">
+                <p>We use <span class="tech-badge">SHA-256 CAS</span> (Content Addressable Storage). It generates a cryptographic hash of the document bytes. If the hash exists in our SQLite WAL database, we skip re-parsing completely.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Rule-Based Extraction</h3>
+            <p>The system carefully reads the document layout and tries to extract the candidate's Name, Email, Phone, and Job Title using strict formatting rules. It then calculates a "confidence score" based on how sure it is about these facts.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Tier 1 Parsing</summary>
+              <div class="tech-dive-content">
+                <p>We utilize <span class="tech-badge">PyMuPDF</span> for layout parsing, alongside regex and spaCy NER (Named Entity Recognition). The system calculates a confidence score weighted heavily by the presence of a clear Name (50%), Job Title (25%), and Skills/Location (25%).</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="step-card">
+          <div class="step-number" style="background: var(--accent-secondary);">3</div>
+          <div class="step-content">
+            <h3>AI Fallback Recovery</h3>
+            <p>If the system is less than 70% confident about the candidate's details (or if a key piece like Job Title is missing), it hands the text over to a local AI. The AI acts like a human recruiter, reading the messy text to infer the missing details.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Local LLM Extraction</summary>
+              <div class="tech-dive-content">
+                <p>If the Tier 1 confidence is &lt; 0.70, it triggers <span class="tech-badge">extract_inferences()</span>. This sends the text to a local <span class="tech-badge">Ollama LLM</span>. The LLM parses the unstructured text and guarantees 100% data privacy because the AI runs entirely on your local machine.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h3>Profile Linking</h3>
+            <p>It scans the extracted contact info (emails, phone numbers). If it spots "alex@example.com" and Alex is already in your database, it neatly attaches this new resume version to Alex's existing candidate card.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Entity Resolution</summary>
+              <div class="tech-dive-content">
+                <p>SQLAlchemy models automatically check for collisions on standardized email and phone fields. Resolving entities early keeps the candidate table clean.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step-card">
+          <div class="step-number">5</div>
+          <div class="step-content">
+            <h3>Building the Idea Map</h3>
+            <p>Finally, the resume is chopped into logical chunks. The AI reads each chunk and plots it on a giant, invisible 3D map of concepts. Related skills sit close together on this map.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Vector Embedding</summary>
+              <div class="tech-dive-content">
+                <p>We use <span class="tech-badge">SentenceTransformers</span> / <span class="tech-badge">FastEmbed</span> to convert text chunks into numerical vectors. These are stored locally in a <span class="tech-badge">LanceDB</span> vector database, allowing for ultra-fast semantic proximity searches.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
       </div>
     </section>
+
+    <!-- SEARCH PIPELINE -->
+    <section>
+      <div class="reveal" style="text-align: center; margin-bottom: 48px;">
+        <h2>The Search Pipeline</h2>
+        <p class="text-secondary">How we guarantee exact matches while ranking by semantic fit.</p>
+      </div>
+
+      <div class="pipeline reveal">
+        
+        <!-- Search Step 1 -->
+        <div class="step-card">
+          <div class="step-number" style="background: var(--accent-secondary);">1</div>
+          <div class="step-content">
+            <h3>The Job Ad Distiller</h3>
+            <p>If you type a short search (like "Python Dev NY"), it skips this step. But if you paste an <em>entire job advertisement</em> into the search box, the local AI intercepts it. It reads the whole ad and pulls out exactly what matters: the role, must-have skills, minimum years of experience, and location.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: AI Job Ad Distillation</summary>
+              <div class="tech-dive-content">
+                <p>If a query is &gt; 350 characters, it triggers the <span class="tech-badge">distill_job_ad()</span> pipeline. It uses a local <span class="tech-badge">Ollama Chat Model</span> to extract a structured JSON recipe (title, skills, min_yoe, location). If the AI fails, a heuristic fallback uses regex to extract years of experience and keyword frequency counting.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Search Step 2 -->
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Engine A: Strict SQL Filters</h3>
+            <p>The system applies the hard rules first. If the Job Ad Distiller found "Location: NY" or "Years of Experience: 5+", it completely filters out anyone who doesn't meet these baseline requirements.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Relational Filtering</summary>
+              <div class="tech-dive-content">
+                <p>Standard <span class="tech-badge">SQL Filtering</span> via SQLAlchemy on structured relational database columns to guarantee 100% accuracy on strict constraints.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        
+        <!-- Search Step 3 -->
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Engine B: Semantic Proximity</h3>
+            <p>For everyone left, the "smart" engine takes over. It compares the meaning of your search against the candidate's "Idea Map". It knows that someone with "AWS" and "Kubernetes" is a great match for a "Cloud Expert" search, even if they didn't use those exact words.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Vector Search</summary>
+              <div class="tech-dive-content">
+                <p><span class="tech-badge">Vector Semantic Distance</span> calculation in <span class="tech-badge">LanceDB</span>. It compares the dense embedding vector of the search summary against the stored chunk vectors.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- Search Step 4 -->
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h3>Hybrid Fusion Scoring</h3>
+            <p>The system combines the exact keyword hits with the soft semantic meaning to give every candidate a final "Match Percentage". You get a ranked list of the absolute best fits instantly.</p>
+            
+            <details class="tech-dive">
+              <summary>Under the Hood: Hybrid Ranking Fusion</summary>
+              <div class="tech-dive-content">
+                <p>This is <span class="tech-badge">Hybrid Search</span>. A fusion algorithm (like Reciprocal Rank Fusion) fuses the sparse (keyword) and dense (vector similarity) scores into a final unified rank.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
 
   </main>
 
-  <!-- Footer -->
-  <footer class="w-full border-t border-line py-6 bg-paper-dark mt-16">
-    <div class="max-w-6xl mx-auto px-4 md:px-8 text-center text-xs text-ink-muted">
-      Candidate Intelligence Platform — Local-First Intelligence &amp; Search Engine Architecture Guide
-    </div>
+  <footer>
+    <p class="text-secondary" style="font-size: 0.875rem;">Candidate Intelligence Platform — Local-First Intelligence Architecture</p>
   </footer>
 
+  <script>
+    // === Scroll Reveal ===
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('reveal'); });
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+  </script>
 </body>
 </html>
