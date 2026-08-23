@@ -22,4 +22,5 @@ class SearchResponse(BaseModel):
     total_results: int
     results: List[SearchResultItem]
     warnings: List[str] = Field(default_factory=list)
+    job_ad_recipe: Optional[Dict[str, Any]] = None
 

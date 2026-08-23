@@ -5,6 +5,11 @@ import json
 from api.dependencies import get_db, get_vector_db, get_settings
 from api.schemas.search import SearchQueryRequest, SearchResponse, SearchResultItem
 from candidate_intelligence_platform.search.hybrid_searcher import search_candidates
+from candidate_intelligence_platform.search.job_ad_distiller import (
+    build_search_dsl,
+    distill_job_ad,
+    looks_like_job_ad,
+)
 from candidate_intelligence_platform.intelligence.chat_model import resolve_chat_model
 from config.settings import Settings
 from storage.db_models import Candidate
@@ -29,6 +34,34 @@ def _build_search_query(request: SearchQueryRequest) -> str:
     if request.title:
         query_parts.append(f"title:'{request.title}'")
     return " AND ".join(query_parts) if query_parts else ""
+
+def _build_structured_filter_suffix(request: SearchQueryRequest) -> str:
+    """Only the dedicated filter boxes, never the free-text box."""
+    query_parts = []
+    if request.city:
+        query_parts.append(f"location:'{request.city}'")
+    if request.min_yoe:
+        query_parts.append(f"yoe >= {request.min_yoe}")
+    if request.title:
+        query_parts.append(f"title:'{request.title}'")
+    return " AND ".join(query_parts)
+
+def _prepare_query(request: SearchQueryRequest) -> tuple[str, "str | None", dict | None]:
+    """Resolve the search DSL, semantic override, and job-ad recipe.
+
+    A long pasted text is treated as a full job ad: it is distilled locally
+    into a structured recipe (title, skills, yoe, location) that feeds the
+    keyword/filter machinery, while a short summary feeds the embedding step.
+    """
+    if not (request.query_text and looks_like_job_ad(request.query_text)):
+        return _build_search_query(request), None, None
+
+    recipe = distill_job_ad(request.query_text)
+    dsl = build_search_dsl(recipe)
+    suffix = _build_structured_filter_suffix(request)
+    if suffix:
+        dsl = f"{dsl} AND {suffix}" if dsl else suffix
+    return dsl, recipe.summary, recipe.to_metadata()
 
 def _resolve_top_k(request: SearchQueryRequest, settings: Settings) -> int:
     return request.top_k if request.top_k is not None else settings.default_top_k
@@ -82,30 +115,33 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("", response_model=SearchResponse)
 def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db = Depends(get_vector_db), settings: Settings = Depends(get_settings)):
-    full_query = _build_search_query(request)
+    full_query, semantic_query, job_ad_recipe = _prepare_query(request)
 
     t0 = time.perf_counter()
     if full_query:
-        for stage, progress, msg, data in search_candidates(full_query, db, vector_db, return_warnings=True):
+        for stage, progress, msg, data in search_candidates(full_query, db, vector_db, return_warnings=True, semantic_query=semantic_query):
             if stage == "COMPLETE":
                 raw_results, warnings = data
     else:
         raw_results, warnings = [], []
-    
+
     top_k = _resolve_top_k(request, settings)
+    if job_ad_recipe:
+        warnings = [*job_ad_recipe.get("warnings", []), *warnings]
     warnings = _ai_explanation_warning(warnings)
     top_results = raw_results[:top_k]
     vector_search_duration_ms = round((time.perf_counter() - t0) * 1000, 2)
-    
+
     t1 = time.perf_counter()
     candidate_map = _hydrate_candidates(db, top_results)
     items = _format_search_results(top_results, candidate_map)
-        
+
     response = SearchResponse(
         query=request.query_text,
         total_results=len(items),
         results=items,
-        warnings=warnings
+        warnings=warnings,
+        job_ad_recipe=job_ad_recipe,
     )
     db_retrieval_duration_ms = round((time.perf_counter() - t1) * 1000, 2)
     total_duration_ms = vector_search_duration_ms + db_retrieval_duration_ms
@@ -125,11 +161,11 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), v
 def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get_db), vector_db = Depends(get_vector_db), settings: Settings = Depends(get_settings)):
     def event_generator():
         try:
-            full_query = _build_search_query(request)
-            
+            full_query, semantic_query, job_ad_recipe = _prepare_query(request)
+
             t0 = time.perf_counter()
             if full_query:
-                for stage, progress, message, data in search_candidates(full_query, db, vector_db, return_warnings=True):
+                for stage, progress, message, data in search_candidates(full_query, db, vector_db, return_warnings=True, semantic_query=semantic_query):
                     if stage == "COMPLETE":
                         raw_results, warnings = data
                     else:
@@ -144,6 +180,8 @@ def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get
                 raw_results, warnings = [], []
 
             top_k = _resolve_top_k(request, settings)
+            if job_ad_recipe:
+                warnings = [*job_ad_recipe.get("warnings", []), *warnings]
             warnings = _ai_explanation_warning(warnings)
             top_results = raw_results[:top_k]
             
@@ -155,7 +193,8 @@ def perform_search_stream(request: SearchQueryRequest, db: Session = Depends(get
                 query=request.query_text,
                 total_results=len(items),
                 results=items,
-                warnings=warnings
+                warnings=warnings,
+                job_ad_recipe=job_ad_recipe,
             )
             
             yield f"data: {json.dumps({'stage': 'COMPLETE', 'progress': 100, 'message': 'Search complete', 'status': 'SUCCESS', 'data': response_data.model_dump()})}\n\n"
