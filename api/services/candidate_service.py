@@ -1,14 +1,30 @@
+from typing import Any
+
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from storage.db_models import Candidate, ResumeVersion, CandidateClaim, CandidateTimelineEvent
 from storage.vector_store import CandidateSectionVector
-from ingestion.chunker import chunk_document
+from ingestion.chunker import chunk_resume
 from ingestion.parsers.models import ParsedDocument
 from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
 
+
+def _has_candidate_vectors_table(vector_db: Any) -> bool:
+    """Check for the candidate_vectors table across lancedb API variants."""
+    try:
+        if hasattr(vector_db, "list_tables"):
+            result = vector_db.list_tables()
+            names = getattr(result, "tables", result)
+            return "candidate_vectors" in names
+        if hasattr(vector_db, "table_names"):
+            return "candidate_vectors" in vector_db.table_names()
+    except Exception:
+        return False
+    return False
+
 class CandidateService:
     @staticmethod
-    def delete_candidate(db: Session, candidate_id: str, vector_db, commit: bool = True) -> bool:
+    def delete_candidate(db: Session, candidate_id: str, vector_db: Any, commit: bool = True) -> bool:
         candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
         if not candidate:
             return False
@@ -31,18 +47,13 @@ class CandidateService:
         if vector_db:
             if hasattr(vector_db, "delete_candidate_vectors"):
                 vector_db.delete_candidate_vectors(candidate_id)
-            else:
-                try:
-                    tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
-                    if "candidate_vectors" in tables:
-                        table = vector_db.open_table("candidate_vectors")
-                        table.delete(f'candidate_id = "{candidate_id}"')
-                except Exception:
-                    pass
+            elif _has_candidate_vectors_table(vector_db):
+                table = vector_db.open_table("candidate_vectors")
+                table.delete(f'candidate_id = "{candidate_id}"')
         return True
 
     @staticmethod
-    def update_fts_index(db: Session, candidate_id: str, candidate_name: str, candidate: Candidate, raw_text: str):
+    def update_fts_index(db: Session, candidate_id: str, candidate_name: str, candidate: Candidate, raw_text: str) -> None:
         db.execute(text("DELETE FROM candidate_fts WHERE candidate_id = :cid"), {"cid": candidate_id})
         db.execute(
             text("INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) VALUES (:cid, :fname, :title, :company, :content)"),
@@ -57,17 +68,15 @@ class CandidateService:
         # Note: caller is responsible for committing the transaction
 
     @staticmethod
-    def update_vector_index(vector_db, candidate_id: str, raw_text: str, rv_id: str):
+    def update_vector_index(vector_db: Any, candidate_id: str, raw_text: str, rv_id: str) -> None:
         if hasattr(vector_db, "delete_candidate_vectors"):
             vector_db.delete_candidate_vectors(candidate_id)
-        else:
-            tables = vector_db.list_tables() if hasattr(vector_db, "list_tables") else vector_db.table_names()
-            if "candidate_vectors" in tables:
-                table = vector_db.open_table("candidate_vectors")
-                table.delete(f'candidate_id = "{candidate_id}"')
+        elif _has_candidate_vectors_table(vector_db):
+            table = vector_db.open_table("candidate_vectors")
+            table.delete(f'candidate_id = "{candidate_id}"')
 
         doc = ParsedDocument(text=raw_text, pages=1)
-        chunks = chunk_document(doc, candidate_id, "SUMMARY")
+        chunks = chunk_resume(doc, candidate_id)
         if chunks:
             texts = [c.text for c in chunks]
             embeddings = generate_embeddings(texts)

@@ -158,6 +158,24 @@ Run test suite via `pytest`:
 pytest
 ```
 
+### Search accuracy evaluation (golden set)
+
+The golden-set harness measures Recall@10 and MRR of hybrid search over a
+versioned fixture (`tests/fixtures/golden_search_set.json`) using real local
+models (FastEmbed + cross-encoder reranker) on a temporary store. It is
+skipped by default to keep the fast suite mocked and quick.
+
+```bash
+# Run the evaluation against the recorded baseline
+uv run pytest tests/test_golden_eval.py -m evaluation --run-eval -q -s
+
+# Regenerate the baseline after an intentional accuracy change
+uv run pytest tests/test_golden_eval.py -m evaluation --run-eval --update-baseline -q
+```
+
+Metrics print to stdout; the test fails if either metric drops more than the
+recorded tolerance below `tests/fixtures/golden_baseline.json`.
+
 ---
 
 ## 🗺️ Status & Roadmap

@@ -1,13 +1,21 @@
 """Lazy-loaded cross-encoder reranker for search results with GPU auto-detect.
 
-Model: Xenova/ms-marco-MiniLM-L-6-v2 (MS MARCO passage ranking)
+Default model: Xenova/ms-marco-MiniLM-L-6-v2 (MS MARCO passage ranking)
+Configurable via the CIP_RERANKER_MODEL environment variable / Settings.reranker_model.
+An invalid or unavailable model name falls back to the documented default.
 """
 import threading
+from typing import Any
 import structlog
+
+from config.settings import Settings
 
 logger = structlog.get_logger(__name__)
 
+DEFAULT_RERANKER_MODEL = "Xenova/ms-marco-MiniLM-L-6-v2"
+
 _reranker_model = None
+_reranker_model_name = None
 _reranker_lock = threading.Lock()
 _gpu_available = None
 
@@ -33,33 +41,60 @@ def _check_gpu_available() -> bool:
     return _gpu_available
 
 
-def _get_reranker():
-    """Lazy-load the cross-encoder model on first use (thread-safe, GPU with CPU fallback)."""
-    global _reranker_model
+def _load_text_cross_encoder(model_name: str) -> "TextCrossEncoder":
+    from fastembed.rerank.cross_encoder import TextCrossEncoder
+    
+    use_gpu = _check_gpu_available()
+    providers = ["CUDAExecutionProvider", "CPUExecutionProvider"] if use_gpu else None
+    
+    try:
+        if providers:
+            model = TextCrossEncoder(model_name=model_name, providers=providers)
+            logger.info("reranker_model_loaded", model=model_name, gpu=True)
+        else:
+            model = TextCrossEncoder(model_name=model_name)
+            logger.info("reranker_model_loaded", model=model_name, gpu=False)
+        return model
+    except Exception as e:
+        logger.warning("gpu_fallback", error=str(e), fallback="cpu")
+        return TextCrossEncoder(model_name=model_name)
+
+
+def _get_reranker() -> Any:
+    """Lazy-load the cross-encoder model on first use (thread-safe).
+
+    Loads the configured Settings.reranker_model; if that name is invalid or
+    unavailable, logs a warning and loads the documented default instead.
+    """
+    global _reranker_model, _reranker_model_name
     if _reranker_model is None:
         with _reranker_lock:
             if _reranker_model is None:
-                from fastembed.rerank.cross_encoder import TextCrossEncoder
-                
-                use_gpu = _check_gpu_available()
-                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"] if use_gpu else None
+                configured_model = Settings().reranker_model
                 
                 try:
-                    if providers:
-                        _reranker_model = TextCrossEncoder(
-                            model_name="Xenova/ms-marco-MiniLM-L-6-v2",
-                            providers=providers
-                        )
-                        logger.info("reranker_model_loaded", gpu=True)
-                    else:
-                        _reranker_model = TextCrossEncoder(model_name="Xenova/ms-marco-MiniLM-L-6-v2")
-                        logger.info("reranker_model_loaded", gpu=False)
+                    _reranker_model = _load_text_cross_encoder(configured_model)
+                    _reranker_model_name = configured_model
                 except Exception as e:
-                    # Fallback to CPU if GPU loading fails
-                    logger.warning("gpu_fallback", error=str(e), fallback="cpu")
-                    _reranker_model = TextCrossEncoder(model_name="Xenova/ms-marco-MiniLM-L-6-v2")
+                    logger.warning(
+                        "ai_reranker_model_fallback",
+                        configured_model=configured_model,
+                        error=str(e),
+                        fallback_model=DEFAULT_RERANKER_MODEL,
+                        action="loading_documented_default"
+                    )
+                    _reranker_model = _load_text_cross_encoder(DEFAULT_RERANKER_MODEL)
+                    _reranker_model_name = DEFAULT_RERANKER_MODEL
     
     return _reranker_model
+
+
+def get_reranker_model_name() -> str:
+    """Return the name of the currently loaded reranker model."""
+    if _reranker_model is None:
+        _get_reranker()
+    assert _reranker_model_name is not None
+    return _reranker_model_name
 
 
 def rerank_candidates(query: str, documents: list[str]) -> list[float]:

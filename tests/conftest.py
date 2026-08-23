@@ -133,7 +133,7 @@ def test_settings(tmp_path):
     )
 
 @pytest.fixture
-def client(db_engine, mock_vector_db, test_settings, mock_heavy_models):
+def client(db_engine, mock_vector_db, test_settings, mock_heavy_models, monkeypatch):
     """Provides a FastAPI TestClient configured with overridden database and vector dependencies."""
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 
@@ -153,6 +153,15 @@ def client(db_engine, mock_vector_db, test_settings, mock_heavy_models):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_vector_db] = override_get_vector_db
     app.dependency_overrides[get_settings] = override_get_settings
+
+    monkeypatch.setattr(
+        "api.routes.search.resolve_chat_model",
+        lambda force_refresh=False: "llama3.2",
+    )
+    monkeypatch.setattr(
+        "api.routes.candidates.resolve_chat_model",
+        lambda force_refresh=False: "llama3.2",
+    )
 
     import api.routes.candidates as cand_routes
     import api.dependencies as deps
@@ -176,6 +185,18 @@ def pytest_addoption(parser):
         default=False,
         help="Run live Ollama LLM integration tests",
     )
+    parser.addoption(
+        "--run-eval",
+        action="store_true",
+        default=False,
+        help="Run the golden-set search accuracy evaluation (loads real local models)",
+    )
+    parser.addoption(
+        "--update-baseline",
+        action="store_true",
+        default=False,
+        help="With --run-eval: rewrite tests/fixtures/golden_baseline.json with current metrics",
+    )
 
 def pytest_collection_modifyitems(config, items):
     if not config.getoption("--run-ollama"):
@@ -183,4 +204,9 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "ollama" in item.keywords:
                 item.add_marker(skip_ollama)
+    if not config.getoption("--run-eval"):
+        skip_eval = pytest.mark.skip(reason="Pass --run-eval flag to run the golden-set evaluation (real local models)")
+        for item in items:
+            if "evaluation" in item.keywords:
+                item.add_marker(skip_eval)
 

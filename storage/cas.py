@@ -31,5 +31,23 @@ class CASManager:
             target_path.write_bytes(content)
             # Make the file read-only (0444)
             target_path.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-            
+
         return file_hash, str(target_path.absolute())
+
+    def delete(self, file_path: str | Path) -> bool:
+        """
+        Remove one stored object (issue #14).
+
+        store() marks files read-only; the read-only attribute must be cleared
+        before unlinking (required on Windows). Best-effort: returns False on
+        failure instead of raising, so callers can degrade to a warning.
+        """
+        path = Path(file_path)
+        try:
+            if not path.exists():
+                return True
+            path.chmod(stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+            path.unlink()
+            return True
+        except OSError:
+            return False

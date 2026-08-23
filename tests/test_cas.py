@@ -30,3 +30,21 @@ def test_cas_storage(tmp_path):
     file_hash_2, cas_path_2 = cas_manager.store(content, extension=".pdf")
     assert file_hash == file_hash_2
     assert cas_path == cas_path_2
+
+
+def test_cas_delete_removes_read_only_file(tmp_path):
+    """Issue #14: delete() clears the read-only attribute store() sets, then unlinks."""
+    cas_manager = CASManager(root_dir=tmp_path)
+    _, cas_path = cas_manager.store(b"rejected document bytes", extension=".pdf")
+    stored = Path(cas_path)
+    assert stored.exists()
+    assert not os.access(stored, os.W_OK)
+
+    assert cas_manager.delete(cas_path) is True
+    assert not stored.exists()
+
+
+def test_cas_delete_missing_file_is_success(tmp_path):
+    """Deleting an already-absent object counts as purged (idempotent cleanup)."""
+    cas_manager = CASManager(root_dir=tmp_path)
+    assert cas_manager.delete(tmp_path / "aa" / "bb" / "does-not-exist.txt") is True

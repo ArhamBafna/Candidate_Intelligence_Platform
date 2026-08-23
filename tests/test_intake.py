@@ -1,10 +1,12 @@
+import hashlib
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+import candidate_intelligence_platform.ingestion.intake as intake_module
 from candidate_intelligence_platform.ingestion.intake import (
     IntakeProgress,
     IntakeResult,
@@ -64,6 +66,14 @@ def make_settings(tmp_path, **overrides: Any) -> Settings:
         vector_db_path=str(tmp_path / "vector"),
         **overrides,
     )
+
+
+@pytest.fixture(autouse=True)
+def reset_cas_ref_registry():
+    """Success paths pin their hash until the caller commits; tests that
+    skip the commit must not leak holds into later tests."""
+    yield
+    intake_module._CAS_ACTIVE_REFS.clear()
 
 
 @pytest.fixture
@@ -221,8 +231,14 @@ def test_merge_writes_audit_new_is_silent(db_session, test_settings, cas_mgr, ve
     assert audit.primary_candidate_id == existing_id
     assert audit.merged_candidate_id == existing_id
 
+    # Distinct contact facts: after #15 the merged Jane carries the extracted
+    # phone/email, so an unrelated person must not tier1-match her.
     fresh_text = RESUME_TEXT.replace("Jane", "Zack").replace("jane.doe@example.com", "zack@example.com")
-    mock_extraction.update({"first_name": "Zack", "primary_email": "zack@example.com"})
+    mock_extraction.update({
+        "first_name": "Zack",
+        "primary_email": "zack@example.com",
+        "primary_phone": "555-987-6543",
+    })
     new_result = ingest_file(
         content=fresh_text.encode("utf-8"), filename="zack.txt", db=db_session, cas_mgr=cas_mgr,
         vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
@@ -385,3 +401,336 @@ def test_ui_duplicate_chip_wired():
     assert "resolution_action === 'REVIEW'" in source
     assert "matched_candidate_id" in source
     assert "Possible duplicate?" in source
+
+
+# ---------------------------------------------------------------------------
+# Issue #14: rejected uploads leave zero CAS files behind
+# ---------------------------------------------------------------------------
+
+def _cas_file_count(cas_root: str) -> int:
+    return sum(1 for p in Path(cas_root).rglob("*") if p.is_file())
+
+
+def test_classifier_rejection_purges_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    result = ingest_file(
+        content=CONTRACT_TEXT.encode("utf-8"), filename="REFERRAL AGREEMENT.pdf", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert result.classified_as == "NON_RESUME_LEGAL_CONTRACT"
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+    assert db_session.query(Candidate).count() == 0
+    assert db_session.query(ResumeVersion).count() == 0
+
+
+def test_dummy_profile_rejection_purges_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    mock_extraction.update({
+        "first_name": "Uploaded",
+        "last_name": "Candidate",
+        "primary_email": None,
+        "primary_phone": None,
+        "current_title": "",
+    })
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert result.classified_as == "AI_CLASSIFIED_NOT_RESUME"
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+
+
+def test_error_after_store_purges_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction, monkeypatch):
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    def boom(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("resolution exploded")
+
+    monkeypatch.setattr(intake_module, "resolve", boom)
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.ERROR
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+
+
+def test_successful_ingest_keeps_exactly_one_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+    assert result.status == IntakeStatus.INGESTED
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+def test_duplicate_skip_never_stores_or_purges(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    content = RESUME_TEXT.encode("utf-8")
+    first = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+    assert first.status == IntakeStatus.INGESTED
+
+    second = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    assert second.status == IntakeStatus.SKIPPED_DUPLICATE
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+def test_purge_failure_degrades_to_warning(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    cas_mgr.delete = lambda file_path: False  # type: ignore[method-assign]
+    result = ingest_file(
+        content=CONTRACT_TEXT.encode("utf-8"), filename="REFERRAL AGREEMENT.pdf", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert any("CAS purge failed" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# PR #25 review: shared CAS objects must survive other pipelines' failures
+# ---------------------------------------------------------------------------
+
+def test_rejection_keeps_file_while_another_holder_shares_hash(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    """Concurrent identical upload: the other pipeline's hold blocks the purge."""
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    content = RESUME_TEXT.encode("utf-8")
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    mock_extraction.update({
+        "first_name": "Uploaded",
+        "last_name": "Candidate",
+        "primary_email": None,
+        "primary_phone": None,
+        "current_title": "",
+    })
+
+    intake_module._acquire_cas_ref(file_hash)
+    try:
+        result = ingest_file(
+            content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+            vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+            timeline_mode=TimelineMode.LEDGER,
+        )
+        assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+        assert _cas_file_count(test_settings.cas_root_dir) == 1
+    finally:
+        intake_module._release_cas_ref(file_hash)
+
+    # Once no holder remains and nothing is committed, cleanup works again.
+    second = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    assert second.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+
+
+def test_error_never_deletes_committed_duplicate_object(db_session, test_settings, cas_mgr, vector_db, mock_extraction, monkeypatch):
+    """A committed RV sharing the hash pins the CAS file against later purges.
+
+    Simulates the PR #25 race: upload B commits the same bytes while upload A
+    is still running; A then fails and must not delete the shared object.
+    """
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    content = RESUME_TEXT.encode("utf-8")
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    def commit_twin_then_resume(db: Session) -> List[Any]:
+        twin = sessionmaker(autocommit=False, autoflush=False, bind=db.get_bind())()
+        try:
+            owner_id = str(uuid.uuid4())
+            twin.add(Candidate(id=owner_id, first_name="Concurrent", last_name="Upload"))
+            twin.add(ResumeVersion(
+                id=str(uuid.uuid4()), candidate_id=owner_id, cas_file_hash=file_hash,
+                original_filename="twin.txt", file_type="TXT", raw_text="same bytes",
+                layout_metadata={}, is_primary=True,
+            ))
+            twin.commit()
+        finally:
+            twin.close()
+        return []
+
+    def boom(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("resolution exploded")
+
+    monkeypatch.setattr(intake_module, "_load_existing_identifiers", commit_twin_then_resume)
+    monkeypatch.setattr(intake_module, "resolve", boom)
+
+    result = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+
+    assert result.status == IntakeStatus.ERROR
+    stored = [
+        p for p in Path(test_settings.cas_root_dir).rglob("*")
+        if p.is_file() and p.name.startswith(file_hash)
+    ]
+    assert len(stored) == 1
+
+
+def test_success_release_allows_later_cleanup_of_other_files(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    """Success drops the hold, so unrelated rejections still purge their bytes."""
+    ok = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+    assert ok.status == IntakeStatus.INGESTED
+
+    rejected = ingest_file(
+        content=CONTRACT_TEXT.encode("utf-8"), filename="REFERRAL AGREEMENT.pdf", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert rejected.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+def test_success_holds_reference_until_caller_commits(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    """PR #25 review round 2: the hold must survive until the caller's commit.
+
+    While upload A is done-but-uncommitted, a rejecting identical upload B
+    must not be able to delete the shared CAS object.
+    """
+    content = RESUME_TEXT.encode("utf-8")
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    first = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    assert first.status == IntakeStatus.INGESTED
+    assert file_hash in intake_module._CAS_ACTIVE_REFS
+
+    mock_extraction.update({
+        "first_name": "Uploaded",
+        "last_name": "Candidate",
+        "primary_email": None,
+        "primary_phone": None,
+        "current_title": "",
+    })
+    # Real overlap uses separate sessions per upload; a shared session would
+    # see the first pipeline's flushed-but-uncommitted row in the dup check.
+    twin_db = sessionmaker(autocommit=False, autoflush=False, bind=db_session.get_bind())()
+    try:
+        twin = ingest_file(
+            content=content, filename="twin.txt", db=twin_db, cas_mgr=cas_mgr,
+            vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+            timeline_mode=TimelineMode.LEDGER,
+        )
+    finally:
+        twin_db.rollback()
+        twin_db.close()
+    assert twin.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+    db_session.commit()
+    assert file_hash not in intake_module._CAS_ACTIVE_REFS
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+# ---------------------------------------------------------------------------
+# Issue #15: MERGE refreshes candidate profile from the new primary RV
+# ---------------------------------------------------------------------------
+
+def test_merge_refreshes_profile_fields_and_fts(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    existing_id = str(uuid.uuid4())
+    db_session.add(Candidate(
+        id=existing_id,
+        first_name="Jane",
+        last_name="Doe",
+        primary_email="stale@example.com",
+        primary_phone="000-000-0000",
+        current_title="Old Title",
+    ))
+    db_session.commit()
+
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+
+    assert result.status == IntakeStatus.MERGED
+    cand = db_session.get(Candidate, existing_id)
+    assert cand.first_name == "Jane"
+    assert cand.last_name == "Doe"
+    assert cand.primary_email == "jane.doe@example.com"
+    assert cand.primary_phone == "555-123-4567"
+    assert cand.current_title == "Engineer"
+
+    audits = db_session.query(EntityResolutionAudit).all()
+    assert len(audits) == 1 and audits[0].resolution_type == "MERGE"
+
+    from sqlalchemy import text as sql_text
+    fts_rows = db_session.execute(
+        sql_text("SELECT full_name, current_title FROM candidate_fts WHERE candidate_id = :cid"),
+        {"cid": existing_id},
+    ).fetchall()
+    assert len(fts_rows) == 1
+    assert fts_rows[0].full_name == "Jane Doe"
+    assert fts_rows[0].current_title == "Engineer"
+
+
+def test_merge_preserves_fields_when_extraction_omits_them(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    existing_id = str(uuid.uuid4())
+    db_session.add(Candidate(
+        id=existing_id,
+        first_name="Jane",
+        last_name="Doe",
+        primary_email="keep@example.com",
+        primary_phone="111-222-3333",
+        current_title="Keeper Title",
+    ))
+    db_session.commit()
+
+    mock_extraction.update({"primary_email": "", "primary_phone": "", "current_title": ""})
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+
+    assert result.status == IntakeStatus.MERGED
+    cand = db_session.get(Candidate, existing_id)
+    assert cand.primary_email == "keep@example.com"
+    assert cand.primary_phone == "111-222-3333"
+    assert cand.current_title == "Keeper Title"
+    assert cand.first_name == "Jane" and cand.last_name == "Doe"
+
+
+def test_new_candidate_path_untouched_by_merge_refresh(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+
+    assert result.status == IntakeStatus.INGESTED
+    cand = db_session.get(Candidate, result.candidate_id)
+    assert cand.first_name == "Jane"
+    assert cand.primary_email == "jane.doe@example.com"
+    assert cand.current_title == "Engineer"

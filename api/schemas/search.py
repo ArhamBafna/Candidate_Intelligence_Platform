@@ -6,7 +6,7 @@ class SearchQueryRequest(BaseModel):
     min_yoe: Optional[float] = None
     city: Optional[str] = None
     title: Optional[str] = None
-    top_k: int = 10
+    top_k: Optional[int] = None
 
 class SearchResultItem(BaseModel):
     candidate_id: str
@@ -22,4 +22,5 @@ class SearchResponse(BaseModel):
     total_results: int
     results: List[SearchResultItem]
     warnings: List[str] = Field(default_factory=list)
+    job_ad_recipe: Optional[Dict[str, Any]] = None
 
