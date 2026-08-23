@@ -185,6 +185,18 @@ def pytest_addoption(parser):
         default=False,
         help="Run live Ollama LLM integration tests",
     )
+    parser.addoption(
+        "--run-eval",
+        action="store_true",
+        default=False,
+        help="Run the golden-set search accuracy evaluation (loads real local models)",
+    )
+    parser.addoption(
+        "--update-baseline",
+        action="store_true",
+        default=False,
+        help="With --run-eval: rewrite tests/fixtures/golden_baseline.json with current metrics",
+    )
 
 def pytest_collection_modifyitems(config, items):
     if not config.getoption("--run-ollama"):
@@ -192,4 +204,9 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "ollama" in item.keywords:
                 item.add_marker(skip_ollama)
+    if not config.getoption("--run-eval"):
+        skip_eval = pytest.mark.skip(reason="Pass --run-eval flag to run the golden-set evaluation (real local models)")
+        for item in items:
+            if "evaluation" in item.keywords:
+                item.add_marker(skip_eval)
 

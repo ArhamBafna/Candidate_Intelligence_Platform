@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "description": "Golden evaluation set: ingested fixture resumes paired with saved searches and the candidate ids that must appear in top results.",
+  "resumes": [
+    {
+      "id": "g_py_nyc_9",
+      "first_name": "Rohan",
+      "last_name": "Mehta",
+      "current_city": "NYC",
+      "current_title": "Python Backend Engineer",
+      "total_yoe": 9,
+      "resume_text": "SUMMARY\nBackend engineer with nine years building large-scale services.\n\nSKILLS\npython, django, fastapi, postgres, redis, kubernetes, docker\n\nWORK_EXPERIENCE\nSenior Python Backend Engineer at FinCore (2019-2026). Built payment services with python and fastapi on kubernetes.\nBackend Engineer at ShopStream (2017-2019). Developed django APIs backed by postgres.\n\nEDUCATION\nB.S. Computer Science, NYU\n"
+    },
+    {
+      "id": "g_py_sf_4",
+      "first_name": "Lena",
+      "last_name": "Ortiz",
+      "current_city": "SF",
+      "current_title": "Python Developer",
+      "total_yoe": 4,
+      "resume_text": "SUMMARY\nDeveloper focused on web services in python.\n\nSKILLS\npython, flask, sql, html, css\n\nWORK_EXPERIENCE\nPython Developer at BayApps (2022-2026). Built flask services and sql schemas.\n\nEDUCATION\nB.A. Information Systems, SFSU\n"
+    },
+    {
+      "id": "g_data_nyc_6",
+      "first_name": "Aisha",
+      "last_name": "Khan",
+      "current_city": "NYC",
+      "current_title": "Data Engineer",
+      "total_yoe": 6,
+      "resume_text": "SUMMARY\nData engineer moving bytes reliably at scale.\n\nSKILLS\npython, airflow, spark, sql, postgres, dbt\n\nWORK_EXPERIENCE\nData Engineer at MediaGrid (2021-2026). Built airflow pipelines and spark jobs feeding postgres warehouses.\nAnalytics Engineer at AdLoop (2020-2021). Modeled data with dbt and sql.\n\nEDUCATION\nM.S. Data Science, Columbia\n"
+    },
+    {
+      "id": "g_ml_austin_7",
+      "first_name": "Diego",
+      "last_name": "Alvarez",
+      "current_city": "Austin",
+      "current_title": "Machine Learning Engineer",
+      "total_yoe": 7,
+      "resume_text": "SUMMARY\nML engineer shipping models to production.\n\nSKILLS\npython, pytorch, embeddings, rag, transformers, vector databases\n\nWORK_EXPERIENCE\nMachine Learning Engineer at AutoNLP (2020-2026). Built retrieval augmented generation pipelines with pytorch and vector search.\nML Engineer at VisionWorks (2019-2020). Trained transformer models.\n\nEDUCATION\nPh.D. Machine Learning, UT Austin\n"
+    },
+    {
+      "id": "g_fe_remote_5",
+      "first_name": "Priya",
+      "last_name": "Nair",
+      "current_city": "Remote",
+      "current_title": "Frontend Engineer",
+      "total_yoe": 5,
+      "resume_text": "SUMMARY\nFrontend specialist crafting interfaces.\n\nSKILLS\nreact, typescript, javascript, css, testing-library\n\nWORK_EXPERIENCE\nFrontend Engineer at CloudDesk (2021-2026). Built react dashboards with typescript.\nUI Engineer at PixelForge (2020-2021). Shipped javascript components.\n\nEDUCATION\nB.S. Computer Science, ASU\n"
+    },
+    {
+      "id": "g_devops_austin_8",
+      "first_name": "Marcus",
+      "last_name": "Boyd",
+      "current_city": "Austin",
+      "current_title": "DevOps Engineer",
+      "total_yoe": 8,
+      "resume_text": "SUMMARY\nInfrastructure engineer keeping clusters healthy.\n\nSKILLS\nkubernetes, terraform, aws, docker, prometheus, linux\n\nWORK_EXPERIENCE\nDevOps Engineer at RanchOps (2019-2026). Ran kubernetes fleets on aws with terraform and docker.\nSystems Engineer at CoreStack (2017-2019). Automated provisioning with terraform.\n\nEDUCATION\nB.S. Computer Engineering, Texas A&M\n"
+    },
+    {
+      "id": "g_java_nyc_10",
+      "first_name": "Sofia",
+      "last_name": "Rossi",
+      "current_city": "NYC",
+      "current_title": "Senior Java Engineer",
+      "total_yoe": 10,
+      "resume_text": "SUMMARY\nJava platform engineer with a decade of enterprise systems.\n\nSKILLS\njava, spring, microservices, kafka, oracle\n\nWORK_EXPERIENCE\nSenior Java Engineer at BankStack (2017-2026). Built microservices with spring and kafka.\nJava Engineer at TradeWorks (2014-2017). Maintained settlement systems.\n\nEDUCATION\nM.S. Software Engineering, NYU\n"
+    },
+    {
+      "id": "g_fe_nyc_3",
+      "first_name": "Tim",
+      "last_name": "Doyle",
+      "current_city": "NYC",
+      "current_title": "Junior React Engineer",
+      "total_yoe": 3,
+      "resume_text": "SUMMARY\nEarly-career frontend developer.\n\nSKILLS\nreact, javascript, css, html\n\nWORK_EXPERIENCE\nJunior React Engineer at LocalLyft (2023-2026). Built react pages and css components.\n\nEDUCATION\nB.A. Media Studies, Fordham\n"
+    },
+    {
+      "id": "g_analyst_sf_2",
+      "first_name": "Grace",
+      "last_name": "Lim",
+      "current_city": "SF",
+      "current_title": "Data Analyst",
+      "total_yoe": 2,
+      "resume_text": "SUMMARY\nAnalyst turning numbers into narratives.\n\nSKILLS\nsql, excel, tableau, dashboards\n\nWORK_EXPERIENCE\nData Analyst at GrowthLab (2024-2026). Built tableau dashboards with sql.\n\nEDUCATION\nB.S. Statistics, UC Davis\n"
+    },
+    {
+      "id": "g_ml_sf_11",
+      "first_name": "Kenji",
+      "last_name": "Sato",
+      "current_city": "SF",
+      "current_title": "Principal ML Engineer",
+      "total_yoe": 11,
+      "resume_text": "SUMMARY\nPrincipal-level machine learning engineer leading applied research.\n\nSKILLS\npytorch, llm, mlops, embeddings, distributed training, python\n\nWORK_EXPERIENCE\nPrincipal ML Engineer at DeepBay (2018-2026). Led llm fine-tuning and mlops platforms with pytorch.\nSenior ML Engineer at SearchLight (2014-2018). Built embedding-based ranking.\n\nEDUCATION\nPh.D. Computer Science, Stanford\n"
+    },
+    {
+      "id": "g_qa_austin_3",
+      "first_name": "Nina",
+      "last_name": "Petrov",
+      "current_city": "Austin",
+      "current_title": "QA Automation Engineer",
+      "total_yoe": 3,
+      "resume_text": "SUMMARY\nQuality engineer automating regression suites.\n\nSKILLS\npytest, selenium, python, ci cd, playwright\n\nWORK_EXPERIENCE\nQA Automation Engineer at TestHub (2023-2026). Wrote pytest suites and selenium flows.\n\nEDUCATION\nB.S. Information Technology, UT Austin\n"
+    },
+    {
+      "id": "g_pm_remote_6",
+      "first_name": "Omar",
+      "last_name": "Haddad",
+      "current_city": "Remote",
+      "current_title": "Product Manager",
+      "total_yoe": 6,
+      "resume_text": "SUMMARY\nProduct manager aligning roadmaps with outcomes.\n\nSKILLS\nroadmap, discovery, analytics, stakeholder management, agile\n\nWORK_EXPERIENCE\nProduct Manager at FlowHQ (2021-2026). Owned roadmap and discovery for workflow product.\nAssociate PM at BrightApps (2019-2021). Ran experiments and analytics reviews.\n\nEDUCATION\nMBA, Wharton\n"
+    }
+  ],
+  "searches": [
+    { "query": "python backend engineer", "expected": ["g_py_nyc_9"] },
+    { "query": "kubernetes terraform devops", "expected": ["g_devops_austin_8"] },
+    { "query": "react frontend developer", "expected": ["g_fe_remote_5", "g_fe_nyc_3"] },
+    { "query": "machine learning pytorch", "expected": ["g_ml_austin_7", "g_ml_sf_11"] },
+    { "query": "data pipelines airflow spark", "expected": ["g_data_nyc_6"] },
+    { "query": "java spring microservices", "expected": ["g_java_nyc_10"] },
+    { "query": "pytest selenium automation", "expected": ["g_qa_austin_3"] },
+    { "query": "python AND location:'NYC'", "expected": ["g_py_nyc_9", "g_data_nyc_6"] },
+    { "query": "engineer AND yoe >= 8", "expected": ["g_py_nyc_9", "g_devops_austin_8", "g_java_nyc_10"] },
+    { "query": "python AND title:'Data Engineer'", "expected": ["g_data_nyc_6"] },
+    { "query": "react AND location:'Remote'", "expected": ["g_fe_remote_5"] },
+    { "query": "pytorch AND yoe >= 10", "expected": ["g_ml_sf_11"] },
+    { "query": "senior python engineer with postgres and kubernetes", "expected": ["g_py_nyc_9"] },
+    { "query": "product manager roadmap", "expected": ["g_pm_remote_6"] },
+    { "query": "sql analytics dashboards", "expected": ["g_analyst_sf_2", "g_data_nyc_6"] },
+    { "query": "location:'Austin' AND yoe >= 5", "expected": ["g_devops_austin_8", "g_ml_austin_7"] },
+    { "query": "flask developer san francisco", "expected": ["g_py_sf_4"] },
+    { "query": "llm mlops embeddings", "expected": ["g_ml_sf_11", "g_ml_austin_7"] },
+    { "query": "junior react css javascript", "expected": ["g_fe_nyc_3"] },
+    { "query": "docker aws infrastructure", "expected": ["g_devops_austin_8"] }
+  ]
+}

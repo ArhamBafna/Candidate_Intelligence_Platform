@@ -31,6 +31,7 @@ candidate-intelligence-platform = "candidate_intelligence_platform:main"
 pythonpath = ["."]
 markers = [
     "ollama: marks tests as requiring live Ollama instance (skipped by default, run with --run-ollama)",
+    "evaluation: marks golden-set search accuracy evaluation tests loading real local models (skipped by default, run with --run-eval)",
 ]
 
 [build-system]
