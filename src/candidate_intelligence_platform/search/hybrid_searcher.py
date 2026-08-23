@@ -48,8 +48,15 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], v
             warnings.append("Semantic vector search skipped (candidate_vectors table not found); showing keyword matches.")
         return {}
         
+    pool_size = Settings().vector_pool_size
     try:
-        results = table.search(query_vector).limit(Settings().vector_pool_size).to_list()
+        search_query = table.search(query_vector)
+        if candidate_ids:
+            # Restriction must be applied as a prefilter so it takes effect
+            # before the pool-size limit truncates the result list.
+            escaped_ids = ",".join("'" + cid.replace("'", "''") + "'" for cid in candidate_ids)
+            search_query = search_query.where(f"candidate_id IN ({escaped_ids})", prefilter=True)
+        results = search_query.limit(pool_size).to_list()
     except Exception as e:
         logger.warning("ai_vector_search_failed", query=query_text, error=str(e), action="falling_back_to_keyword_search")
         if warnings is not None:

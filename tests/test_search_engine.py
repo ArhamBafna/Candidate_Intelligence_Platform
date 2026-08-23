@@ -257,6 +257,130 @@ def test_execute_vector_search_respects_pool_size(monkeypatch):
     assert captured["limit"] == 3
     assert len(ranks) == 3
 
+def test_execute_vector_search_prefilters_before_limit(monkeypatch):
+    """candidate restriction is applied inside the vector store before the limit."""
+    calls = {}
+
+    class FakeSearch:
+        def where(self, clause, prefilter=None):
+            calls["where"] = clause
+            calls["prefilter"] = prefilter
+            return self
+        def limit(self, n):
+            calls["limit"] = n
+            return self
+        def to_list(self):
+            # Rows that fail the restriction would normally occupy the slice.
+            return [
+                {"candidate_id": "cand_pass_2"},
+                {"candidate_id": "cand_fail"},
+                {"candidate_id": "cand_pass_1"},
+                {"candidate_id": "cand_pass_2"},
+            ]
+
+    class FakeTable:
+        def search(self, vector):
+            calls["searched"] = True
+            return FakeSearch()
+
+    class FakeVectorDB:
+        def open_table(self, name):
+            return FakeTable()
+
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.1, 0.2])
+
+    ranks = execute_vector_search(
+        "python dev", ["cand_pass_1", "cand_pass_2"], FakeVectorDB()
+    )
+
+    assert calls["searched"] is True
+    assert calls["prefilter"] is True
+    assert "'cand_pass_1'" in calls["where"]
+    assert "'cand_pass_2'" in calls["where"]
+    assert "cand_fail" not in calls["where"]
+    assert calls["limit"] == Settings().vector_pool_size
+    assert set(ranks) == {"cand_pass_2", "cand_pass_1"}
+
+def test_execute_vector_search_no_restriction_for_pure_semantic(monkeypatch):
+    """No keyword matches means no restriction: global search unchanged."""
+    calls = {}
+
+    class FakeSearch:
+        def where(self, clause, prefilter=None):
+            calls["where"] = clause
+            return self
+        def limit(self, n):
+            return self
+        def to_list(self):
+            return [{"candidate_id": "anyone"}]
+
+    class FakeTable:
+        def search(self, vector):
+            return FakeSearch()
+
+    class FakeVectorDB:
+        def open_table(self, name):
+            return FakeTable()
+
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.1, 0.2])
+
+    ranks = execute_vector_search("python dev", None, FakeVectorDB())
+
+    assert "where" not in calls
+    assert ranks == {"anyone": 1}
+
+def test_execute_vector_search_prefilter_end_to_end(tmp_path, monkeypatch):
+    """Real LanceDB store: filtered candidate must survive even when it falls
+    outside the global top slice that the limit would keep."""
+    import lancedb
+    from storage.vector_store import CandidateSectionVector
+
+    def make_vec(base: float) -> list[float]:
+        return [base] * 384
+
+    db_path = str(tmp_path / "lancedb_prefilter")
+    db = lancedb.connect(db_path)
+    tbl = db.create_table("candidate_vectors", schema=CandidateSectionVector)
+
+    rows = []
+    for i in range(3):
+        rows.append({
+            "chunk_id": f"decoy_{i}",
+            "candidate_id": "cand_decoy",
+            "resume_version_id": f"rv_decoy_{i}",
+            "section_type": "SUMMARY",
+            "chunk_text": "decoy content",
+            "vector": make_vec(1.0),
+            "start_offset": 0,
+            "end_offset": 13,
+        })
+    rows.append({
+        "chunk_id": "target_chunk",
+        "candidate_id": "cand_target",
+        "resume_version_id": "rv_target",
+        "section_type": "SKILLS",
+        "chunk_text": "target skills",
+        "vector": make_vec(0.5),
+        "start_offset": 0,
+        "end_offset": 13,
+    })
+    tbl.add(rows)
+
+    query_vector = make_vec(1.0)
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.search.hybrid_searcher.generate_single_embedding",
+        lambda text: query_vector,
+    )
+    monkeypatch.setenv("CIP_VECTOR_POOL_SIZE", "2")
+
+    restricted = execute_vector_search("skills", ["cand_target"], db)
+    assert restricted == {"cand_target": 1}
+
+    unrestricted = execute_vector_search("skills", None, db)
+    assert unrestricted == {"cand_decoy": 1}
+
 def test_fetch_candidate_documents_empty():
     from candidate_intelligence_platform.search.hybrid_searcher import fetch_candidate_documents
     docs = fetch_candidate_documents([], None)
