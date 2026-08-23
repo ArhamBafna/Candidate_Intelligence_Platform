@@ -122,7 +122,7 @@ def fetch_candidate_documents(candidate_ids: List[str], db: Session) -> List[str
     doc_map = {row.candidate_id: row.raw_text for row in docs}
     return [doc_map.get(cid, "") for cid in candidate_ids]
 
-def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: bool = False) -> Generator[Tuple[str, int, str, Any], None, None]:
+def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: bool = False, semantic_query: Optional[str] = None) -> Generator[Tuple[str, int, str, Any], None, None]:
     warnings = []
     
     yield ("STARTING", 0, "Initializing search...", None)
@@ -137,8 +137,11 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     filtered_ids = list(fts_ranks.keys())
     
     yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
-    # If no filtered_ids, search across all candidates in vector index
-    vector_ranks = execute_vector_search(fts_query, filtered_ids or None, vector_db, warnings=warnings)
+    # If no filtered_ids, search across all candidates in vector index.
+    # semantic_query overrides the embedding input (e.g. distilled job-ad
+    # summary); it is still pure free text with no filter tokens.
+    vector_input = semantic_query if semantic_query else fts_query
+    vector_ranks = execute_vector_search(vector_input, filtered_ids or None, vector_db, warnings=warnings)
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
@@ -166,8 +169,9 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
 
     doc_map = dict(zip(top_candidates, documents))
     strict_filters = _describe_strict_filters(params)
+    rerank_input = semantic_query if semantic_query else query
     try:
-        rerank_scores = rerank_candidates(query, documents)
+        rerank_scores = rerank_candidates(rerank_input, documents)
         reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
     except Exception as e:
         logger.warning("ai_reranking_failed", query=query, error=str(e), action="keeping_fusion_order")

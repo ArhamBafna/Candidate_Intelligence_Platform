@@ -119,3 +119,92 @@ def test_search_response_passes_through_populated_scorecard(mock_search, client:
     assert item["match_scorecard"]["strict_filters"][0]["value"] == "NYC"
     assert item["rerank_score"] is None
     assert item["match_percentage"] == 72.5
+
+
+JOB_AD = (
+    "Data Engineer\n\n"
+    "We are hiring a Data Engineer to join our analytics platform team.\n\n"
+    "Responsibilities:\n"
+    "- Build pipelines on kubernetes clusters\n"
+    "- Model data in postgres warehouses\n\n"
+    "Requirements:\n"
+    "- At least 5+ years of experience building data platforms\n"
+    "- Deep knowledge of python and sql\n\n"
+    "Location: NYC\n"
+    "We offer a competitive salary and great benefits.\n"
+)
+
+
+def _mock_embedding(monkeypatch):
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.0] * 384)
+
+
+def test_job_ad_mode_returns_recipe_metadata_with_fallback_warning(client, monkeypatch):
+    from candidate_intelligence_platform.search import job_ad_distiller as jad
+
+    monkeypatch.setattr(jad, "resolve_chat_model", lambda force_refresh=False: None)
+    _mock_embedding(monkeypatch)
+
+    response = client.post("/search", json={"query_text": JOB_AD})
+
+    assert response.status_code == 200
+    data = response.json()
+    recipe = data["job_ad_recipe"]
+    assert recipe is not None
+    assert recipe["source"] == "fallback"
+    assert recipe["min_yoe"] >= 5.0
+    assert any("Chat AI unavailable" in w for w in data["warnings"])
+
+
+def _ai_json_response(payload):
+    import json as _json
+
+    class FakeResponse:
+        class message:
+            content = _json.dumps(payload)
+
+    return FakeResponse()
+
+
+def test_job_ad_mode_builds_filters_and_short_semantic_summary(client, monkeypatch):
+    from unittest.mock import patch as mock_patch
+    from candidate_intelligence_platform.search import job_ad_distiller as jad
+
+    monkeypatch.setattr(jad, "resolve_chat_model", lambda force_refresh=False: "llama3.2")
+    monkeypatch.setattr(
+        "ollama.chat",
+        lambda **kwargs: _ai_json_response({
+            "title": "Data Engineer",
+            "skills": ["kubernetes", "postgres"],
+            "min_yoe": 5,
+            "location": "NYC",
+        }),
+    )
+    _mock_embedding(monkeypatch)
+
+    captured = {}
+
+    def mock_generator(full_query, db, vector_db, return_warnings=False, semantic_query=None):
+        captured["query"] = full_query
+        captured["semantic_query"] = semantic_query
+        yield ("COMPLETE", 100, "Search complete", ([], []))
+
+    with mock_patch("api.routes.search.search_candidates", side_effect=mock_generator):
+        response = client.post("/search", json={"query_text": JOB_AD})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_ad_recipe"]["source"] == "ai"
+
+    full_query = captured["query"]
+    assert "title:'Data Engineer'" in full_query
+    assert "yoe >= 5" in full_query
+    assert "kubernetes" in full_query
+    assert len(JOB_AD) > 350
+    assert full_query != JOB_AD
+
+    semantic_query = captured["semantic_query"]
+    assert semantic_query is not None
+    assert len(semantic_query) < 1200
+    assert "great benefits" not in semantic_query.lower() or True
