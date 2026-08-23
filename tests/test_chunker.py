@@ -105,3 +105,103 @@ def test_empty_document_yields_empty_list():
     doc = _make_doc("")
     result = chunk_document(doc, candidate_id="cand-1", section_name="SUMMARY")
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Section-aware splitting (chunk_resume)
+# ---------------------------------------------------------------------------
+
+from ingestion.chunker import chunk_resume, split_resume_sections
+
+RESUME_TEXT = """Arham Bafna
+Backend engineer based in NYC.
+
+SUMMARY
+Five years building data platforms and search systems.
+
+SKILLS
+Python, SQL, FastAPI, LanceDB, Docker.
+
+WORK_EXPERIENCE
+Senior Engineer at Acme (2021-2024). Built hybrid search pipelines.
+Engineer at Globex (2018-2021). Shipped ETL tooling.
+
+EDUCATION
+B.Tech in Computer Science, State University.
+"""
+
+
+def test_split_resume_sections_detects_true_types():
+    sections = split_resume_sections(RESUME_TEXT)
+    names = [name for name, _ in sections]
+    assert names == ["SUMMARY", "SKILLS", "WORK_EXPERIENCE", "EDUCATION"]
+    by_name = dict(sections)
+    assert "data platforms" in by_name["SUMMARY"]
+    assert "FastAPI" in by_name["SKILLS"]
+    assert "Acme" in by_name["WORK_EXPERIENCE"]
+    assert "State University" in by_name["EDUCATION"]
+
+
+def test_split_resume_sections_preamble_becomes_summary():
+    text = "Jane Doe\nContact line.\nSKILLS\nPython"
+    sections = split_resume_sections(text)
+    assert sections[0][0] == "SUMMARY"
+    assert "Jane Doe" in sections[0][1]
+
+
+def test_split_resume_sections_no_headers_single_summary():
+    text = "Plain resume with no headers at all.\nJust prose."
+    sections = split_resume_sections(text)
+    assert len(sections) == 1
+    assert sections[0][0] == "SUMMARY"
+
+
+def test_split_resume_sections_case_insensitive_and_colon():
+    text = "TECHNICAL SKILLS:\nPython\nEducation\nSome school"
+    sections = split_resume_sections(text)
+    names = [name for name, _ in sections]
+    assert names == ["SKILLS", "EDUCATION"]
+
+
+def test_chunk_resume_labels_chunks_with_section_types():
+    doc = _make_doc(RESUME_TEXT)
+    chunks = chunk_resume(doc, candidate_id="cand-1")
+
+    assert len(chunks) > 0
+    labeled = {c.section_name for c in chunks}
+    assert {"SUMMARY", "SKILLS", "WORK_EXPERIENCE", "EDUCATION"} <= labeled
+    # Skills content never lands under a different section label.
+    for chunk in chunks:
+        if "FastAPI" in chunk.text:
+            assert chunk.section_name == "SKILLS"
+
+
+def test_chunk_resume_respects_chunk_size_per_section():
+    doc = _make_doc("SKILLS\n" + ("python rust go " * 200))
+    chunks = chunk_resume(doc, candidate_id="cand-1", chunk_size=100, chunk_overlap=20)
+
+    assert len(chunks) > 1
+    for chunk in chunks:
+        assert len(chunk.text) <= 100
+        assert chunk.section_name == "SKILLS"
+
+
+def test_chunk_resume_offsets_index_source_text():
+    doc = _make_doc(RESUME_TEXT)
+    source = doc.text
+    chunks = chunk_resume(doc, candidate_id="cand-1")
+
+    for chunk in chunks:
+        assert 0 <= chunk.start_offset < chunk.end_offset <= len(source)
+        assert source[chunk.start_offset:chunk.end_offset].strip()
+
+
+def test_chunk_resume_whole_doc_as_one_summary_is_gone():
+    doc = _make_doc(RESUME_TEXT)
+    chunks = chunk_resume(doc, candidate_id="cand-1")
+    assert len({c.section_name for c in chunks}) > 1
+
+
+def test_chunk_resume_empty_document_yields_empty_list():
+    doc = _make_doc("")
+    assert chunk_resume(doc, candidate_id="cand-1") == []
