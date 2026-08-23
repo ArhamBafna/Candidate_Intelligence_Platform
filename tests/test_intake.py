@@ -221,8 +221,14 @@ def test_merge_writes_audit_new_is_silent(db_session, test_settings, cas_mgr, ve
     assert audit.primary_candidate_id == existing_id
     assert audit.merged_candidate_id == existing_id
 
+    # Distinct contact facts: after #15 the merged Jane carries the extracted
+    # phone/email, so an unrelated person must not tier1-match her.
     fresh_text = RESUME_TEXT.replace("Jane", "Zack").replace("jane.doe@example.com", "zack@example.com")
-    mock_extraction.update({"first_name": "Zack", "primary_email": "zack@example.com"})
+    mock_extraction.update({
+        "first_name": "Zack",
+        "primary_email": "zack@example.com",
+        "primary_phone": "555-987-6543",
+    })
     new_result = ingest_file(
         content=fresh_text.encode("utf-8"), filename="zack.txt", db=db_session, cas_mgr=cas_mgr,
         vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
@@ -385,3 +391,186 @@ def test_ui_duplicate_chip_wired():
     assert "resolution_action === 'REVIEW'" in source
     assert "matched_candidate_id" in source
     assert "Possible duplicate?" in source
+
+
+# ---------------------------------------------------------------------------
+# Issue #14: rejected uploads leave zero CAS files behind
+# ---------------------------------------------------------------------------
+
+def _cas_file_count(cas_root: str) -> int:
+    return sum(1 for p in Path(cas_root).rglob("*") if p.is_file())
+
+
+def test_classifier_rejection_purges_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    result = ingest_file(
+        content=CONTRACT_TEXT.encode("utf-8"), filename="REFERRAL AGREEMENT.pdf", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert result.classified_as == "NON_RESUME_LEGAL_CONTRACT"
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+    assert db_session.query(Candidate).count() == 0
+    assert db_session.query(ResumeVersion).count() == 0
+
+
+def test_dummy_profile_rejection_purges_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    mock_extraction.update({
+        "first_name": "Uploaded",
+        "last_name": "Candidate",
+        "primary_email": None,
+        "primary_phone": None,
+        "current_title": "",
+    })
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert result.classified_as == "AI_CLASSIFIED_NOT_RESUME"
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+
+
+def test_error_after_store_purges_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction, monkeypatch):
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    def boom(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("resolution exploded")
+
+    monkeypatch.setattr(intake_module, "resolve", boom)
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.ERROR
+    assert _cas_file_count(test_settings.cas_root_dir) == 0
+
+
+def test_successful_ingest_keeps_exactly_one_cas_file(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+    assert result.status == IntakeStatus.INGESTED
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+def test_duplicate_skip_never_stores_or_purges(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    content = RESUME_TEXT.encode("utf-8")
+    first = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+    assert first.status == IntakeStatus.INGESTED
+
+    second = ingest_file(
+        content=content, filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
+    )
+    assert second.status == IntakeStatus.SKIPPED_DUPLICATE
+    assert _cas_file_count(test_settings.cas_root_dir) == 1
+
+
+def test_purge_failure_degrades_to_warning(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    cas_mgr.delete = lambda file_path: False  # type: ignore[method-assign]
+    result = ingest_file(
+        content=CONTRACT_TEXT.encode("utf-8"), filename="REFERRAL AGREEMENT.pdf", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    assert result.status == IntakeStatus.SKIPPED_NON_RESUME
+    assert any("CAS purge failed" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# Issue #15: MERGE refreshes candidate profile from the new primary RV
+# ---------------------------------------------------------------------------
+
+def test_merge_refreshes_profile_fields_and_fts(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    existing_id = str(uuid.uuid4())
+    db_session.add(Candidate(
+        id=existing_id,
+        first_name="Jane",
+        last_name="Doe",
+        primary_email="stale@example.com",
+        primary_phone="000-000-0000",
+        current_title="Old Title",
+    ))
+    db_session.commit()
+
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+
+    assert result.status == IntakeStatus.MERGED
+    cand = db_session.get(Candidate, existing_id)
+    assert cand.first_name == "Jane"
+    assert cand.last_name == "Doe"
+    assert cand.primary_email == "jane.doe@example.com"
+    assert cand.primary_phone == "555-123-4567"
+    assert cand.current_title == "Engineer"
+
+    audits = db_session.query(EntityResolutionAudit).all()
+    assert len(audits) == 1 and audits[0].resolution_type == "MERGE"
+
+    from sqlalchemy import text as sql_text
+    fts_rows = db_session.execute(
+        sql_text("SELECT full_name, current_title FROM candidate_fts WHERE candidate_id = :cid"),
+        {"cid": existing_id},
+    ).fetchall()
+    assert len(fts_rows) == 1
+    assert fts_rows[0].full_name == "Jane Doe"
+    assert fts_rows[0].current_title == "Engineer"
+
+
+def test_merge_preserves_fields_when_extraction_omits_them(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    existing_id = str(uuid.uuid4())
+    db_session.add(Candidate(
+        id=existing_id,
+        first_name="Jane",
+        last_name="Doe",
+        primary_email="keep@example.com",
+        primary_phone="111-222-3333",
+        current_title="Keeper Title",
+    ))
+    db_session.commit()
+
+    mock_extraction.update({"primary_email": "", "primary_phone": "", "current_title": ""})
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+
+    assert result.status == IntakeStatus.MERGED
+    cand = db_session.get(Candidate, existing_id)
+    assert cand.primary_email == "keep@example.com"
+    assert cand.primary_phone == "111-222-3333"
+    assert cand.current_title == "Keeper Title"
+    assert cand.first_name == "Jane" and cand.last_name == "Doe"
+
+
+def test_new_candidate_path_untouched_by_merge_refresh(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+    )
+    db_session.commit()
+
+    assert result.status == IntakeStatus.INGESTED
+    cand = db_session.get(Candidate, result.candidate_id)
+    assert cand.first_name == "Jane"
+    assert cand.primary_email == "jane.doe@example.com"
+    assert cand.current_title == "Engineer"

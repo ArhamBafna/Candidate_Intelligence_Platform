@@ -219,6 +219,26 @@ def _is_dummy_profile(first_name: str, last_name: str, email: Optional[str], pho
     return is_dummy_name and not email and not phone
 
 
+def _purge_cas_object(cas_mgr: CASManager, cas_path: Optional[str], warnings: List[str]) -> None:
+    """Issue #14: a rejected upload leaves no trace - best-effort CAS purge.
+
+    Never fatal: on failure the rejection still returns normally and a warning
+    is attached so operators can see the cleanup could not happen.
+    """
+    if not cas_path:
+        return
+    try:
+        purged = cas_mgr.delete(cas_path)
+    except Exception as e:
+        purged = False
+        error = str(e)
+    else:
+        error = "CAS delete reported failure"
+    if not purged:
+        warnings.append(f"CAS purge failed for rejected document ({error}).")
+        logger.warning("cas_purge_failed", cas_path=cas_path, error=error)
+
+
 def _load_existing_identifiers(db: Session) -> List[CandidateIdentifiers]:
     existing_cands = db.query(Candidate).all()
     identifiers: List[CandidateIdentifiers] = []
@@ -301,6 +321,7 @@ def ingest_file(
       2. CAS store
       3. parse (pdf/docx/eml/msg dispatch + raw-text fallback)
       4. classify_document -> SKIPPED_NON_RESUME on reject, nothing persisted
+         (stored bytes purged, #14)
       5. extraction exactly once with settings.extraction_confidence_threshold (D13)
       6. entity resolution vs current candidates, thresholds from Settings (D4)
       7. vector embeddings via CandidateService.update_vector_index BEFORE any
@@ -309,9 +330,10 @@ def ingest_file(
       8. persist + flush, NO commit - caller commits once and owns rollback (D7)
       9. audit rows per #8 (MERGE and REVIEW write; NEW silent)
      10. FTS via CandidateService.update_fts_index (single SQL copy, D8)
-     11. timeline per timeline_mode (D3)
+      11. timeline per timeline_mode (D3)
     """
     warnings: List[str] = []
+    cas_path: Optional[str] = None
     try:
         # 1. Hash once + duplicate check before CAS store (D5)
         _emit(on_progress, "HASHING", 10, "Computing file hash and checking for duplicates")
@@ -338,12 +360,16 @@ def ingest_file(
         _emit(on_progress, "CLASSIFYING", 40, "Verifying document is a genuine resume")
         is_resume, category, reason = classify_document(raw_text, filename)
         if not is_resume:
+            # Purge warnings isolated so the payload keeps reason as warnings[0]
+            # and stays byte-identical to the pre-#14 contract on success.
+            purge_warnings: List[str] = []
+            _purge_cas_object(cas_mgr, cas_path, purge_warnings)
             logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category)
             _emit(on_progress, "COMPLETED", 100, reason, {"status": "SKIPPED_NON_RESUME", "classified_as": category})
             return IntakeResult(
                 status=IntakeStatus.SKIPPED_NON_RESUME,
                 classified_as=category,
-                warnings=[reason],
+                warnings=[reason, *purge_warnings],
             )
 
         # 5. Extraction exactly once (D13)
@@ -369,11 +395,17 @@ def ingest_file(
         full_name = f"{first_name} {last_name}".strip()
 
         if _is_dummy_profile(first_name, last_name, email, phone):
+            purge_warnings = []
+            _purge_cas_object(cas_mgr, cas_path, purge_warnings)
             category = "AI_CLASSIFIED_NOT_RESUME"
             reason = "No identifiable candidate name or contact information found in document"
             logger.info("resume_upload_complete", status="skipped", skip_reason="non_resume", category=category)
             _emit(on_progress, "COMPLETED", 100, reason, {"status": "SKIPPED_NON_RESUME", "classified_as": category})
-            return IntakeResult(status=IntakeStatus.SKIPPED_NON_RESUME, classified_as=category, warnings=[reason])
+            return IntakeResult(
+                status=IntakeStatus.SKIPPED_NON_RESUME,
+                classified_as=category,
+                warnings=[reason, *purge_warnings],
+            )
 
         if used_ai:
             _emit(on_progress, "AI_EXTRACTION", 65, f"Running local AI Model extraction ({settings.llm_model})...", {
@@ -448,6 +480,21 @@ def ingest_file(
                 ResumeVersion.is_primary == True,  # noqa: E712
             ).update({"is_primary": False})
             target_candidate = db.query(Candidate).filter(Candidate.id == cand_id).first()
+            # Issue #15: the merged RV is the new primary, so the profile card
+            # follows the freshest data. Same conditional-update semantics as
+            # reprocess_text: overwrite only when extraction produced a value;
+            # never clear stored data because extraction missed it.
+            if target_candidate is not None:
+                if first_name:
+                    target_candidate.first_name = first_name
+                if last_name:
+                    target_candidate.last_name = last_name
+                if email:
+                    target_candidate.primary_email = email
+                if phone:
+                    target_candidate.primary_phone = phone
+                if extracted.get("current_title"):
+                    target_candidate.current_title = extracted["current_title"]
 
         if is_new_candidate:
             target_candidate = Candidate(
@@ -499,7 +546,10 @@ def ingest_file(
         # 9. FTS via CandidateService (single SQL copy, D8)
         _emit(on_progress, "UPDATING_FTS", 85, "Refreshing full-text search index")
         try:
-            display_name = full_name if full_name else "Candidate"
+            if target_candidate is not None:
+                display_name = f"{target_candidate.first_name} {target_candidate.last_name}".strip() or "Candidate"
+            else:
+                display_name = full_name if full_name else "Candidate"
             CandidateService.update_fts_index(db, cand_id, display_name, target_candidate, raw_text)
         except Exception as e:
             warnings.append(f"Full-Text Search (FTS) index update failed ({str(e)}).")
@@ -538,7 +588,10 @@ def ingest_file(
         )
     except Exception as e:
         logger.error("resume_upload_complete", status="failed", error=str(e))
-        return IntakeResult(status=IntakeStatus.ERROR, classified_as="", warnings=[str(e)])
+        # Issue #14: caller rolls the txn back (D7), so stored bytes must go too.
+        purge_warnings: List[str] = []
+        _purge_cas_object(cas_mgr, cas_path, purge_warnings)
+        return IntakeResult(status=IntakeStatus.ERROR, classified_as="", warnings=[str(e), *purge_warnings])
 
 
 def reprocess_text(
