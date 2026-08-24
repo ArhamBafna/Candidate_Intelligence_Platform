@@ -66,9 +66,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "api/services/candidate_service.py": {
-    "mtime": 1787517809.5942094,
-    "seen": 1787518122.714054,
-    "ast_hash": "2985f73aecbb4a3609c8add2609aabe1",
+    "mtime": 1787543028.1888585,
+    "seen": 1787543573.8672438,
+    "ast_hash": "3f16ab88e0d79d2b2ab6a625ea5b13f2",
     "semantic_hash": ""
   },
   "backups/__init__.py": {
@@ -228,9 +228,9 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/hybrid_searcher.py": {
-    "mtime": 1787517809.6103034,
-    "seen": 1787518122.714129,
-    "ast_hash": "b164a85a6354ecba32c96ddb80c41176",
+    "mtime": 1787541663.8963842,
+    "seen": 1787541821.6931868,
+    "ast_hash": "522fca0b095174cca7f42d5a39bc0049",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/rank_fusion.py": {
@@ -414,9 +414,9 @@
     "semantic_hash": "8d5de2be14a61789e601dbd3151082fb"
   },
   "tests/test_search_engine.py": {
-    "mtime": 1787517809.636389,
-    "seen": 1787518122.7142198,
-    "ast_hash": "5d6e440850583eba78bb97d78c221da4",
+    "mtime": 1787543285.0863776,
+    "seen": 1787543573.8674362,
+    "ast_hash": "2ee0515cdaab53ffef3887862ba89571",
     "semantic_hash": ""
   },
   "tests/test_search_logging.py": {
@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "ui/src/pages/CandidateList.jsx": {
-    "mtime": 1787517809.6436572,
-    "seen": 1787518122.7142506,
-    "ast_hash": "75e504c339fbed60f968fe7c49bf8dc6",
+    "mtime": 1787543503.6296704,
+    "seen": 1787543573.867473,
+    "ast_hash": "bb89113619c966ea20a7d6994aebcec8",
     "semantic_hash": ""
   },
   "ui/tailwind.config.js": {
@@ -726,9 +726,9 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/ingestion/intake.py": {
-    "mtime": 1787517809.6052842,
-    "seen": 1787518122.7141185,
-    "ast_hash": "98aac323b91f79e32bf08fea73b23173",
+    "mtime": 1787543020.3234851,
+    "seen": 1787543573.8673158,
+    "ast_hash": "60116b3710cae25ffa857b464d0bdc07",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/intelligence/chat_model.py": {
@@ -837,6 +837,18 @@
     "mtime": 1787506218.0023668,
     "seen": 1787518122.7143028,
     "ast_hash": "0170c560120bf3d6fd988bcc76ab0160",
+    "semantic_hash": ""
+  },
+  "docs/ideas/centralized-prompts.md": {
+    "mtime": 1787540327.251021,
+    "seen": 1787541821.6933792,
+    "ast_hash": "e81acde5322853f5dcf884d023d366c2",
+    "semantic_hash": ""
+  },
+  "docs/ideas/openrouter-ox-alpha.md": {
+    "mtime": 1787539957.2505221,
+    "seen": 1787541821.6933818,
+    "ast_hash": "62a644df620dcfb48f3ca493e02ec803",
     "semantic_hash": ""
   }
 }

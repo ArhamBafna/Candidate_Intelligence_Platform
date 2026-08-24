@@ -44,7 +44,7 @@ class CandidateService:
         if commit:
             db.commit()
 
-        if vector_db:
+        if vector_db is not None:
             if hasattr(vector_db, "delete_candidate_vectors"):
                 vector_db.delete_candidate_vectors(candidate_id)
             elif _has_candidate_vectors_table(vector_db):

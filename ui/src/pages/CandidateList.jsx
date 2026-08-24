@@ -69,7 +69,16 @@ function CandidateList() {
   };
 
   const fireTopInsights = (list, searchQuery) => {
-    list.slice(0, 3).forEach((c) => generateInsight(c.id, searchQuery));
+    if (!aiNotesEnabledRef.current || !searchQuery || !searchQuery.trim() || !Array.isArray(list) || list.length === 0) {
+      return;
+    }
+    // Strictly cap to top 3 or whatever smaller count of results exists. NEVER all if list > 3.
+    const topCandidates = list.slice(0, Math.min(list.length, 3));
+    topCandidates.forEach((c) => {
+      if (c && c.id) {
+        generateInsight(c.id, searchQuery.trim());
+      }
+    });
   };
 
   const toggleAiNotes = () => {
@@ -86,8 +95,11 @@ function CandidateList() {
       insightControllersRef.current.forEach((controller) => controller.abort());
       insightControllersRef.current.clear();
       setInsights({});
-    } else if (lastSearchedQueryRef.current.trim()) {
-      fireTopInsights(candidates, lastSearchedQueryRef.current);
+    } else {
+      const activeQuery = (query || lastSearchedQueryRef.current || '').trim();
+      if (activeQuery) {
+        fireTopInsights(candidates, activeQuery);
+      }
     }
   };
 
@@ -392,6 +404,10 @@ function CandidateList() {
       setIsSearching(false);
       setSearchProgress(null);
       setSearchWarnings([]);
+      lastSearchedQueryRef.current = '';
+      insightControllersRef.current.forEach((controller) => controller.abort());
+      insightControllersRef.current.clear();
+      setInsights({});
       fetchCandidates();
       return;
     }
@@ -622,6 +638,10 @@ function CandidateList() {
                   setIsSearching(false);
                   setSearchProgress(null);
                   setSearchWarnings([]);
+                  lastSearchedQueryRef.current = '';
+                  insightControllersRef.current.forEach((controller) => controller.abort());
+                  insightControllersRef.current.clear();
+                  setInsights({});
                   fetch('/api/candidates')
                     .then((res) => res.json())
                     .then((data) => {

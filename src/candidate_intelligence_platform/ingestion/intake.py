@@ -555,7 +555,7 @@ def ingest_file(
         # seconds. Holding the SQLite write lock across it starves parallel
         # upload pipelines past busy_timeout ("database is locked").
         vector_failed = False
-        if vector_db:
+        if vector_db is not None:
             _emit(on_progress, "GENERATING_VECTORS", 75, "Generating vector embeddings")
             try:
                 CandidateService.update_vector_index(vector_db, cand_id, raw_text, rv.id)
@@ -737,7 +737,7 @@ def reprocess_text(
         # Vector refresh BEFORE any DB write so the SQLite write txn stays short
         # under parallel reprocessing (same rationale as ingest_file).
         vector_failed = False
-        if vector_db:
+        if vector_db is not None:
             _emit(on_progress, "GENERATING_VECTORS", 75, "Chunking document and re-generating vector embeddings")
             try:
                 CandidateService.update_vector_index(vector_db, candidate_id, raw_text, resume_version_id)
