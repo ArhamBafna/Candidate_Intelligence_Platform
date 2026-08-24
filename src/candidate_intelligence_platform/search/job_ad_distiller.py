@@ -27,6 +27,7 @@ from candidate_intelligence_platform.intelligence.chat_model import (
     get_llm_provider,
     resolve_chat_model,
 )
+from candidate_intelligence_platform.prompts import build_job_ad_distill_prompt
 from config.settings import Settings
 
 logger = structlog.get_logger(__name__)
@@ -169,28 +170,6 @@ def _coerce_recipe(data: Any, ad_text: str, source: str, warnings: List[str]) ->
     )
 
 
-_DISTILL_PROMPT = """
-You are a precise job-ad parser for a recruiting search engine.
-Extract the structured requirements from the job advertisement below.
-
-Return ONLY valid JSON with exactly these keys:
-{{
-  "title": "<job title or null>",
-  "skills": ["must-have skill", "..."],
-  "min_yoe": <number of required years of experience or null>,
-  "location": "<job location or null>"
-}}
-
-Rules:
-- Only include must-have requirements in "skills".
-- "min_yoe" must be a plain number (e.g. 3 or 2.5) or null.
-- Never invent values that are not stated in the ad.
-
-Job advertisement:
-{ad_text}
-"""
-
-
 def _ai_distill_openrouter(ad_text: str, model_name: str, timeout_seconds: float) -> Optional[JobAdRecipe]:
     """Distill job ad using OpenRouter API. Never calls paid models."""
     import httpx
@@ -208,7 +187,7 @@ def _ai_distill_openrouter(ad_text: str, model_name: str, timeout_seconds: float
         return None
 
     truncated_ad = ad_text[:3000]
-    prompt = _DISTILL_PROMPT.format(ad_text=truncated_ad)
+    prompt = build_job_ad_distill_prompt(truncated_ad)
 
     try:
         with httpx.Client(timeout=timeout_seconds) as client:
@@ -251,7 +230,7 @@ def _ai_distill_ollama(ad_text: str, model_name: str, timeout_seconds: float) ->
     import ollama
 
     truncated_ad = ad_text[:3000]
-    prompt = _DISTILL_PROMPT.format(ad_text=truncated_ad)
+    prompt = build_job_ad_distill_prompt(truncated_ad)
 
     def _call():
         return ollama.chat(

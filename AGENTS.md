@@ -20,6 +20,7 @@ CIP is a privacy-first, local-first candidate intelligence and retrieval system 
 - Add tests for changed behavior; ingestion, storage, and config modules require corresponding `tests/test_<module>.py` coverage.
 - Write fast tests (< 2s per file): always mock heavy ML models (spaCy, FastEmbed/SentenceTransformers, CrossEncoder reranker) and LLM inference (Ollama). Never introduce unmocked model loading, blocking event loops, or unbounded stream iterations in the test suite.
 - Keep SQLite WAL pragmas mandatory.
+- Every LLM prompt must be defined in `src/candidate_intelligence_platform/prompts.py` via a named builder function — never inline at a call site.
 - Keep all candidate data and processing local unless the user approves an exception.
 
 ## Environment

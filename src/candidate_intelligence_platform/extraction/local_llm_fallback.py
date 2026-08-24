@@ -3,6 +3,7 @@ import json
 import structlog
 from config.settings import Settings
 from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
+from candidate_intelligence_platform.prompts import build_fact_extraction_prompt
 
 logger = structlog.get_logger(__name__)
 
@@ -77,54 +78,7 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
 
     # Truncate text to header/profile section (~3000 chars) to ensure fast inference
     truncated_text = (text or "")[:3000]
-    prompt = f"""
-You are an expert fact-extraction engine for resumes. Extract all candidate facts into structured JSON.
-
-Rules:
-- Output category strictly as one of: PERSON, CONTACT, EMPLOYMENT, SKILL, EDUCATION, LOCATION.
-- claim_key must be the descriptor/type (e.g., 'name', 'email', 'phone', 'title', 'company', 'skill', 'degree', 'institution', 'location').
-- claim_value must contain the actual extracted text snippet (NEVER null or empty).
-- confidence_score must be a float between 0.80 and 1.00.
-
-Return ONLY valid JSON matching this schema:
-{{
-  "claims": [
-    {{
-      "claim_category": "PERSON",
-      "claim_key": "name",
-      "claim_value": "Jane Doe",
-      "confidence_score": 0.95
-    }},
-    {{
-      "claim_category": "CONTACT",
-      "claim_key": "email",
-      "claim_value": "jane@example.com",
-      "confidence_score": 0.98
-    }},
-    {{
-      "claim_category": "EMPLOYMENT",
-      "claim_key": "title",
-      "claim_value": "Senior Software Engineer",
-      "confidence_score": 0.95
-    }},
-    {{
-      "claim_category": "SKILL",
-      "claim_key": "skill",
-      "claim_value": "Python",
-      "confidence_score": 0.92
-    }},
-    {{
-      "claim_category": "EDUCATION",
-      "claim_key": "degree",
-      "claim_value": "B.S. in Computer Science",
-      "confidence_score": 0.90
-    }}
-  ]
-}}
-
-Text:
-{truncated_text}
-"""
+    prompt = build_fact_extraction_prompt(truncated_text)
 
     try:
         content = None

@@ -1,5 +1,15 @@
 # Task Tracker
 
+## Centralized AI Prompts (Issue #24)
+
+- [x] Create `src/candidate_intelligence_platform/prompts.py`: catalog comment block + three private templates + named builders
+- [x] Move fact-extraction prompt (was inline in `extraction/local_llm_fallback.py`), byte-identical
+- [x] Move candidate match-insight prompt (was inline in `api/routes/candidates.py`), byte-identical
+- [x] Move job-ad distillation prompt (was `_DISTILL_PROMPT` in `search/job_ad_distiller.py`; missed by the issue inventory), byte-identical
+- [x] Byte-identity snapshot guard tests in `tests/test_prompts.py`
+- [x] AGENTS.md rule: every LLM prompt defined in the prompts module via a named builder
+- [x] Full suite green with models mocked
+
 ## Unified Intake Pipeline (Issue #12)
 
 - [x] Ticket U1: Spec — unified resume intake pipeline (Deepening #1)

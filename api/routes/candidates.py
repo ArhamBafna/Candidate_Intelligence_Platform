@@ -43,6 +43,7 @@ from candidate_intelligence_platform.intelligence.ai_messages import (
     DEVICE_FALLBACK_NOTICE,
     label_for_model,
 )
+from candidate_intelligence_platform.prompts import build_match_insight_prompt
 import structlog
 import json
 import time
@@ -814,7 +815,7 @@ async def get_candidate_insight(
     
     raw_text = rv.raw_text if rv and rv.raw_text else ""
     
-    prompt = f"Given the candidate profile and resume text:\n{raw_text}\n\nExplain why this candidate is a good match for the search query: '{query}'. Provide a concise match rationale."
+    prompt = build_match_insight_prompt(raw_text, query)
 
     async def stream_tokens(model_name: str, provider: str) -> AsyncGenerator[str, None]:
         if provider == "openrouter":
