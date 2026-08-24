@@ -111,7 +111,7 @@ function CandidateList() {
     insightControllersRef.current.set(candidateId, controller);
     setInsights(prev => ({
       ...prev,
-      [candidateId]: { text: '', status: 'loading', controller }
+      [candidateId]: { text: '', status: 'loading', controller, notice: '' }
     }));
     
     try {
@@ -144,6 +144,14 @@ function CandidateList() {
                       ...prev[candidateId],
                       status: 'error',
                       errorMessage: event.message || 'Generation failed.'
+                    }
+                  }));
+                } else if (event.notice) {
+                  setInsights(prev => ({
+                    ...prev,
+                    [candidateId]: {
+                      ...prev[candidateId],
+                      notice: event.notice
                     }
                   }));
                 } else if (event.token && aiNotesEnabledRef.current) {
@@ -947,6 +955,12 @@ function CandidateList() {
                           </button>
                         )}
                       </div>
+                      {insights[candidate.id].notice && (
+                        <div className="mt-2 mb-2 flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
+                          <span className="text-amber-400 text-sm leading-5">!</span>
+                          <span className="text-amber-200/90 text-xs leading-5">{insights[candidate.id].notice}</span>
+                        </div>
+                      )}
                       <div className="text-neutral-300 leading-relaxed text-sm max-h-32 overflow-y-auto">
                         {insights[candidate.id].text}
                         {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-emerald-400 animate-pulse"></span>}

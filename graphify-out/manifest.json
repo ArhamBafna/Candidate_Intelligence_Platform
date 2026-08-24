@@ -24,9 +24,9 @@
     "semantic_hash": "12a457e34b754deda35b745dd2ef4601"
   },
   "api/routes/candidates.py": {
-    "mtime": 1787517809.590176,
-    "seen": 1787518122.7140377,
-    "ast_hash": "b3d0baaf3ce4761bae9f4b4b8fc1ec9c",
+    "mtime": 1787604210.2715042,
+    "seen": 1787604480.8082366,
+    "ast_hash": "00c9aa08cf24fd80d5ad023d95d38e26",
     "semantic_hash": ""
   },
   "api/routes/logs.py": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "config/settings.py": {
-    "mtime": 1787517809.5962174,
-    "seen": 1787518122.714066,
-    "ast_hash": "6dbc5c3239da0c5dadb92d68932f2f0e",
+    "mtime": 1787603078.4584095,
+    "seen": 1787603594.1808558,
+    "ast_hash": "fe24dd4e1c1ca0372cb0514060b9499d",
     "semantic_hash": ""
   },
   "crm/__init__.py": {
@@ -204,10 +204,10 @@
     "semantic_hash": "79d2543aec5508112e304dfd4b7ec7c4"
   },
   "src/candidate_intelligence_platform/extraction/local_llm_fallback.py": {
-    "mtime": 1787273614.9215605,
-    "seen": 1787352822.8059542,
-    "ast_hash": "b885ae9284b8d153df4d72ab3f87d0e5",
-    "semantic_hash": "b885ae9284b8d153df4d72ab3f87d0e5"
+    "mtime": 1787603309.113124,
+    "seen": 1787603594.1809103,
+    "ast_hash": "2e339dc268bb5d08a9f59cf8cee4f9e1",
+    "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/intelligence/embeddings.py": {
     "mtime": 1787517809.607222,
@@ -222,9 +222,9 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/ast_parser.py": {
-    "mtime": 1787517809.609205,
-    "seen": 1787518122.7141268,
-    "ast_hash": "4cdbcf53ec66f283eee2935e254e9a42",
+    "mtime": 1787544096.520527,
+    "seen": 1787603594.1809258,
+    "ast_hash": "ade53528c7480288461b2840a0f927c0",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/hybrid_searcher.py": {
@@ -414,9 +414,9 @@
     "semantic_hash": "8d5de2be14a61789e601dbd3151082fb"
   },
   "tests/test_search_engine.py": {
-    "mtime": 1787543285.0863776,
-    "seen": 1787543573.8674362,
-    "ast_hash": "2ee0515cdaab53ffef3887862ba89571",
+    "mtime": 1787544105.446684,
+    "seen": 1787603594.183243,
+    "ast_hash": "51a2c45acccd1faab05a14a829e80ad0",
     "semantic_hash": ""
   },
   "tests/test_search_logging.py": {
@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "ui/src/pages/CandidateList.jsx": {
-    "mtime": 1787543503.6296704,
-    "seen": 1787543573.867473,
-    "ast_hash": "bb89113619c966ea20a7d6994aebcec8",
+    "mtime": 1787604305.2566898,
+    "seen": 1787604480.8084886,
+    "ast_hash": "8c858bca8ad44ff9aec3a1359527aeb7",
     "semantic_hash": ""
   },
   "ui/tailwind.config.js": {
@@ -732,15 +732,15 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/intelligence/chat_model.py": {
-    "mtime": 1787517809.607222,
-    "seen": 1787518122.7141204,
-    "ast_hash": "db5de98ffedab01c4ce85490ce68fd17",
+    "mtime": 1787603133.3760674,
+    "seen": 1787603594.1809173,
+    "ast_hash": "0dd70def98b21fa746f65d702cd067a5",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/job_ad_distiller.py": {
-    "mtime": 1787517809.6103034,
-    "seen": 1787518122.7141306,
-    "ast_hash": "c63482df5898b686d409ba4e91de7520",
+    "mtime": 1787604166.3385966,
+    "seen": 1787604480.808351,
+    "ast_hash": "96158e00cd39e560427d7f166874d0cf",
     "semantic_hash": ""
   },
   "tests/fixtures/golden_baseline.json": {
@@ -849,6 +849,12 @@
     "mtime": 1787539957.2505221,
     "seen": 1787541821.6933818,
     "ast_hash": "62a644df620dcfb48f3ca493e02ec803",
+    "semantic_hash": ""
+  },
+  "src/candidate_intelligence_platform/intelligence/ai_messages.py": {
+    "mtime": 1787604012.7227552,
+    "seen": 1787604480.8083355,
+    "ast_hash": "8449497490aecdd6ae569f9aeac7a931",
     "semantic_hash": ""
   }
 }

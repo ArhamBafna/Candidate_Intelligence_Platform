@@ -4,7 +4,7 @@ import functools
 # Each spec: compiled filter pattern, SQL fragment it contributes, bound
 # parameter name, and the cast applied to the captured value.
 FILTER_SPECS: list[tuple[re.Pattern[str], str, str, type]] = [
-    (re.compile(r"\blocation:'([^']+)'"), "candidates.current_city = :location", "location", str),
+    (re.compile(r"\blocation:'([^']+)'"), "candidates.current_city = :location COLLATE NOCASE", "location", str),
     (re.compile(r"\btitle:'([^']+)'"), "candidates.current_title = :title COLLATE NOCASE", "title", str),
     (re.compile(r"\byoe\s*>=\s*(\d+(?:\.\d+)?)"), "candidates.total_yoe >= :yoe", "yoe", float),
 ]

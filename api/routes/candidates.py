@@ -31,7 +31,18 @@ from candidate_intelligence_platform.extraction.hybrid_extractor import (
     normalize_name,
     normalize_title
 )
-from candidate_intelligence_platform.intelligence.chat_model import chat_retry_candidates, resolve_chat_model
+from candidate_intelligence_platform.intelligence.chat_model import (
+    chat_retry_candidates,
+    resolve_chat_model,
+    get_llm_provider,
+    normalize_model_name,
+)
+from candidate_intelligence_platform.intelligence.ai_messages import (
+    AI_EXPLANATION_UNAVAILABLE,
+    CLOUD_FALLBACK_TO_DEVICE,
+    DEVICE_FALLBACK_NOTICE,
+    label_for_model,
+)
 import structlog
 import json
 import time
@@ -57,12 +68,13 @@ def translate_reprocess_progress(p: IntakeProgress, llm_model: str) -> Optional[
         }
     if p.stage == "AI_EXTRACTION":
         model = str(p.detail.get("model_name") or llm_model)
+        friendly = label_for_model(model)
         return {
             "stage": "AI_EXTRACTION",
-            "stage_detail": f"AI Model Inference ({model})",
+            "stage_detail": f"AI reading ({friendly})",
             "status": "IN_PROGRESS",
             "progress": 30,
-            "message": f"Running local AI Model extraction ({model})...",
+            "message": f"{friendly} is reading this document...",
             "used_ai": True,
             "model_name": model
         }
@@ -722,6 +734,56 @@ async def batch_reprocess_candidate_stream(
     return StreamingResponse(batch_stream_generator(), media_type="text/event-stream")
 
 
+async def stream_openrouter_generate(prompt: str, model_name: str, settings: Settings, **kwargs):
+    import httpx
+
+    from candidate_intelligence_platform.intelligence.chat_model import (
+        OpenRouterModelPaidError,
+        is_openrouter_model_free,
+        mark_openrouter_model_paid,
+    )
+
+    if not settings.openrouter_api_key:
+        return
+    if not is_openrouter_model_free(model_name):
+        raise OpenRouterModelPaidError(model_name)
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        async with client.stream(
+            "POST",
+            f"{settings.openrouter_base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.openrouter_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model_name,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": True,
+            },
+        ) as response:
+            if response.status_code == 402:
+                await response.aread()
+                mark_openrouter_model_paid(model_name)
+                raise OpenRouterModelPaidError(model_name)
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line or not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    import json
+                    chunk = json.loads(data_str)
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        yield content
+                except json.JSONDecodeError:
+                    continue
+
+
 async def stream_ollama_generate(prompt: str, model_name: str, **kwargs):
     import ollama
     client = ollama.AsyncClient()
@@ -732,10 +794,7 @@ async def stream_ollama_generate(prompt: str, model_name: str, **kwargs):
         logger.info("Ollama streaming cancelled by client disconnect")
         raise
 
-AI_INSIGHT_UNAVAILABLE_MESSAGE = (
-    "AI explanations are unavailable right now (the configured chat model and its "
-    "fallback could not be reached). Search results are unaffected."
-)
+AI_INSIGHT_UNAVAILABLE_MESSAGE = AI_EXPLANATION_UNAVAILABLE
 
 @router.get("/{candidate_id}/insight")
 async def get_candidate_insight(
@@ -757,15 +816,20 @@ async def get_candidate_insight(
     
     prompt = f"Given the candidate profile and resume text:\n{raw_text}\n\nExplain why this candidate is a good match for the search query: '{query}'. Provide a concise match rationale."
 
-    async def stream_tokens(model_name: str) -> AsyncGenerator[str, None]:
-        async for token in stream_ollama_generate(prompt=prompt, model_name=model_name):
-            yield token
+    async def stream_tokens(model_name: str, provider: str) -> AsyncGenerator[str, None]:
+        if provider == "openrouter":
+            async for token in stream_openrouter_generate(prompt=prompt, model_name=model_name, settings=settings):
+                yield token
+        else:
+            async for token in stream_ollama_generate(prompt=prompt, model_name=model_name):
+                yield token
 
     def _unavailable_event() -> str:
         return f"data: {json.dumps({'error': 'AI_EXPLANATION_UNAVAILABLE', 'message': AI_INSIGHT_UNAVAILABLE_MESSAGE})}\n\n"
 
     async def event_generator():
         try:
+            provider = get_llm_provider()
             resolved = await asyncio.to_thread(resolve_chat_model)
             
             if resolved is None:
@@ -782,7 +846,7 @@ async def get_candidate_insight(
             model_used = resolved
             tokens_sent = 0
             try:
-                async for token in stream_tokens(model_used):
+                async for token in stream_tokens(model_used, provider):
                     tokens_sent += 1
                     yield f"data: {json.dumps({'token': token})}\n\n"
             except asyncio.CancelledError:
@@ -792,16 +856,35 @@ async def get_candidate_insight(
                     raise
                 recovered = False
                 last_error: Exception = first_error
-                for candidate in chat_retry_candidates(settings.llm_model, settings.fallback_llm_model, failed_model=model_used):
+                
+                # Build fallback chain based on provider
+                if provider == "openrouter":
+                    # OpenRouter ox-alpha first; on failure go straight to local Ollama
+                    fallback_models = chat_retry_candidates(settings.llm_model, settings.fallback_llm_model)
+                    fallback_models = [m for m in fallback_models if normalize_model_name(m) != normalize_model_name(model_used)]
+                else:
+                    fallback_models = chat_retry_candidates(settings.llm_model, settings.fallback_llm_model, failed_model=model_used)
+
+                for candidate_model in fallback_models:
+                    # OpenRouter failures always fall back to local Ollama
+                    fallback_provider = "ollama"
+
                     logger.warning(
                         "ai_chat_model_fallback",
                         configured_model=model_used,
-                        fallback_model=candidate,
+                        fallback_model=candidate_model,
+                        fallback_provider=fallback_provider,
                         error=str(last_error),
                         action="retrying_with_fallback_model"
                     )
                     try:
-                        async for token in stream_tokens(candidate):
+                        notice = (
+                            CLOUD_FALLBACK_TO_DEVICE
+                            if provider == "openrouter"
+                            else DEVICE_FALLBACK_NOTICE
+                        )
+                        yield f"data: {json.dumps({'notice': notice})}\n\n"
+                        async for token in stream_tokens(candidate_model, fallback_provider):
                             yield f"data: {json.dumps({'token': token})}\n\n"
                         recovered = True
                         break

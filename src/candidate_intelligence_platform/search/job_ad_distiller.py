@@ -9,9 +9,9 @@ non-AI extraction second, raw passthrough last) into:
   - years of experience  -> minimum-yoe numeric filter
   - location             -> city equality filter
   - short summary        -> meaning-based (embedding) search input that fits
-                            the embedding model read limit
+                             the embedding model read limit
 
-Everything runs locally; nothing leaves the machine.
+Supports both local Ollama and remote OpenRouter providers.
 """
 from __future__ import annotations
 
@@ -23,7 +23,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 
-from candidate_intelligence_platform.intelligence.chat_model import resolve_chat_model
+from candidate_intelligence_platform.intelligence.chat_model import (
+    get_llm_provider,
+    resolve_chat_model,
+)
 from config.settings import Settings
 
 logger = structlog.get_logger(__name__)
@@ -188,7 +191,63 @@ Job advertisement:
 """
 
 
-def _ai_distill(ad_text: str, model_name: str, timeout_seconds: float) -> Optional[JobAdRecipe]:
+def _ai_distill_openrouter(ad_text: str, model_name: str, timeout_seconds: float) -> Optional[JobAdRecipe]:
+    """Distill job ad using OpenRouter API. Never calls paid models."""
+    import httpx
+
+    from candidate_intelligence_platform.intelligence.chat_model import (
+        OpenRouterModelPaidError,
+        is_openrouter_model_free,
+        mark_openrouter_model_paid,
+    )
+
+    settings = Settings()
+    if not settings.openrouter_api_key:
+        return None
+    if not is_openrouter_model_free(model_name):
+        return None
+
+    truncated_ad = ad_text[:3000]
+    prompt = _DISTILL_PROMPT.format(ad_text=truncated_ad)
+
+    try:
+        with httpx.Client(timeout=timeout_seconds) as client:
+            response = client.post(
+                f"{settings.openrouter_base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "response_format": {"type": "json_object"},
+                },
+            )
+            if response.status_code == 402:
+                mark_openrouter_model_paid(model_name)
+                raise OpenRouterModelPaidError(model_name)
+            response.raise_for_status()
+            data = response.json()
+    except OpenRouterModelPaidError:
+        raise
+    except Exception as e:
+        logger.warning("job_ad_openrouter_request_failed", model=model_name, error=str(e))
+        return None
+
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    if content and content.startswith("```"):
+        content = re.sub(r"^```[a-zA-Z]*\n?", "", content)
+        content = re.sub(r"\n?```$", "", content)
+    try:
+        parsed = json.loads(content)
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning("job_ad_openrouter_json_decode_failed", model=model_name, error=str(e))
+        return None
+    return _coerce_recipe(parsed, ad_text, source="ai", warnings=[])
+
+
+def _ai_distill_ollama(ad_text: str, model_name: str, timeout_seconds: float) -> Optional[JobAdRecipe]:
     import ollama
 
     truncated_ad = ad_text[:3000]
@@ -214,6 +273,13 @@ def _ai_distill(ad_text: str, model_name: str, timeout_seconds: float) -> Option
         logger.warning("job_ad_ai_json_decode_failed", model=model_name, error=str(e))
         return None
     return _coerce_recipe(data, ad_text, source="ai", warnings=[])
+
+
+def _ai_distill(ad_text: str, model_name: str, timeout_seconds: float) -> Optional[JobAdRecipe]:
+    provider = get_llm_provider()
+    if provider == "openrouter":
+        return _ai_distill_openrouter(ad_text, model_name, timeout_seconds)
+    return _ai_distill_ollama(ad_text, model_name, timeout_seconds)
 
 
 def _extract_title_phrase(line: str) -> Optional[str]:
@@ -297,8 +363,9 @@ def _fallback_distill(ad_text: str) -> Optional[JobAdRecipe]:
         summary=_build_summary(title, skills, min_yoe, ad_text),
         source="fallback",
         warnings=[
-            "Chat AI unavailable; the job ad was understood with basic local "
-            "extraction, so the search may be less accurate."
+            "The online AI and this computer's built-in AI were both "
+            "unavailable, so the job ad was read with basic text rules. The "
+            "search may be less accurate than usual.",
         ],
     )
 
@@ -312,14 +379,14 @@ def _raw_distill(ad_text: str) -> JobAdRecipe:
         summary=_truncate_summary(ad_text),
         source="raw",
         warnings=[
-            "The job ad could not be analyzed automatically; searching the "
-            "pasted text directly.",
+            "This job ad couldn't be analyzed automatically. We're searching "
+            "the pasted text directly instead.",
         ],
     )
 
 
 def distill_job_ad(ad_text: str, timeout_seconds: float = 45.0) -> JobAdRecipe:
-    """Distill a pasted job ad locally: AI first, heuristics second, raw last."""
+    """Distill a pasted job ad: configured provider first, local Ollama second, heuristics third, raw last."""
     text = (ad_text or "").strip()
     settings = Settings()
 
@@ -336,7 +403,32 @@ def distill_job_ad(ad_text: str, timeout_seconds: float = 45.0) -> JobAdRecipe:
                 return recipe
             logger.warning("job_ad_ai_distill_unusable", model=model_name, action="falling_back_to_local_heuristics")
         except Exception as e:
-            logger.warning("job_ad_ai_distill_failed", model=model_name, error=str(e), action="falling_back_to_local_heuristics")
+            logger.warning(
+                "job_ad_ai_distill_failed",
+                model=model_name,
+                error=str(e),
+                action="falling_back_then_local_heuristics",
+            )
+
+    # Provider failed (e.g. OpenRouter went paid) -> one direct Ollama attempt.
+    if get_llm_provider() == "openrouter":
+        try:
+            ollama_model = settings.llm_model
+            recipe = _ai_distill_ollama(text, ollama_model, timeout_seconds)
+            if recipe is not None:
+                logger.error(
+                    "*** JOB AD FALLBACK ACTIVE ***",
+                    skipped_model=settings.openrouter_model,
+                    fallback_model=ollama_model,
+                    reason="openrouter_unavailable_or_paid",
+                )
+                recipe.warnings.append(
+                    "The online AI wasn't reachable, so this job ad was read by "
+                    "this computer's built-in AI instead."
+                )
+                return recipe
+        except Exception as e:
+            logger.warning("job_ad_ollama_retry_failed", model=settings.llm_model, error=str(e))
 
     recipe = _fallback_distill(text)
     if recipe is not None:

@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     llm_model: str = "llama3.2"
     fallback_llm_model: str = "llama3.2"
+    llm_provider: str = "ollama"
+    openrouter_api_key: str = ""
+    openrouter_model: str = "stealth/ox-alpha"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
     extraction_confidence_threshold: float = 0.40
     entity_res_auto_merge_threshold: float = 0.85
     entity_res_review_threshold: float = 0.70
@@ -21,4 +25,8 @@ class Settings(BaseSettings):
     rerank_pool_size: int = 50
     default_top_k: int = 10
 
-    model_config = {"env_prefix": "CIP_"}
+    model_config = {
+        "env_prefix": "CIP_",
+        "env_file": os.path.join(BASE_DIR, ".env"),
+        "extra": "ignore",
+    }

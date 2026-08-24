@@ -1,21 +1,81 @@
 import concurrent.futures
 import json
-import ollama
 import structlog
 from config.settings import Settings
+from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
 
 logger = structlog.get_logger(__name__)
 
 VALID_CATEGORIES = {"PERSON", "CONTACT", "EMPLOYMENT", "SKILL", "EDUCATION", "LOCATION"}
 
+
+def _call_openrouter(prompt: str, model_name: str, timeout_seconds: float):
+    """Call OpenRouter API for inference. Never calls paid models."""
+    import httpx
+
+    from candidate_intelligence_platform.intelligence.chat_model import (
+        OpenRouterModelPaidError,
+        is_openrouter_model_free,
+        mark_openrouter_model_paid,
+    )
+
+    settings = Settings()
+    if not settings.openrouter_api_key:
+        return None
+    if not is_openrouter_model_free(model_name):
+        return None
+
+    with httpx.Client(timeout=timeout_seconds) as client:
+        response = client.post(
+            f"{settings.openrouter_base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.openrouter_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model_name,
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+            },
+        )
+        if response.status_code == 402:
+            mark_openrouter_model_paid(model_name)
+            raise OpenRouterModelPaidError(model_name)
+        response.raise_for_status()
+        return response.json()
+
+
+def _call_ollama(prompt: str, model_name: str, timeout_seconds: float):
+    """Call local Ollama for inference."""
+    import ollama
+
+    def _call():
+        return ollama.chat(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            format="json",
+        )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_call)
+        return future.result(timeout=timeout_seconds)
+
+
 def extract_inferences(text: str, model_name: str | None = None, timeout_seconds: float = 30.0) -> list[dict]:
     """
-    Extract AI inferences from text using a local LLM via Ollama.
-    Defaults to configured Settings model (llama3.2).
+    Extract AI inferences from text using a local LLM via Ollama or remote via OpenRouter.
+    Defaults to configured Settings model (llama3.2 or stealth/ox-alpha).
     Includes validation, anomaly logging, and self-healing for LLM schema deviations.
     """
-    selected_model = model_name or Settings().llm_model
-    # Truncate text to header/profile section (~3000 chars) to ensure fast inference on CPU
+    settings = Settings()
+    provider = get_llm_provider()
+
+    if provider == "openrouter":
+        selected_model = model_name or settings.openrouter_model
+    else:
+        selected_model = model_name or settings.llm_model
+
+    # Truncate text to header/profile section (~3000 chars) to ensure fast inference
     truncated_text = (text or "")[:3000]
     prompt = f"""
 You are an expert fact-extraction engine for resumes. Extract all candidate facts into structured JSON.
@@ -65,38 +125,40 @@ Return ONLY valid JSON matching this schema:
 Text:
 {truncated_text}
 """
-    
-    try:
-        def _call_ollama():
-            return ollama.chat(
-                model=selected_model,
-                messages=[
-                    {
-                        'role': 'user',
-                        'content': prompt
-                    }
-                ],
-                format='json'
-            )
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_call_ollama)
-            response = future.result(timeout=timeout_seconds)
-        
-        content = response.message.content
+    try:
+        content = None
+        serving_provider = provider
+        if provider == "openrouter":
+            try:
+                response_data = _call_openrouter(prompt, selected_model, timeout_seconds)
+                if response_data is not None:
+                    content = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            except Exception as openrouter_error:
+                logger.error(
+                    "*** AI EXTRACTION FALLBACK ACTIVE ***",
+                    skipped_provider="openrouter",
+                    skipped_model=selected_model,
+                    fallback_model=settings.llm_model,
+                    error=str(openrouter_error),
+                    action="retrying_with_local_ollama",
+                )
+                content = None
+                serving_provider = "ollama"
+
         try:
             data = json.loads(content)
         except json.JSONDecodeError as jde:
             logger.warning("ai_llm_json_decode_failed", model=selected_model, error=str(jde), raw_content=content)
             return []
-            
+
         if not isinstance(data, dict) or "claims" not in data or not isinstance(data["claims"], list):
             logger.warning("ai_llm_malformed_response_schema", model=selected_model, raw_data=data)
             return []
-            
+
         claims = data.get("claims", [])
         facts = []
-        
+
         for idx, claim in enumerate(claims):
             if not isinstance(claim, dict):
                 logger.warning("ai_llm_invalid_claim_item", index=idx, raw_claim=claim)
@@ -112,7 +174,7 @@ Text:
                 logger.warning(
                     "ai_llm_unknown_claim_category",
                     original_category=claim.get("claim_category"),
-                    normalized_category=raw_cat or "SKILL"
+                    normalized_category=raw_cat or "SKILL",
                 )
                 raw_cat = "SKILL"
 
@@ -125,7 +187,7 @@ Text:
                     "ai_llm_claim_value_missing_repaired",
                     issue="claim_value is null or empty, entity was placed in claim_key",
                     original_key=raw_key,
-                    action="moved_key_to_value"
+                    action="moved_key_to_value",
                 )
                 repaired_val = repaired_key
                 # Provide a generic key for the category
@@ -135,7 +197,7 @@ Text:
                     "EDUCATION": "degree",
                     "PERSON": "name",
                     "CONTACT": "contact",
-                    "LOCATION": "location"
+                    "LOCATION": "location",
                 }
                 repaired_key = default_keys.get(raw_cat, "extracted_fact")
             elif not repaired_val and not repaired_key:
@@ -149,14 +211,14 @@ Text:
                     logger.warning(
                         "ai_llm_invalid_confidence_score",
                         original_score=raw_score,
-                        action="defaulted_to_0.90"
+                        action="defaulted_to_0.90",
                     )
                     score = 0.90
             except (ValueError, TypeError):
                 logger.warning(
                     "ai_llm_non_numeric_confidence_score",
                     original_score=raw_score,
-                    action="defaulted_to_0.90"
+                    action="defaulted_to_0.90",
                 )
                 score = 0.90
 
@@ -168,9 +230,9 @@ Text:
                 "confidence_score": round(score, 2),
                 "source_char_offset_start": None,
                 "source_char_offset_end": None,
-                "extracted_by": "OLLAMA_LLM_V1"
+                "extracted_by": f"{serving_provider.upper()}_LLM_V1",
             })
-            
+
         return facts
     except Exception as e:
         logger.warning("ai_llm_extraction_failed", model=selected_model, error=str(e), action="skipping_ai_extraction")
