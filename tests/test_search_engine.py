@@ -416,6 +416,7 @@ def _run_pipeline_capturing_embedding(monkeypatch, query: str):
 
     monkeypatch.setattr(hs, "generate_single_embedding", fake_embed)
     monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: {"cand_1": 1})
+    monkeypatch.setattr(hs, "execute_strict_filter_query", lambda sql, params, db: ["cand_1"] if "location" in params or "yoe" in params else None)
     monkeypatch.setattr(hs, "reciprocal_rank_fusion", lambda fts, vec, **kw: ([("cand_1", 0.05)] if fts or vec else []))
     monkeypatch.setattr(hs, "rerank_candidates", lambda q, docs: [0.9])
     monkeypatch.setattr(hs, "build_match_rationale", lambda p: {"candidate_id": p.candidate_id})
@@ -499,6 +500,7 @@ def _run_pipeline(monkeypatch, query: str, fts_ranks: dict, vector_ranks: dict, 
 
     monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.1, 0.2])
     monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: fts_ranks)
+    monkeypatch.setattr(hs, "execute_strict_filter_query", lambda sql, params, db: list(fts_ranks.keys()))
     monkeypatch.setattr(hs, "execute_vector_search", lambda q, ids, vdb, warnings=None: vector_ranks)
     monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: [docs.get(cid, "") for cid in ids])
 

@@ -122,6 +122,12 @@ def fetch_candidate_documents(candidate_ids: List[str], db: Session) -> List[str
     doc_map = {row.candidate_id: row.raw_text for row in docs}
     return [doc_map.get(cid, "") for cid in candidate_ids]
 
+def execute_strict_filter_query(sql: str, params: Dict[str, Any], db: Session) -> List[str]:
+    if not sql or db is None:
+        return []
+    results = db.execute(text(sql), params).fetchall()
+    return [row[0] for row in results]
+
 def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: bool = False, semantic_query: Optional[str] = None) -> Generator[Tuple[str, int, str, Any], None, None]:
     warnings: List[str] = []
     
@@ -134,14 +140,34 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     fts_query = params.get("fts_query", "")
     
     fts_ranks = execute_fts_query(sql, params, db)
-    filtered_ids = list(fts_ranks.keys())
+    
+    strict_keys = [k for k in params.keys() if k != "fts_query"]
+    has_strict_filters = len(strict_keys) > 0
+    strict_filtered_ids = None
+
+    if has_strict_filters:
+        where_parts = []
+        if "location" in params:
+            where_parts.append("current_city = :location")
+        if "title" in params:
+            where_parts.append("current_title = :title COLLATE NOCASE")
+        if "yoe" in params:
+            where_parts.append("total_yoe >= :yoe")
+            
+        if where_parts:
+            strict_sql = "SELECT id FROM candidates WHERE " + " AND ".join(where_parts)
+            strict_filtered_ids = execute_strict_filter_query(strict_sql, params, db)
     
     yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
-    # If no filtered_ids, search across all candidates in vector index.
-    # semantic_query overrides the embedding input (e.g. distilled job-ad
-    # summary); it is still pure free text with no filter tokens.
+    
     vector_input = semantic_query if semantic_query else fts_query
-    vector_ranks = execute_vector_search(vector_input, filtered_ids or None, vector_db, warnings=warnings)
+    
+    if has_strict_filters and not strict_filtered_ids:
+        # Strict filters applied but no matches found in SQLite.
+        vector_ranks = {}
+    else:
+        # Vector search evaluates all candidates constrained ONLY by strict filters.
+        vector_ranks = execute_vector_search(vector_input, strict_filtered_ids, vector_db, warnings=warnings)
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
