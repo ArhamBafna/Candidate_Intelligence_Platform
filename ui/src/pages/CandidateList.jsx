@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X } from '@phosphor-icons/react';
+import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X, XCircle } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AI_NOTES_ENABLED_KEY = 'cip_ai_notes_enabled';
@@ -9,6 +9,9 @@ function CandidateList() {
   const location = useLocation();
   const [candidates, setCandidates] = useState([]);
   const [query, setQuery] = useState('');
+  const [city, setCity] = useState('');
+  const [title, setTitle] = useState('');
+  const [minYoe, setMinYoe] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
@@ -398,11 +401,16 @@ function CandidateList() {
     setCandidates([]);
     lastSearchedQueryRef.current = query;
 
+    const requestBody = { query_text: query, top_k: 10 };
+    if (city.trim()) requestBody.city = city.trim();
+    if (title.trim()) requestBody.title = title.trim();
+    if (minYoe.trim() && !isNaN(parseFloat(minYoe))) requestBody.min_yoe = parseFloat(minYoe);
+
     try {
       const response = await fetch('/api/search/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query_text: query, top_k: 10 })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.body) throw new Error('ReadableStream not supported.');
@@ -596,8 +604,8 @@ function CandidateList() {
 
       {/* Search Bar */}
       <section className="surface-panel p-6 rounded-2xl">
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <div className="relative flex-1">
+        <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
+          <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-4 top-3.5 h-5 w-5 text-neutral-500" />
             <input 
               type="text" 
@@ -627,6 +635,61 @@ function CandidateList() {
               </button>
             )}
           </div>
+          
+          <div className="relative flex-1 min-w-[160px]">
+            <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-neutral-500" />
+            <input
+              type="text"
+              placeholder="City"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl pl-10 pr-4 py-3 text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-[border-color,box-shadow]"
+              title="Filter by city (exact match)"
+            />
+          </div>
+          
+          <div className="relative flex-1 min-w-[160px]">
+            <Briefcase className="absolute left-4 top-3.5 h-5 w-5 text-neutral-500" />
+            <input
+              type="text"
+              placeholder="Job Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl pl-10 pr-4 py-3 text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-[border-color,box-shadow]"
+              title="Filter by job title (exact match)"
+            />
+          </div>
+          
+          <div className="relative flex-1 min-w-[140px]">
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              placeholder="Min Years"
+              value={minYoe}
+              onChange={(e) => setMinYoe(e.target.value)}
+              className="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl pl-4 pr-4 py-3 text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-[border-color,box-shadow]"
+              title="Filter by minimum years of experience (decimals allowed, e.g. 2.5)"
+            />
+          </div>
+          
+          {(city || title || minYoe) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCity('');
+                setTitle('');
+                setMinYoe('');
+              }}
+              className="flex items-center gap-1.5 text-neutral-400 hover:text-red-400 px-3 py-3 shrink-0 transition-colors"
+              title="Clear filters"
+              aria-label="Clear filters"
+            >
+              <XCircle size={18} />
+              <span className="text-sm font-medium">Clear</span>
+            </button>
+          )}
+          
           <button
             type="button"
             onClick={toggleAiNotes}
@@ -643,7 +706,7 @@ function CandidateList() {
             )}
             <span className="text-sm whitespace-nowrap">AI Notes</span>
           </button>
-          <button type="submit" disabled={isSearching} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-emerald-900/20">
+          <button type="submit" disabled={isSearching} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-emerald-900/20 shrink-0">
             {isSearching ? 'Searching…' : 'Search'}
           </button>
         </form>
