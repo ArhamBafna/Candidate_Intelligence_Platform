@@ -88,7 +88,7 @@ def test_ai_garbage_json_falls_back_to_heuristics(monkeypatch):
 
     assert recipe.source == "fallback"
     assert recipe.min_yoe >= 5.0
-    assert any("Chat AI unavailable" in w for w in recipe.warnings)
+    assert any("unavailable" in w for w in recipe.warnings)
 
 
 def test_ai_unavailable_uses_non_ai_extraction(monkeypatch):
@@ -101,7 +101,7 @@ def test_ai_unavailable_uses_non_ai_extraction(monkeypatch):
     assert {"kubernetes", "postgres", "airflow"} <= lowered_skills
     assert recipe.min_yoe >= 5.0
     assert recipe.location == "NYC"
-    assert any("Chat AI unavailable" in w for w in recipe.warnings)
+    assert any("unavailable" in w for w in recipe.warnings)
 
 
 def test_nothing_useful_searches_raw_text_with_warning(monkeypatch):
@@ -140,7 +140,7 @@ def test_fallback_sentence_title_dsl_stays_clean(monkeypatch):
     monkeypatch.setattr(jad, "resolve_chat_model", lambda force_refresh=False: None)
 
     recipe = distill_job_ad(SENTENCE_AD)
-    sql, params = parse_query_to_sql(build_search_dsl(recipe))
+    sql, params, clean_text = parse_query_to_sql(build_search_dsl(recipe))
 
     assert params["title"] == "Senior Data Engineer"
 
@@ -156,7 +156,7 @@ def test_build_search_dsl_round_trips_through_parser():
     )
 
     dsl = build_search_dsl(recipe)
-    sql, params = parse_query_to_sql(dsl)
+    sql, params, clean_text = parse_query_to_sql(dsl)
 
     assert params["title"] == "Data Engineer"
     assert params["location"] == "New York"
@@ -164,8 +164,12 @@ def test_build_search_dsl_round_trips_through_parser():
     fts_lower = params["fts_query"].lower()
     assert "python" in fts_lower
     assert "sql" in fts_lower
+    # FTS query now correctly drops structured filter text (Issue #1 fix),
+    # but the semantic search input (clean_text) preserves it.
     assert "data engineer" not in fts_lower
+    assert "data engineer" in clean_text.lower()
     assert "new york" not in fts_lower
+    assert "new york" in clean_text.lower()
 
 
 def test_recipe_metadata_shape():

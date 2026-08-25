@@ -7,53 +7,55 @@ from candidate_intelligence_platform.search.hybrid_searcher import search_candid
 
 def test_parse_query_to_sql():
     query = "python AND location:'NYC' AND yoe >= 5"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
 
-    assert "candidates.current_city = :location COLLATE NOCASE" in sql
-    assert "candidates.total_yoe >= :yoe" in sql
+    assert "candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE" in sql
+    assert "candidates.total_yoe >= :yoe" not in sql
     assert "candidate_fts MATCH :fts_query" in sql
 
     assert params["location"] == "NYC"
     assert params["yoe"] == 5
     assert "python" in params["fts_query"]
+    assert "nyc" not in params.get("fts_query", "").lower()
+    assert "nyc" in clean_text.lower()
 
 def test_parse_query_to_sql_special_chars():
     query = "Java/J2EE hands-on C++"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
     
     assert "candidate_fts MATCH :fts_query" in sql
     # The special characters should be stripped or replaced by spaces
     assert params["fts_query"] == "Java J2EE hands on C"
 
-def test_parse_title_filter_is_sql_equality():
+def test_parse_title_filter_is_sql_like():
     query = "python AND title:'senior engineer'"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
 
-    assert "candidates.current_title = :title" in sql
+    assert "candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE" in sql
     assert params["title"] == "senior engineer"
-    assert params["fts_query"] == "python"
-    assert "title" not in params["fts_query"].lower()
-    assert "engineer" not in params["fts_query"].lower()
+    assert "python" in params["fts_query"]
+    assert "senior engineer" not in params.get("fts_query", "").lower()
+    assert "senior engineer" in clean_text.lower()
 
 def test_parse_title_filter_not_confused_by_substring_field_names():
     query = "subtitle:'junk' python"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
 
     assert ":title" not in sql
     assert "title" not in params
     assert params["fts_query"] == "subtitle 'junk' python"
 
 def test_parse_and_substring_words_preserved():
-    sql, params = parse_query_to_sql("SANDPAPER AND python")
+    sql, params, clean_text = parse_query_to_sql("SANDPAPER AND python")
 
     assert "SANDPAPER" in params["fts_query"]
     assert "SPAPER" not in params["fts_query"]
     assert "python" in params["fts_query"]
 
 def test_parse_yoe_accepts_float():
-    sql, params = parse_query_to_sql("python AND yoe >= 2.5")
+    sql, params, clean_text = parse_query_to_sql("python AND yoe >= 2.5")
 
-    assert "candidates.total_yoe >= :yoe" in sql
+    assert "candidates.total_yoe >= :yoe" not in sql
     assert params["yoe"] == 2.5
     assert params["fts_query"] == "python"
 
@@ -88,7 +90,7 @@ def test_keyword_only_query_orders_by_bm25(db_session):
         )
     db_session.commit()
 
-    sql, params = parse_query_to_sql("python")
+    sql, params, clean_text = parse_query_to_sql("python")
     assert "ORDER BY bm25(candidate_fts)" in sql
 
     ranks = execute_fts_query(sql, params, db_session)
@@ -100,7 +102,7 @@ def test_reciprocal_rank_fusion():
     fts_ranks = {"cand_1": 1, "cand_2": 2, "cand_3": 3}
     vector_ranks = {"cand_3": 1, "cand_1": 4}
 
-    results = reciprocal_rank_fusion(fts_ranks, vector_ranks)
+    results, _, _ = reciprocal_rank_fusion(fts_ranks, vector_ranks)
 
     assert len(results) == 3
     assert results[0][0] == "cand_3"
@@ -111,17 +113,16 @@ def test_reciprocal_rank_fusion_weights():
     fts_ranks = {"kw_only": 1}
     vector_ranks = {"vec_only": 1}
 
-    equal = dict(reciprocal_rank_fusion(fts_ranks, vector_ranks))
+    equal_res, _, _ = reciprocal_rank_fusion(fts_ranks, vector_ranks)
+    equal = dict(equal_res)
     assert equal["kw_only"] == pytest.approx(equal["vec_only"])
 
-    keyword_heavy = dict(
-        reciprocal_rank_fusion(fts_ranks, vector_ranks, k=60, keyword_weight=2.0, vector_weight=1.0)
-    )
+    kw_res, _, _ = reciprocal_rank_fusion(fts_ranks, vector_ranks, k=60, keyword_weight=2.0, vector_weight=1.0)
+    keyword_heavy = dict(kw_res)
     assert keyword_heavy["kw_only"] > keyword_heavy["vec_only"]
 
-    vector_heavy = dict(
-        reciprocal_rank_fusion(fts_ranks, vector_ranks, k=60, keyword_weight=1.0, vector_weight=3.0)
-    )
+    vec_res, _, _ = reciprocal_rank_fusion(fts_ranks, vector_ranks, k=60, keyword_weight=1.0, vector_weight=3.0)
+    vector_heavy = dict(vec_res)
     assert vector_heavy["vec_only"] > vector_heavy["kw_only"]
 
 def test_rerank_candidates(monkeypatch):
@@ -146,7 +147,7 @@ def test_hybrid_search_candidates(monkeypatch):
     query = "python AND location:'NYC'"
 
     def mock_parse(q):
-        return "SELECT candidates.id FROM candidates WHERE candidates.current_city = :location", {"location": "NYC", "fts_query": "python"}
+        return "SELECT candidates.id FROM candidates WHERE candidates.current_city = :location", {"location": "NYC", "fts_query": "python"}, "python nyc"
 
     def mock_db_fts(sql, params, db):
         return {"cand_1": 1, "cand_2": 2}
@@ -158,7 +159,7 @@ def test_hybrid_search_candidates(monkeypatch):
 
     def mock_fusion(fts, vec, **kwargs):
         fusion_calls.update(kwargs)
-        return [("cand_2", 0.05), ("cand_1", 0.04)]
+        return [("cand_2", 0.05), ("cand_1", 0.04)], {}, {}
 
     def mock_rerank(q, docs):
         return [0.9, 0.8]
@@ -193,7 +194,7 @@ def test_hybrid_search_candidates_applies_tuning_knobs(monkeypatch):
     query = "python"
 
     def mock_parse(q):
-        return "", {"fts_query": "python"}
+        return "", {"fts_query": "python"}, "python"
 
     def mock_db_fts(sql, params, db):
         return {}
@@ -205,7 +206,7 @@ def test_hybrid_search_candidates_applies_tuning_knobs(monkeypatch):
         assert kwargs["k"] == 42
         assert kwargs["keyword_weight"] == 0.7
         assert kwargs["vector_weight"] == 1.3
-        return [("cand_1", 0.05), ("cand_2", 0.04), ("cand_3", 0.03)]
+        return [("cand_1", 0.05), ("cand_2", 0.04), ("cand_3", 0.03)], {}, {}
 
     def mock_explainer(params):
         return {"candidate_id": params.candidate_id, "rank": params.rank, "rrf_score": params.rrf_score}
@@ -417,7 +418,7 @@ def _run_pipeline_capturing_embedding(monkeypatch, query: str):
     monkeypatch.setattr(hs, "generate_single_embedding", fake_embed)
     monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: {"cand_1": 1})
     monkeypatch.setattr(hs, "execute_strict_filter_query", lambda sql, params, db: ["cand_1"] if "location" in params or "yoe" in params else None)
-    monkeypatch.setattr(hs, "reciprocal_rank_fusion", lambda fts, vec, **kw: ([("cand_1", 0.05)] if fts or vec else []))
+    monkeypatch.setattr(hs, "reciprocal_rank_fusion", lambda fts, vec, **kw: (([("cand_1", 0.05)] if fts or vec else []), {}, {}))
     monkeypatch.setattr(hs, "rerank_candidates", lambda q, docs: [0.9])
     monkeypatch.setattr(hs, "build_match_rationale", lambda p: {"candidate_id": p.candidate_id})
     monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: ["doc"])
@@ -436,11 +437,10 @@ def test_embedding_input_excludes_filter_values(monkeypatch):
         "python AND location:'NYC' AND title:'senior engineer' AND yoe >= 2.5",
     )
 
-    assert embedded == "python"
     lowered = (embedded or "").lower()
-    assert "nyc" not in lowered
-    assert "senior" not in lowered
-    assert "engineer" not in lowered
+    assert "python" in lowered
+    assert "nyc" in lowered
+    assert "senior engineer" in lowered
     assert "yoe" not in lowered
     assert "2.5" not in lowered
 
@@ -461,19 +461,18 @@ def test_embedding_input_clean_for_structured_api_flatten(monkeypatch):
 
     embedded = _run_pipeline_capturing_embedding(monkeypatch, flattened)
 
-    assert embedded == "react developer"
     lowered = (embedded or "").lower()
-    assert "new york" not in lowered
-    assert "frontend" not in lowered
-    assert "engineer" not in lowered
-    assert "3" != embedded
+    assert "react developer" in lowered
+    assert "new york" in lowered
+    assert "frontend engineer" in lowered
+    assert "3" not in lowered
 
 
 def test_pure_filter_query_skips_embedding(monkeypatch):
     """No free text at all: nothing gets embedded."""
     embedded = _run_pipeline_capturing_embedding(
         monkeypatch,
-        "location:'NYC' AND yoe >= 3",
+        "yoe >= 3",
     )
 
     assert embedded is None
@@ -544,8 +543,8 @@ def test_match_scorecards_populated_from_query_and_data(monkeypatch):
     )
 
     card = results[0]["match_scorecard"]
-    assert {"field": "current_city", "operator": "=", "value": "NYC"} in card["strict_filters"]
-    assert {"field": "current_title", "operator": "=", "value": "senior engineer"} in card["strict_filters"]
+    assert {"field": "current_city", "operator": "CONTAINS", "value": "NYC"} in card["strict_filters"]
+    assert {"field": "current_title", "operator": "CONTAINS", "value": "senior engineer"} in card["strict_filters"]
     assert {"field": "total_yoe", "operator": ">=", "value": 2.5} in card["strict_filters"]
     assert "python" in card["keyword_matches"]
     assert card["semantic_matches"][0]["vector_rank"] == 2

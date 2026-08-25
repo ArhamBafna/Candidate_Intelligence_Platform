@@ -65,7 +65,7 @@ def test_insight_emits_visible_message_when_no_chat_model(client: TestClient, ca
 
     errors = [e for e in events if e.get("error") == "AI_EXPLANATION_UNAVAILABLE"]
     assert len(errors) == 1
-    assert "unavailable" in errors[0]["message"].lower()
+    assert "taking a break right now" in errors[0]["message"].lower()
 
 
 def test_insight_invalid_model_retries_fallback_before_giving_up(client: TestClient, candidate_id: str, monkeypatch):
@@ -110,4 +110,4 @@ def test_insight_total_failure_surfaces_visible_message(client: TestClient, cand
 
     errors = [e for e in events if e.get("error") == "AI_EXPLANATION_UNAVAILABLE"]
     assert len(errors) == 1
-    assert "unavailable" in errors[0]["message"].lower()
+    assert "taking a break right now" in errors[0]["message"].lower()

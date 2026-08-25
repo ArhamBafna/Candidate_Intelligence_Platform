@@ -28,6 +28,17 @@ def isolate_test_environment(tmp_path_factory):
     os.environ.pop("CIP_CAS_ROOT_DIR", None)
     os.environ.pop("CIP_VECTOR_DB_PATH", None)
 
+@pytest.fixture(autouse=True)
+def isolate_llm_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure all tests default to offline Ollama, avoiding OpenRouter network calls."""
+    monkeypatch.setenv("CIP_LLM_PROVIDER", "ollama")
+    monkeypatch.setenv("CIP_OPENROUTER_API_KEY", "")
+    
+    from candidate_intelligence_platform.intelligence.chat_model import reset_chat_model_cache, reset_openrouter_pricing_cache
+    reset_chat_model_cache()
+    reset_openrouter_pricing_cache()
+
+
 class MockVectorStore:
     """Mock LanceDB vector store connection for isolated test runs."""
     def __init__(self) -> None:

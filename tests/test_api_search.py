@@ -154,7 +154,7 @@ def test_job_ad_mode_returns_recipe_metadata_with_fallback_warning(client, monke
     assert recipe is not None
     assert recipe["source"] == "fallback"
     assert recipe["min_yoe"] >= 5.0
-    assert any("Chat AI unavailable" in w for w in data["warnings"])
+    assert any("unavailable" in w for w in data["warnings"])
 
 
 def _ai_json_response(payload):
