@@ -24,9 +24,9 @@
     "semantic_hash": "12a457e34b754deda35b745dd2ef4601"
   },
   "api/routes/candidates.py": {
-    "mtime": 1787610907.379481,
-    "seen": 1787610946.355466,
-    "ast_hash": "9dd6fdc0cba73931c1905864437a9a10",
+    "mtime": 1787604210.2715042,
+    "seen": 1787604480.8082366,
+    "ast_hash": "00c9aa08cf24fd80d5ad023d95d38e26",
     "semantic_hash": ""
   },
   "api/routes/logs.py": {
@@ -204,9 +204,9 @@
     "semantic_hash": "79d2543aec5508112e304dfd4b7ec7c4"
   },
   "src/candidate_intelligence_platform/extraction/local_llm_fallback.py": {
-    "mtime": 1787610907.389898,
-    "seen": 1787610946.3555453,
-    "ast_hash": "0374d855cfbada8c5987af98b82e3c87",
+    "mtime": 1787603309.113124,
+    "seen": 1787603594.1809103,
+    "ast_hash": "2e339dc268bb5d08a9f59cf8cee4f9e1",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/intelligence/embeddings.py": {
@@ -540,10 +540,10 @@
     "semantic_hash": "322f42dec638689451db17a3f6300c37"
   },
   "AGENTS.md": {
-    "mtime": 1787610907.379481,
-    "seen": 1787610946.3557134,
-    "ast_hash": "a901e39006ff62e14a548e02dee3e55d",
-    "semantic_hash": ""
+    "mtime": 1787326067.448418,
+    "seen": 1787352822.8059995,
+    "ast_hash": "5870eac0fe003fb00bfc4849dcd368ce",
+    "semantic_hash": "5870eac0fe003fb00bfc4849dcd368ce"
   },
   "README.md": {
     "mtime": 1787517809.585655,
@@ -648,9 +648,9 @@
     "semantic_hash": ""
   },
   "docs/task.md": {
-    "mtime": 1787610907.3878727,
-    "seen": 1787610946.3557515,
-    "ast_hash": "1ea55f577e217a416bb965dc03f58b4e",
+    "mtime": 1787506217.9961882,
+    "seen": 1787518122.7142968,
+    "ast_hash": "5312f7c963d0a155a37facf0f0d8c0a6",
     "semantic_hash": ""
   },
   "docs/chats/trae-chat.md": {
@@ -738,9 +738,9 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/search/job_ad_distiller.py": {
-    "mtime": 1787610907.391914,
-    "seen": 1787610946.3555694,
-    "ast_hash": "c3293e646a6e3d5b298869ffa1ad8966",
+    "mtime": 1787604166.3385966,
+    "seen": 1787604480.808351,
+    "ast_hash": "96158e00cd39e560427d7f166874d0cf",
     "semantic_hash": ""
   },
   "tests/fixtures/golden_baseline.json": {
@@ -815,6 +815,12 @@
     "ast_hash": "91eaec4509ea9e81118cc39d22ee2bc3",
     "semantic_hash": ""
   },
+  "docs/anti_ai_pattern_findings.md": {
+    "mtime": 1787506217.9911754,
+    "seen": 1787518122.7142704,
+    "ast_hash": "5c4ad66ae4b27d4a94ba67223dd7e519",
+    "semantic_hash": ""
+  },
   "docs/ideas/architecture-deepening-opportunities.md": {
     "mtime": 1787506217.9961882,
     "seen": 1787518122.7142868,
@@ -825,6 +831,12 @@
     "mtime": 1787517809.6001735,
     "seen": 1787518122.7142906,
     "ast_hash": "403fad8ccc30358599a259aa1ab6ad60",
+    "semantic_hash": ""
+  },
+  "docs/wayfinder-open-questions.md": {
+    "mtime": 1787506218.0023668,
+    "seen": 1787518122.7143028,
+    "ast_hash": "0170c560120bf3d6fd988bcc76ab0160",
     "semantic_hash": ""
   },
   "docs/ideas/centralized-prompts.md": {
@@ -843,18 +855,6 @@
     "mtime": 1787604012.7227552,
     "seen": 1787604480.8083355,
     "ast_hash": "8449497490aecdd6ae569f9aeac7a931",
-    "semantic_hash": ""
-  },
-  "src/candidate_intelligence_platform/prompts.py": {
-    "mtime": 1787609528.1389308,
-    "seen": 1787610946.3555624,
-    "ast_hash": "57e56d370aef50d84155972ff7997542",
-    "semantic_hash": ""
-  },
-  "tests/test_prompts.py": {
-    "mtime": 1787609782.8061326,
-    "seen": 1787610946.355664,
-    "ast_hash": "bb1ab0221010daff54c2f290ecf5519c",
     "semantic_hash": ""
   }
 }
