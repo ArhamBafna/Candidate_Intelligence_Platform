@@ -27,15 +27,34 @@ def test_parse_query_to_sql_special_chars():
     # The special characters should be stripped or replaced by spaces
     assert params["fts_query"] == "Java J2EE hands on C"
 
-def test_parse_title_filter_is_sql_like():
+def test_parse_title_filter_is_soft_by_default():
+    """Issue #38: default title filter never emits exclusionary SQL; the
+    title value feeds the clean text (vector search / reranking) instead.
+    """
     query = "python AND title:'senior engineer'"
     sql, params, clean_text = parse_query_to_sql(query)
 
-    assert "candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE" in sql
+    assert "current_title" not in sql
     assert params["title"] == "senior engineer"
+    assert params.get("title_exact") is None
     assert "python" in params["fts_query"]
     assert "senior engineer" not in params.get("fts_query", "").lower()
     assert "senior engineer" in clean_text.lower()
+
+
+def test_parse_title_exact_filter_is_verbatim_equality():
+    """Issue #38: title_exact:'...' compiles to strict case-insensitive
+    verbatim equality on candidates.current_title.
+    """
+    query = "python AND title_exact:'Senior Engineer'"
+    sql, params, clean_text = parse_query_to_sql(query)
+
+    assert "LOWER(candidates.current_title) = LOWER(:title)" in sql
+    assert "current_title LIKE" not in sql
+    assert params["title"] == "Senior Engineer"
+    assert params.get("title_exact") is True
+    assert "python" in params["fts_query"]
+    assert "Senior Engineer" in clean_text
 
 def test_parse_title_filter_not_confused_by_substring_field_names():
     query = "subtitle:'junk' python"
@@ -544,10 +563,129 @@ def test_match_scorecards_populated_from_query_and_data(monkeypatch):
 
     card = results[0]["match_scorecard"]
     assert {"field": "current_city", "operator": "CONTAINS", "value": "NYC"} in card["strict_filters"]
-    assert {"field": "current_title", "operator": "CONTAINS", "value": "senior engineer"} in card["strict_filters"]
+    # Issue #38: soft title filter is never a strict filter descriptor.
+    assert not any(f["field"] == "current_title" for f in card["strict_filters"])
     assert {"field": "total_yoe", "operator": ">=", "value": 2.5} in card["strict_filters"]
     assert "python" in card["keyword_matches"]
     assert card["semantic_matches"][0]["vector_rank"] == 2
+    assert card["title_match"] == "semantic"
+
+
+def test_soft_title_search_surfaces_related_titles_and_badges(db_session, monkeypatch):
+    """Issue #38 user story 1: searching 'ai engineer' must not drop "ML
+    Engineer" candidates; verbatim matches rank first and badges split
+    exact vs related.
+    """
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    from storage.db_models import Candidate
+    from sqlalchemy import text as sql_text
+
+    rows = [
+        ("cand_exact", "AI Engineer"),
+        ("cand_related", "ML Engineer"),
+        ("cand_unrelated", "Accountant"),
+    ]
+    for cid, ttl in rows:
+        db_session.add(Candidate(id=cid, first_name="F", last_name=ttl, current_title=ttl))
+        db_session.execute(
+            sql_text(
+                "INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) "
+                "VALUES (:candidate_id, :full_name, :current_title, :current_company, :resume_content)"
+            ),
+            {"candidate_id": cid, "full_name": ttl, "current_title": ttl, "current_company": "", "resume_content": f"{ttl} resume"},
+        )
+    db_session.commit()
+
+    captured = {}
+
+    def fake_vector(query_text, candidate_ids, vector_db, warnings=None):
+        captured["query_text"] = query_text
+        captured["candidate_ids"] = candidate_ids
+        return {"cand_exact": 1, "cand_related": 2}
+
+    monkeypatch.setattr(hs, "execute_vector_search", fake_vector)
+    monkeypatch.setattr(hs, "rerank_candidates", lambda q, docs: [1.0] * len(docs))
+
+    gen = search_candidates("title:'ai engineer'", db_session, None)
+    results = None
+    for stage, progress, message, data in gen:
+        if stage == "COMPLETE":
+            results = data
+
+    # Soft by default: the vector pool is unrestricted (no SQL prefilter).
+    assert captured["candidate_ids"] is None
+    assert "ai engineer" in captured["query_text"].lower()
+
+    by_id = {r["candidate_id"]: r for r in results}
+    assert "cand_exact" in by_id
+    assert "cand_related" in by_id
+    assert by_id["cand_exact"]["match_scorecard"]["title_match"] == "exact"
+    assert by_id["cand_related"]["match_scorecard"]["title_match"] == "semantic"
+    # Verbatim exact title ranks above the semantically related one (RRF +20%).
+    assert results[0]["candidate_id"] == "cand_exact"
+
+
+def test_exact_title_mode_restricts_vector_pool_to_verbatim_matches(db_session, monkeypatch):
+    """Issue #38 user story 2: exact_title only keeps literal current_title
+    matches, evaluated inside the vector store before the pool limit.
+    """
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+    from storage.db_models import Candidate
+    from sqlalchemy import text as sql_text
+
+    for cid, ttl in [("cand_exact", "ai engineer"), ("cand_related", "ml engineer")]:
+        db_session.add(Candidate(id=cid, first_name="F", last_name=ttl, current_title=ttl))
+        db_session.execute(
+            sql_text(
+                "INSERT INTO candidate_fts (candidate_id, full_name, current_title, current_company, resume_content) "
+                "VALUES (:candidate_id, :full_name, :current_title, :current_company, :resume_content)"
+            ),
+            {"candidate_id": cid, "full_name": ttl, "current_title": ttl, "current_company": "", "resume_content": f"{ttl} resume"},
+        )
+    db_session.commit()
+
+    captured = {}
+
+    def fake_vector(query_text, candidate_ids, vector_db, warnings=None):
+        captured["candidate_ids"] = candidate_ids
+        return {"cand_exact": 1}
+
+    monkeypatch.setattr(hs, "execute_vector_search", fake_vector)
+    monkeypatch.setattr(hs, "rerank_candidates", lambda q, docs: [1.0])
+
+    gen = search_candidates("title_exact:'AI Engineer'", db_session, None)
+    results = None
+    for stage, progress, message, data in gen:
+        if stage == "COMPLETE":
+            results = data
+
+    assert captured["candidate_ids"] == ["cand_exact"]
+    assert [r["candidate_id"] for r in results] == ["cand_exact"]
+
+
+def test_reciprocal_rank_fusion_exact_title_bonus_ranks_exact_first(monkeypatch):
+    """Issue #38 user story 4: +20% RRF bonus guarantees verbatim title
+    matches outrank semantically related candidates.
+    """
+    fts_ranks = {"cand_related": 1, "cand_exact": 2}
+    vector_ranks = {"cand_exact": 1, "cand_related": 2}
+    metadata = {
+        "cand_related": {"current_title": "ml engineer", "current_city": "", "total_yoe": 5},
+        "cand_exact": {"current_title": "ai engineer", "current_city": "", "total_yoe": 5},
+    }
+
+    results, _, soft_bonuses = reciprocal_rank_fusion(
+        fts_ranks, vector_ranks, candidate_metadata=metadata, params={"title": "AI Engineer"},
+    )
+
+    ranked_ids = [cid for cid, _ in results]
+    # Despite ranking behind in FTS, the exact match wins after the bonus.
+    assert ranked_ids[0] == "cand_exact"
+    assert ranked_ids[1] == "cand_related"
+    bonus = soft_bonuses["cand_exact"]
+    assert any(b["field"] == "current_title" and b["bonus"] == "+20%" for b in bonus)
+    assert "cand_related" not in soft_bonuses
+
 
 def test_execute_vector_search_missing_table(monkeypatch):
     from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search

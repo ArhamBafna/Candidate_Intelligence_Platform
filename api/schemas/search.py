@@ -6,6 +6,9 @@ class SearchQueryRequest(BaseModel):
     min_yoe: Optional[float] = None
     city: Optional[str] = None
     title: Optional[str] = None
+    # When True, the job title filter requires a strict verbatim
+    # (case-insensitive) current_title match instead of soft semantic matching.
+    exact_title: bool = False
     top_k: Optional[int] = None
 
 class SearchResultItem(BaseModel):

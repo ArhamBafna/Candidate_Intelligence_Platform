@@ -13,15 +13,63 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 def _describe_strict_filters(params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Turn parsed query filter params into scorecard descriptors."""
+    """Turn parsed query filter params into scorecard descriptors.
+
+    Only exclusionary filters are listed: location, exact title (verbatim
+    equality), and YoE. Soft title matches are surfaced via the
+    `title_match` badge instead, never as strict filters.
+    """
     descriptors: List[Dict[str, Any]] = []
     if "location" in params:
         descriptors.append({"field": "current_city", "operator": "CONTAINS", "value": params["location"]})
-    if "title" in params:
-        descriptors.append({"field": "current_title", "operator": "CONTAINS", "value": params["title"]})
+    if params.get("title_exact") and "title" in params:
+        descriptors.append({"field": "current_title", "operator": "=", "value": params["title"]})
     if "yoe" in params:
         descriptors.append({"field": "total_yoe", "operator": ">=", "value": params["yoe"]})
     return descriptors
+
+
+def _build_strict_filter_clause(params: Dict[str, Any]) -> Optional[str]:
+    """Exclusionary SQL filters: location, and exact title only.
+
+    The soft job title filter never contributes SQL here; it is scored via
+    the vector/FTS query and the RRF exact-match bonus instead, so
+    semantically related titles are never dropped before fusion.
+    """
+    where_parts: List[str] = []
+    if "location" in params:
+        where_parts.append("(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)")
+    if params.get("title_exact") and "title" in params:
+        where_parts.append("(LOWER(candidates.current_title) = LOWER(:title))")
+    if not where_parts:
+        return None
+    return "SELECT candidates.id FROM candidates JOIN candidate_fts ON candidates.id = candidate_fts.candidate_id WHERE " + " AND ".join(where_parts)
+
+
+def resolve_title_match(
+    candidate_id: str,
+    params: Dict[str, Any],
+    vector_ranks: Dict[str, int],
+    candidate_metadata: Dict[str, Dict[str, Any]],
+) -> str:
+    """Classify why a candidate matched the job-title filter.
+
+    Returns one of:
+    - "exact": current_title equals the requested title verbatim
+      (case-insensitive) - also the +20% RRF bonus definition.
+    - "semantic": candidate surfaced through vector search, whose query
+      contains the title text.
+    - "none": candidate matched on keyword/other signals only.
+    """
+    target_title = params.get("title")
+    if not target_title:
+        return "none"
+    meta = candidate_metadata.get(candidate_id, {})
+    if meta.get("current_title") == target_title.lower():
+        return "exact"
+    if candidate_id in vector_ranks:
+        return "semantic"
+    return "none"
 
 def _keyword_hits(fts_query: str, document: str) -> List[str]:
     """Free-text terms from the query that appear in the candidate document."""
@@ -140,26 +188,18 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     
     fts_ranks = execute_fts_query(sql, params, db)
     
-    strict_keys = [k for k in params.keys() if k != "fts_query"]
-    has_strict_filters = len(strict_keys) > 0
-    strict_filtered_ids = None
-
-    if has_strict_filters:
-        where_parts = []
-        if "location" in params:
-            where_parts.append("(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)")
-        if "title" in params:
-            where_parts.append("(candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :title || '%' COLLATE NOCASE)")
-            
-        if where_parts:
-            strict_sql = "SELECT candidates.id FROM candidates JOIN candidate_fts ON candidates.id = candidate_fts.candidate_id WHERE " + " AND ".join(where_parts)
-            strict_filtered_ids = execute_strict_filter_query(strict_sql, params, db)
+    # Strict (exclusionary) filters narrow the vector pool; soft title and
+    # yoe never exclude candidates and therefore never restrict it.
+    strict_sql = _build_strict_filter_clause(params)
+    strict_filtered_ids = (
+        execute_strict_filter_query(strict_sql, params, db) if strict_sql is not None else None
+    )
     
     yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
     
     vector_input = semantic_query if semantic_query else clean_text
     
-    if has_strict_filters and not strict_filtered_ids:
+    if strict_sql is not None and not strict_filtered_ids:
         # Strict filters applied but no matches found in SQLite.
         vector_ranks = {}
     else:
@@ -233,6 +273,7 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
             semantic_matches=_semantic_signals(cid, vector_ranks),
             soft_penalties=soft_penalties.get(cid, []),
             soft_bonuses=soft_bonuses.get(cid, []),
+            title_match=resolve_title_match(cid, params, vector_ranks, candidate_metadata),
         )
         rationale = build_match_rationale(params_obj)
         results.append(rationale)

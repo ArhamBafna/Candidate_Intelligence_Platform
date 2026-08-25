@@ -11,6 +11,7 @@ function CandidateList() {
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
   const [title, setTitle] = useState('');
+  const [exactTitle, setExactTitle] = useState(false);
   const [minYoe, setMinYoe] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -32,7 +33,7 @@ function CandidateList() {
   });
   const aiNotesEnabledRef = useRef(aiNotesEnabled);
   const insightControllersRef = useRef(new Map());
-  const lastSearchParamsRef = useRef({ query: '', city: '', title: '', minYoe: '' });
+  const lastSearchParamsRef = useRef({ query: '', city: '', title: '', minYoe: '', exactTitle: false });
   
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
@@ -433,7 +434,7 @@ function CandidateList() {
       setIsSearching(false);
       setSearchProgress(null);
       setSearchWarnings([]);
-      lastSearchParamsRef.current = { query: '', city: '', title: '', minYoe: '' };
+      lastSearchParamsRef.current = { query: '', city: '', title: '', minYoe: '', exactTitle: false };
       insightControllersRef.current.forEach((controller) => controller.abort());
       insightControllersRef.current.clear();
       setInsights({});
@@ -444,11 +445,12 @@ function CandidateList() {
     setIsSearching(true);
     setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search…' });
     setCandidates([]);
-    lastSearchParamsRef.current = { query, city, title, minYoe };
+    lastSearchParamsRef.current = { query, city, title, minYoe, exactTitle };
 
     const requestBody = { query_text: query, top_k: 10 };
     if (city.trim()) requestBody.city = city.trim();
     if (title.trim()) requestBody.title = title.trim();
+    if (title.trim() && exactTitle) requestBody.exact_title = true;
     if (minYoe.trim() && !isNaN(parseFloat(minYoe))) requestBody.min_yoe = parseFloat(minYoe);
 
     try {
@@ -705,8 +707,26 @@ function CandidateList() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl pl-10 pr-4 py-3 text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-[border-color,box-shadow]"
-              title="Filter by job title (exact match)"
+              title="Filter by job title (semantic match by default)"
             />
+            {title.trim() ? (
+              <button
+                type="button"
+                onClick={() => setExactTitle(prev => !prev)}
+                role="checkbox"
+                aria-checked={exactTitle}
+                aria-label="Exact Match Only job title filter"
+                className="flex items-center gap-1.5 text-xs font-medium mt-2 text-neutral-400 hover:text-emerald-400 transition-colors"
+                title="Exact Match Only: require literal (verbatim) current_title equality"
+              >
+                {exactTitle ? (
+                  <CheckSquare size={16} className="text-emerald-400" />
+                ) : (
+                  <Square size={16} />
+                )}
+                <span className="whitespace-nowrap">Exact Match Only</span>
+              </button>
+            ) : null}
           </div>
           
           <div className="relative flex-1 min-w-[140px]">
@@ -728,6 +748,7 @@ function CandidateList() {
               onClick={() => {
                 setCity('');
                 setTitle('');
+                setExactTitle(false);
                 setMinYoe('');
               }}
               className="flex items-center gap-1.5 text-neutral-400 hover:text-red-400 px-3 py-3 shrink-0 transition-colors"
@@ -879,6 +900,16 @@ function CandidateList() {
                         }`}>
                           <span className="font-extrabold text-[9px] uppercase tracking-wider bg-neutral-800/80 px-1 rounded-sm border border-neutral-700/80 text-neutral-300">Match</span>
                           {candidate.match_percentage}%
+                        </span>
+                      )}
+                      {candidate.match_scorecard?.title_match === 'exact' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 bg-emerald-500 text-black border border-emerald-400" title="Current title matches the search title verbatim (+20% RRF bonus)">
+                          Exact Title Match +20%
+                        </span>
+                      )}
+                      {candidate.match_scorecard?.title_match === 'semantic' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-sky-500/10 text-sky-300 border border-sky-500/30" title="Current title is semantically related to the searched title (e.g. ML Engineer for AI Engineer)">
+                          Related Title Match
                         </span>
                       )}
                       {candidate.rank != null && (

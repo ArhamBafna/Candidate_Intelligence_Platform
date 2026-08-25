@@ -92,3 +92,13 @@
 - [x] Pass clean natural text query to Cross-Encoder reranker
 - [x] Update `MatchParameters` and match explanation scorecard with soft penalty / bonus details
 - [x] Update test suite and verify all unit and integration search tests pass
+
+## Soft Semantic Job Title Search (Issue #38)
+
+- [x] AST parser: `title:'...'` no longer emits exclusionary `LIKE` SQL; the title value feeds clean text (vector search / reranking) so related titles surface; `title_exact:'...'` emits strict verbatim case-insensitive equality
+- [x] Hybrid searcher: soft title requires no strict prefilter (vector pool unrestricted unless exact); strict descriptor + pool restriction only for `title_exact`/location
+- [x] RRF: verified +20% verbatim title bonus is applied and reachable (exact matches outrank related matches)
+- [x] Scorecard: `title_match` badge (`exact` | `semantic` | `none`) added to `MatchParameters` and rationale output
+- [x] API: `exact_title` flag on `SearchQueryRequest`; route builds `title_exact:'...'` DSL when set (incl. job-ad suffix path)
+- [x] UI: “Exact Match Only” checkbox next to the Job Title input; enables `exact_title` flag; “Exact Title Match +20%” / “Related Title Match” badges rendered on result cards
+- [x] Tests: soft-by-default parser, strict verbatim parser, soft search surfaces related titles with badges, exact mode restricts vector pool, RRF exact-first ordering, API DSL flag; full suite green (235 passed)

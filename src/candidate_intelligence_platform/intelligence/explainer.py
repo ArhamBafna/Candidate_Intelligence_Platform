@@ -14,6 +14,8 @@ class MatchParameters:
     soft_penalties: list = field(default_factory=list)
     soft_bonuses: list = field(default_factory=list)
     rerank_score: Optional[float] = None
+    # How a candidate matched the job title filter: "exact" | "semantic" | "none"
+    title_match: Optional[str] = None
 
 def build_match_rationale(params: MatchParameters) -> dict:
     """
@@ -49,7 +51,8 @@ def build_match_rationale(params: MatchParameters) -> dict:
             "semantic_matches": params.semantic_matches,
             "ai_inferences": params.ai_inferences,
             "soft_penalties": params.soft_penalties,
-            "soft_bonuses": params.soft_bonuses
+            "soft_bonuses": params.soft_bonuses,
+            "title_match": params.title_match or "none"
         }
     }
 

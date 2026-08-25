@@ -1,22 +1,32 @@
 import re
 import functools
 
-# Each spec: compiled filter pattern, SQL fragment it contributes, bound
-# parameter name, and the cast applied to the captured value.
-FILTER_SPECS: list[tuple[re.Pattern[str], str, str, type]] = [
-    (re.compile(r"\blocation:'([^']+)'"), "(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)", "location", str),
-    (re.compile(r"\btitle:'([^']+)'"), "(candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :title || '%' COLLATE NOCASE)", "title", str),
-    (re.compile(r"\byoe\s*>=\s*(\d+(?:\.\d+)?)"), "", "yoe", float),
-]
+# Each rule: compiled filter, SQL fragment it contributes, bound
+# parameter name, the cast applied to the captured value, and an
+# exact-mode marker.
+# Empty SQL fragments mark soft filters: they are extracted into the
+# structured params + clean semantic text but never exclude candidates
+# via SQL.
+FILTER_SPECS: list[tuple[re.Pattern[str], str, str, type, bool]] = [
+    (re.compile(r"\blocation:'([^']+)'"), "(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)", "location", str, False),
+    # Soft job title (default): no SQL fragment. The title feeds the vector
+    # query + RRF exact-match bonus so semantically related titles survive.
+    (re.compile(r"\btitle:'([^']+)'"), "", "title", str, False),
+    # Exact job title: strict verbatim, case-insensitive equality.
+    (re.compile(r"\btitle_exact:'([^']+)'"), "(LOWER(candidates.current_title) = LOWER(:title))", "title", str, True),
+    (re.compile(r"\byoe\s*>=\s*(\d+(?:\.\d+)?)"), "", "yoe", float, False),]
 
 @functools.lru_cache(maxsize=1024)
 def parse_query_to_sql(query: str) -> tuple[str, dict[str, object], str]:
     """
     Parses a strict query string into a SQL query and parameters.
     Currently supports:
-    - location:'VALUE'
-    - title:'VALUE' (case-insensitive equality on candidates.current_title)
-    - yoe >= VALUE (integer or decimal)
+    - location:'VALUE' (hard SQL substring filter)
+    - title:'VALUE' (SOFT by default: no SQL exclusion; title value feeds the
+      clean text used for vector search / reranking so semantically related
+      titles surface, with an exact-match +20% RRF bonus for verbatim hits)
+    - title_exact:'VALUE' (strict verbatim, case-insensitive equality filter)
+    - yoe >= VALUE (integer or decimal; soft S-curve penalty, no SQL exclusion)
     - remaining keywords for FTS5 MATCH, ordered by bm25 relevance
     """
     sql_parts: list[str] = []
@@ -24,17 +34,22 @@ def parse_query_to_sql(query: str) -> tuple[str, dict[str, object], str]:
     clean_parts: list[str] = []
 
     # Extract structured filters so they never leak into the FTS match string
-    for pattern, sql_fragment, param_name, cast in FILTER_SPECS:
+    for pattern, sql_fragment, param_name, cast, is_exact in FILTER_SPECS:
         match_obj = pattern.search(query)
         if match_obj:
             if sql_fragment:
                 sql_parts.append(sql_fragment)
             params[param_name] = cast(match_obj.group(1))
-            
+
+            # Strict verbatim title mode: mark it so downstream stages know
+            # the title filter is exclusionary (RRF bonus + strict descriptors).
+            if is_exact:
+                params["title_exact"] = True
+
             # Keep the natural language string for embeddings/reranking (except yoe)
             if param_name != "yoe":
                 clean_parts.append(match_obj.group(1))
-                
+
             query = query.replace(match_obj.group(0), "")
 
     # The rest is assumed to be FTS text.

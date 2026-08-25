@@ -24,6 +24,14 @@ AI_EXPLANATION_UNAVAILABLE_WARNING = (
     "results are shown without AI-generated match notes."
 )
 
+def _title_filter_dsl(request: SearchQueryRequest) -> str:
+    """Job title DSL term: strict verbatim when exact_title is on, soft otherwise."""
+    if not request.title:
+        return ""
+    if request.exact_title:
+        return f"title_exact:'{request.title}'"
+    return f"title:'{request.title}'"
+
 def _build_search_query(request: SearchQueryRequest) -> str:
     query_parts = []
     if request.query_text and request.query_text.strip():
@@ -32,8 +40,9 @@ def _build_search_query(request: SearchQueryRequest) -> str:
         query_parts.append(f"location:'{request.city}'")
     if request.min_yoe:
         query_parts.append(f"yoe >= {request.min_yoe}")
-    if request.title:
-        query_parts.append(f"title:'{request.title}'")
+    title_dsl = _title_filter_dsl(request)
+    if title_dsl:
+        query_parts.append(title_dsl)
     return " AND ".join(query_parts) if query_parts else ""
 
 def _build_structured_filter_suffix(request: SearchQueryRequest) -> str:
@@ -43,8 +52,9 @@ def _build_structured_filter_suffix(request: SearchQueryRequest) -> str:
         query_parts.append(f"location:'{request.city}'")
     if request.min_yoe:
         query_parts.append(f"yoe >= {request.min_yoe}")
-    if request.title:
-        query_parts.append(f"title:'{request.title}'")
+    title_dsl = _title_filter_dsl(request)
+    if title_dsl:
+        query_parts.append(title_dsl)
     return " AND ".join(query_parts)
 
 def _prepare_query(request: SearchQueryRequest) -> tuple:
@@ -150,7 +160,7 @@ def perform_search(request: SearchQueryRequest, db: Session = Depends(get_db), v
     logger.info(
         "candidate_search_complete",
         query=request.query_text,
-        filters={"city": request.city, "min_yoe": request.min_yoe, "title": request.title},
+        filters={"city": request.city, "min_yoe": request.min_yoe, "title": request.title, "exact_title": request.exact_title},
         candidates_returned=len(items),
         vector_search_duration_ms=vector_search_duration_ms,
         db_retrieval_duration_ms=db_retrieval_duration_ms,

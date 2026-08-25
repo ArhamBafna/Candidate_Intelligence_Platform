@@ -121,6 +121,20 @@ def test_search_response_passes_through_populated_scorecard(mock_search, client:
     assert item["match_percentage"] == 72.5
 
 
+def test_exact_title_flag_emits_title_exact_dsl():
+    from api.routes.search import _build_search_query
+    from api.schemas.search import SearchQueryRequest
+
+    soft = _build_search_query(SearchQueryRequest(query_text="sql", title="AI Engineer"))
+    assert "title:'AI Engineer'" in soft
+    assert "title_exact" not in soft
+
+    exact = _build_search_query(
+        SearchQueryRequest(query_text="sql", title="AI Engineer", exact_title=True)
+    )
+    assert "title_exact:'AI Engineer'" in exact
+
+
 JOB_AD = (
     "Data Engineer\n\n"
     "We are hiring a Data Engineer to join our analytics platform team.\n\n"
