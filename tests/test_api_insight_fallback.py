@@ -111,3 +111,39 @@ def test_insight_total_failure_surfaces_visible_message(client: TestClient, cand
     errors = [e for e in events if e.get("error") == "AI_EXPLANATION_UNAVAILABLE"]
     assert len(errors) == 1
     assert "taking a break right now" in errors[0]["message"].lower()
+
+
+def test_insight_passes_criteria_to_prompt(client: TestClient, candidate_id: str, monkeypatch):
+    monkeypatch.setattr(
+        "api.routes.candidates.resolve_chat_model",
+        lambda force_refresh=False: "llama3.2",
+    )
+
+    captured_prompt = []
+
+    async def fake_stream(prompt, model_name, **kwargs):
+        captured_prompt.append(prompt)
+        yield "all good"
+
+    monkeypatch.setattr("api.routes.candidates.stream_ollama_generate", fake_stream)
+
+    with client.stream(
+        "GET",
+        f"/candidates/{candidate_id}/insight",
+        params={
+            "query": "python",
+            "city": "Boston",
+            "job_title": "Lead Architect",
+            "min_years": 8,
+        },
+    ) as response:
+        body = "".join(response.iter_text())
+
+    events = _parse_events(body)
+    tokens = [e["token"] for e in events if "token" in e]
+    assert "".join(tokens) == "all good"
+    assert len(captured_prompt) == 1
+    assert "Target City / Location: Boston" in captured_prompt[0]
+    assert "Target Job Title: Lead Architect" in captured_prompt[0]
+    assert "Minimum Experience: 8.0 years" in captured_prompt[0] or "Minimum Experience: 8 years" in captured_prompt[0]
+

@@ -32,7 +32,7 @@ function CandidateList() {
   });
   const aiNotesEnabledRef = useRef(aiNotesEnabled);
   const insightControllersRef = useRef(new Map());
-  const lastSearchedQueryRef = useRef('');
+  const lastSearchParamsRef = useRef({ query: '', city: '', title: '', minYoe: '' });
   
   // Upload Manager State
   const [showUploadManager, setShowUploadManager] = useState(false);
@@ -68,15 +68,18 @@ function CandidateList() {
     setSelectedIds([]);
   };
 
-  const fireTopInsights = (list, searchQuery) => {
-    if (!aiNotesEnabledRef.current || !searchQuery || !searchQuery.trim() || !Array.isArray(list) || list.length === 0) {
+  const fireTopInsights = (list, searchCriteria) => {
+    if (!aiNotesEnabledRef.current || !searchCriteria || !Array.isArray(list) || list.length === 0) {
       return;
     }
+    const q = typeof searchCriteria === 'string' ? searchCriteria : (searchCriteria.query || '');
+    if (!q.trim()) return;
+
     // Strictly cap to top 3 or whatever smaller count of results exists. NEVER all if list > 3.
     const topCandidates = list.slice(0, Math.min(list.length, 3));
     topCandidates.forEach((c) => {
       if (c && c.id) {
-        generateInsight(c.id, searchQuery.trim());
+        generateInsight(c.id, searchCriteria);
       }
     });
   };
@@ -96,14 +99,16 @@ function CandidateList() {
       insightControllersRef.current.clear();
       setInsights({});
     } else {
-      const activeQuery = (query || lastSearchedQueryRef.current || '').trim();
-      if (activeQuery) {
-        fireTopInsights(candidates, activeQuery);
+      const activeParams = lastSearchParamsRef.current?.query?.trim()
+        ? lastSearchParamsRef.current
+        : { query, city, title, minYoe };
+      if (activeParams.query && activeParams.query.trim()) {
+        fireTopInsights(candidates, activeParams);
       }
     }
   };
 
-  const generateInsight = async (candidateId, searchQuery) => {
+  const generateInsight = async (candidateId, searchCriteria) => {
     if (!aiNotesEnabledRef.current) return;
     const existingController = insightControllersRef.current.get(candidateId);
     if (existingController) existingController.abort();
@@ -115,7 +120,23 @@ function CandidateList() {
     }));
     
     try {
-      const response = await fetch(`/api/candidates/${candidateId}/insight?query=${encodeURIComponent(searchQuery)}`, {
+      const criteria = typeof searchCriteria === 'object' && searchCriteria !== null
+        ? searchCriteria
+        : { query: searchCriteria || '' };
+
+      const params = new URLSearchParams();
+      params.set('query', criteria.query || '');
+      if (criteria.city && criteria.city.trim()) params.set('city', criteria.city.trim());
+      if (criteria.title && criteria.title.trim()) params.set('job_title', criteria.title.trim());
+      if (criteria.job_title && criteria.job_title.trim()) params.set('job_title', criteria.job_title.trim());
+      if (criteria.minYoe !== undefined && criteria.minYoe !== null && criteria.minYoe.toString().trim()) {
+        params.set('min_years', criteria.minYoe.toString().trim());
+      }
+      if (criteria.min_years !== undefined && criteria.min_years !== null && criteria.min_years.toString().trim()) {
+        params.set('min_years', criteria.min_years.toString().trim());
+      }
+
+      const response = await fetch(`/api/candidates/${candidateId}/insight?${params.toString()}`, {
         signal: controller.signal
       });
       if (!response.body) throw new Error('ReadableStream not supported.');
@@ -412,7 +433,7 @@ function CandidateList() {
       setIsSearching(false);
       setSearchProgress(null);
       setSearchWarnings([]);
-      lastSearchedQueryRef.current = '';
+      lastSearchParamsRef.current = { query: '', city: '', title: '', minYoe: '' };
       insightControllersRef.current.forEach((controller) => controller.abort());
       insightControllersRef.current.clear();
       setInsights({});
@@ -423,7 +444,7 @@ function CandidateList() {
     setIsSearching(true);
     setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search…' });
     setCandidates([]);
-    lastSearchedQueryRef.current = query;
+    lastSearchParamsRef.current = { query, city, title, minYoe };
 
     const requestBody = { query_text: query, top_k: 10 };
     if (city.trim()) requestBody.city = city.trim();
@@ -482,7 +503,7 @@ function CandidateList() {
                       
                       // Trigger AI insights for top 3 candidates
                       if (aiNotesEnabledRef.current) {
-                        fireTopInsights(mapped, query);
+                        fireTopInsights(mapped, { query, city, title, minYoe });
                       }
                     }
                   }
@@ -948,7 +969,7 @@ function CandidateList() {
                           </button>
                         ) : (
                           <button 
-                            onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, query); }}
+                            onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, lastSearchParamsRef.current?.query ? lastSearchParamsRef.current : { query, city, title, minYoe }); }}
                             className="text-emerald-400 hover:text-emerald-300 text-xs px-2 py-1 rounded transition-colors"
                           >
                             Regenerate
@@ -970,7 +991,7 @@ function CandidateList() {
                     </div>
                   ) : (
                     <button 
-                      onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, query); }}
+                      onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, lastSearchParamsRef.current?.query ? lastSearchParamsRef.current : { query, city, title, minYoe }); }}
                       className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                     >
                       Generate AI Note

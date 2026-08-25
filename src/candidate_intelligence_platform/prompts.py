@@ -16,6 +16,8 @@
 # surface. Prompt text was moved here byte-identical; tests/test_prompts.py guards
 # that with literal snapshots, so any rewording is a deliberate test-visible change.
 
+from typing import Optional, Union
+
 _EXTRACTION_TEMPLATE = """
 You are an expert fact-extraction engine for resumes. Extract all candidate facts into structured JSON.
 
@@ -78,10 +80,44 @@ _INSIGHT_TEMPLATE = (
     "Provide a concise match rationale."
 )
 
+_INSIGHT_WITH_CRITERIA_TEMPLATE = (
+    "Given the candidate profile and resume text:\n"
+    "{resume_text}\n\n"
+    "Explain why this candidate is a good match for the following search criteria:\n"
+    "{criteria_block}\n\n"
+    "Evaluate the candidate against all criteria above (job title, location/city, experience years, and required skills) and provide a concise match rationale."
+)
 
-def build_match_insight_prompt(resume_text: str, query: str) -> str:
-    """Match-rationale prompt for the given resume text and search query."""
-    return _INSIGHT_TEMPLATE.format(resume_text=resume_text, query=query)
+
+def build_match_insight_prompt(
+    resume_text: str,
+    query: str,
+    city: Optional[str] = None,
+    job_title: Optional[str] = None,
+    min_years: Optional[Union[float, int, str]] = None,
+) -> str:
+    """Match-rationale prompt for the given resume text, search query, and optional filters."""
+    criteria_items = []
+    if query and query.strip():
+        criteria_items.append(f"- Search Query / Skills: '{query.strip()}'")
+    if job_title and str(job_title).strip():
+        criteria_items.append(f"- Target Job Title: {str(job_title).strip()}")
+    if city and str(city).strip():
+        criteria_items.append(f"- Target City / Location: {str(city).strip()}")
+    if min_years is not None and str(min_years).strip():
+        min_y_val = str(min_years).strip()
+        if not min_y_val.endswith("years"):
+            min_y_val = f"{min_y_val} years"
+        criteria_items.append(f"- Minimum Experience: {min_y_val}")
+
+    if not (city and str(city).strip()) and not (job_title and str(job_title).strip()) and not (min_years is not None and str(min_years).strip()):
+        return _INSIGHT_TEMPLATE.format(resume_text=resume_text, query=query)
+
+    criteria_block = "\n".join(criteria_items)
+    return _INSIGHT_WITH_CRITERIA_TEMPLATE.format(
+        resume_text=resume_text,
+        criteria_block=criteria_block,
+    )
 
 
 _JOB_AD_DISTILL_TEMPLATE = """

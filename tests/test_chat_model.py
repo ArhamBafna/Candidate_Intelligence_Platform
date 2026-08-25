@@ -22,6 +22,7 @@ class FakeListResponse:
 def clean_env_and_cache(monkeypatch):
     monkeypatch.delenv("CIP_LLM_MODEL", raising=False)
     monkeypatch.delenv("CIP_FALLBACK_LLM_MODEL", raising=False)
+    monkeypatch.setenv("CIP_LLM_PROVIDER", "ollama")
     reset_chat_model_cache()
     yield
     reset_chat_model_cache()
@@ -57,7 +58,7 @@ def test_invalid_chat_model_retries_with_llama32_fallback(monkeypatch):
         resolved = resolve_chat_model()
 
     assert resolved == "llama3.2"
-    events = [log for log in cap_logs if log.get("event") == "ai_chat_model_fallback"]
+    events = [log for log in cap_logs if log.get("event") in ("ai_chat_model_fallback", "*** OLLAMA FALLBACK ACTIVE ***")]
     assert len(events) == 1
     assert events[0]["configured_model"] == "not-installed-model"
     assert events[0]["fallback_model"] == "llama3.2"
@@ -72,7 +73,7 @@ def test_total_chat_failure_returns_none(monkeypatch):
         resolved = resolve_chat_model()
 
     assert resolved is None
-    events = [log for log in cap_logs if log.get("event") == "ai_chat_unavailable"]
+    events = [log for log in cap_logs if log.get("event") in ("ai_chat_unavailable", "AI_CHAT_UNAVAILABLE")]
     assert len(events) == 1
 
 

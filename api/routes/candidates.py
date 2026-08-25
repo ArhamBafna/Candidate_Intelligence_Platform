@@ -1,5 +1,5 @@
 from typing import AsyncGenerator, List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Query
 from api.dependencies import get_db, get_vector_db, get_settings, _get_sessionmaker
 from config.settings import Settings
 from storage.cas import CASManager
@@ -801,6 +801,11 @@ AI_INSIGHT_UNAVAILABLE_MESSAGE = AI_EXPLANATION_UNAVAILABLE
 async def get_candidate_insight(
     candidate_id: str,
     query: str,
+    city: Optional[str] = Query(None),
+    job_title: Optional[str] = Query(None),
+    title: Optional[str] = Query(None),
+    min_years: Optional[float] = Query(None),
+    min_yoe: Optional[float] = Query(None),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings)
 ) -> StreamingResponse:
@@ -815,7 +820,16 @@ async def get_candidate_insight(
     
     raw_text = rv.raw_text if rv and rv.raw_text else ""
     
-    prompt = build_match_insight_prompt(raw_text, query)
+    effective_title = job_title or title
+    effective_min_years = min_years if min_years is not None else min_yoe
+
+    prompt = build_match_insight_prompt(
+        raw_text,
+        query,
+        city=city,
+        job_title=effective_title,
+        min_years=effective_min_years,
+    )
 
     async def stream_tokens(model_name: str, provider: str) -> AsyncGenerator[str, None]:
         if provider == "openrouter":

@@ -76,6 +76,21 @@ def test_match_insight_prompt_is_byte_identical() -> None:
     assert rendered == expected
 
 
+def test_match_insight_prompt_with_criteria() -> None:
+    rendered = build_match_insight_prompt(
+        "Jane Doe profile",
+        "Python, React",
+        city="San Francisco",
+        job_title="Senior Engineer",
+        min_years=5,
+    )
+    assert "Search Query / Skills: 'Python, React'" in rendered
+    assert "Target Job Title: Senior Engineer" in rendered
+    assert "Target City / Location: San Francisco" in rendered
+    assert "Minimum Experience: 5 years" in rendered
+    assert "Evaluate the candidate against all criteria above" in rendered
+
+
 def test_match_insight_prompt_tolerates_braces_in_inputs() -> None:
     rendered = build_match_insight_prompt("{weird} {text}", "{query}")
     assert "{weird} {text}" in rendered
