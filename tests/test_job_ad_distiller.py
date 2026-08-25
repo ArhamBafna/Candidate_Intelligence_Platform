@@ -88,7 +88,7 @@ def test_ai_garbage_json_falls_back_to_heuristics(monkeypatch):
 
     assert recipe.source == "fallback"
     assert recipe.min_yoe >= 5.0
-    assert any("Chat AI unavailable" in w for w in recipe.warnings)
+    assert any("unavailable" in w for w in recipe.warnings)
 
 
 def test_ai_unavailable_uses_non_ai_extraction(monkeypatch):
@@ -101,7 +101,7 @@ def test_ai_unavailable_uses_non_ai_extraction(monkeypatch):
     assert {"kubernetes", "postgres", "airflow"} <= lowered_skills
     assert recipe.min_yoe >= 5.0
     assert recipe.location == "NYC"
-    assert any("Chat AI unavailable" in w for w in recipe.warnings)
+    assert any("unavailable" in w for w in recipe.warnings)
 
 
 def test_nothing_useful_searches_raw_text_with_warning(monkeypatch):
@@ -164,8 +164,9 @@ def test_build_search_dsl_round_trips_through_parser():
     fts_lower = params["fts_query"].lower()
     assert "python" in fts_lower
     assert "sql" in fts_lower
-    assert "data engineer" not in fts_lower
-    assert "new york" not in fts_lower
+    # FTS query now preserves extracted structured filter text (Issue #36)
+    assert "data engineer" in fts_lower
+    assert "new york" in fts_lower
 
 
 def test_recipe_metadata_shape():

@@ -100,6 +100,14 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
                 content = None
                 serving_provider = "ollama"
 
+        if serving_provider == "ollama":
+            response = _call_ollama(prompt, settings.llm_model if provider == "openrouter" else selected_model, timeout_seconds)
+            content = response.message.content if response else None
+
+        if not content:
+            logger.warning("ai_llm_empty_content_returned", model=selected_model)
+            return []
+
         try:
             data = json.loads(content)
         except json.JSONDecodeError as jde:

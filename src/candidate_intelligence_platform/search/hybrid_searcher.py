@@ -16,9 +16,9 @@ def _describe_strict_filters(params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Turn parsed query filter params into scorecard descriptors."""
     descriptors: List[Dict[str, Any]] = []
     if "location" in params:
-        descriptors.append({"field": "current_city", "operator": "=", "value": params["location"]})
+        descriptors.append({"field": "current_city", "operator": "CONTAINS", "value": params["location"]})
     if "title" in params:
-        descriptors.append({"field": "current_title", "operator": "=", "value": params["title"]})
+        descriptors.append({"field": "current_title", "operator": "CONTAINS", "value": params["title"]})
     if "yoe" in params:
         descriptors.append({"field": "total_yoe", "operator": ">=", "value": params["yoe"]})
     return descriptors
@@ -148,14 +148,12 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     if has_strict_filters:
         where_parts = []
         if "location" in params:
-            where_parts.append("current_city = :location")
+            where_parts.append("(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)")
         if "title" in params:
-            where_parts.append("current_title = :title COLLATE NOCASE")
-        if "yoe" in params:
-            where_parts.append("total_yoe >= :yoe")
+            where_parts.append("(candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :title || '%' COLLATE NOCASE)")
             
         if where_parts:
-            strict_sql = "SELECT id FROM candidates WHERE " + " AND ".join(where_parts)
+            strict_sql = "SELECT candidates.id FROM candidates JOIN candidate_fts ON candidates.id = candidate_fts.candidate_id WHERE " + " AND ".join(where_parts)
             strict_filtered_ids = execute_strict_filter_query(strict_sql, params, db)
     
     yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
@@ -172,9 +170,24 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
     settings = Settings()
-    rrf_results = reciprocal_rank_fusion(
+    
+    from storage.db_models import Candidate
+    all_cids = set(fts_ranks.keys()).union(vector_ranks.keys())
+    candidate_metadata = {}
+    if all_cids and db is not None:
+        rows = db.query(Candidate.id, Candidate.total_yoe, Candidate.current_title, Candidate.current_city).filter(Candidate.id.in_(all_cids)).all()
+        for r in rows:
+            candidate_metadata[r.id] = {
+                "total_yoe": r.total_yoe,
+                "current_title": (r.current_title or "").lower(),
+                "current_city": (r.current_city or "").lower()
+            }
+
+    rrf_results, soft_penalties, soft_bonuses = reciprocal_rank_fusion(
         fts_ranks,
         vector_ranks,
+        candidate_metadata=candidate_metadata,
+        params=params,
         k=settings.rrf_k,
         keyword_weight=settings.keyword_weight,
         vector_weight=settings.vector_weight
@@ -219,6 +232,8 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
             strict_filters=strict_filters,
             keyword_matches=_keyword_hits(fts_query, doc_map.get(cid, "")),
             semantic_matches=_semantic_signals(cid, vector_ranks),
+            soft_penalties=soft_penalties.get(cid, []),
+            soft_bonuses=soft_bonuses.get(cid, []),
         )
         rationale = build_match_rationale(params_obj)
         results.append(rationale)

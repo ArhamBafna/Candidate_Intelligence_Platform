@@ -83,3 +83,12 @@
 - [x] Ticket 04: Security Hardening (FTS Query Sanitization & CORS Restrictions)
 - [x] Ticket 05: Code Simplification & Long Function Decomposition
 - [x] Ticket 06: PDF Parser OCR Fallback & Final Verification
+
+## Soft Search Filters (Issue #36)
+
+- [x] Extract clean natural language strings from structured title and location filters for FTS, vector search, and AI reranking
+- [x] Replace hard SQL YoE exclusion (`WHERE candidates.total_yoe >= :yoe`) with smooth Sigmoid S-curve score penalty (zero penalty for overqualified)
+- [x] Add score bonuses in rank fusion for exact candidate `current_title` and `current_city` matches
+- [x] Pass clean natural text query to Cross-Encoder reranker
+- [x] Update `MatchParameters` and match explanation scorecard with soft penalty / bonus details
+- [x] Update test suite and verify all unit and integration search tests pass

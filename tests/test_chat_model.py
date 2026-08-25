@@ -51,6 +51,7 @@ def test_configured_chat_model_available(monkeypatch):
 def test_invalid_chat_model_retries_with_llama32_fallback(monkeypatch):
     monkeypatch.setenv("CIP_LLM_MODEL", "not-installed-model")
     monkeypatch.setattr("ollama.list", lambda: FakeListResponse(["llama3.2:latest"]))
+    reset_chat_model_cache()
 
     with structlog.testing.capture_logs() as cap_logs:
         resolved = resolve_chat_model()
@@ -65,6 +66,7 @@ def test_invalid_chat_model_retries_with_llama32_fallback(monkeypatch):
 def test_total_chat_failure_returns_none(monkeypatch):
     monkeypatch.setenv("CIP_LLM_MODEL", "ghost-model")
     monkeypatch.setattr("ollama.list", lambda: FakeListResponse(["mistral:7b"]))
+    reset_chat_model_cache()
 
     with structlog.testing.capture_logs() as cap_logs:
         resolved = resolve_chat_model()

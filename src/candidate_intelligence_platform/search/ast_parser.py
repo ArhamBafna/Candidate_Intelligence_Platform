@@ -4,9 +4,9 @@ import functools
 # Each spec: compiled filter pattern, SQL fragment it contributes, bound
 # parameter name, and the cast applied to the captured value.
 FILTER_SPECS: list[tuple[re.Pattern[str], str, str, type]] = [
-    (re.compile(r"\blocation:'([^']+)'"), "candidates.current_city = :location COLLATE NOCASE", "location", str),
-    (re.compile(r"\btitle:'([^']+)'"), "candidates.current_title = :title COLLATE NOCASE", "title", str),
-    (re.compile(r"\byoe\s*>=\s*(\d+(?:\.\d+)?)"), "candidates.total_yoe >= :yoe", "yoe", float),
+    (re.compile(r"\blocation:'([^']+)'"), "(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)", "location", str),
+    (re.compile(r"\btitle:'([^']+)'"), "(candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :title || '%' COLLATE NOCASE)", "title", str),
+    (re.compile(r"\byoe\s*>=\s*(\d+(?:\.\d+)?)"), "", "yoe", float),
 ]
 
 @functools.lru_cache(maxsize=1024)
@@ -26,9 +26,14 @@ def parse_query_to_sql(query: str) -> tuple[str, dict[str, object]]:
     for pattern, sql_fragment, param_name, cast in FILTER_SPECS:
         match_obj = pattern.search(query)
         if match_obj:
-            sql_parts.append(sql_fragment)
+            if sql_fragment:
+                sql_parts.append(sql_fragment)
             params[param_name] = cast(match_obj.group(1))
-            query = query.replace(match_obj.group(0), "")
+            # Replace the structured syntax with the natural language string (or remove if yoe)
+            if param_name == "yoe":
+                query = query.replace(match_obj.group(0), "")
+            else:
+                query = query.replace(match_obj.group(0), match_obj.group(1))
 
     # The rest is assumed to be FTS text.
     # Strip standalone AND operators only; words merely containing AND

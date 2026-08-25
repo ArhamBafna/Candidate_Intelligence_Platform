@@ -11,6 +11,8 @@ class MatchParameters:
     keyword_matches: list = field(default_factory=list)
     semantic_matches: list = field(default_factory=list)
     ai_inferences: list = field(default_factory=list)
+    soft_penalties: list = field(default_factory=list)
+    soft_bonuses: list = field(default_factory=list)
     rerank_score: Optional[float] = None
 
 def build_match_rationale(params: MatchParameters) -> dict:
@@ -45,7 +47,9 @@ def build_match_rationale(params: MatchParameters) -> dict:
             "strict_filters": params.strict_filters,
             "keyword_matches": params.keyword_matches,
             "semantic_matches": params.semantic_matches,
-            "ai_inferences": params.ai_inferences
+            "ai_inferences": params.ai_inferences,
+            "soft_penalties": params.soft_penalties,
+            "soft_bonuses": params.soft_bonuses
         }
     }
 
