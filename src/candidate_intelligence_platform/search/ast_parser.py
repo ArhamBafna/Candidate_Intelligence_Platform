@@ -10,7 +10,7 @@ FILTER_SPECS: list[tuple[re.Pattern[str], str, str, type]] = [
 ]
 
 @functools.lru_cache(maxsize=1024)
-def parse_query_to_sql(query: str) -> tuple[str, dict[str, object]]:
+def parse_query_to_sql(query: str) -> tuple[str, dict[str, object], str]:
     """
     Parses a strict query string into a SQL query and parameters.
     Currently supports:
@@ -21,6 +21,7 @@ def parse_query_to_sql(query: str) -> tuple[str, dict[str, object]]:
     """
     sql_parts: list[str] = []
     params: dict[str, object] = {}
+    clean_parts: list[str] = []
 
     # Extract structured filters so they never leak into the FTS match string
     for pattern, sql_fragment, param_name, cast in FILTER_SPECS:
@@ -29,11 +30,12 @@ def parse_query_to_sql(query: str) -> tuple[str, dict[str, object]]:
             if sql_fragment:
                 sql_parts.append(sql_fragment)
             params[param_name] = cast(match_obj.group(1))
-            # Replace the structured syntax with the natural language string (or remove if yoe)
-            if param_name == "yoe":
-                query = query.replace(match_obj.group(0), "")
-            else:
-                query = query.replace(match_obj.group(0), match_obj.group(1))
+            
+            # Keep the natural language string for embeddings/reranking (except yoe)
+            if param_name != "yoe":
+                clean_parts.append(match_obj.group(1))
+                
+            query = query.replace(match_obj.group(0), "")
 
     # The rest is assumed to be FTS text.
     # Strip standalone AND operators only; words merely containing AND
@@ -54,6 +56,10 @@ def parse_query_to_sql(query: str) -> tuple[str, dict[str, object]]:
         sql_parts.append("candidate_fts MATCH :fts_query")
         params["fts_query"] = fts_query
 
+    # Create a clean natural language text for vector search and reranking
+    clean_text_parts = clean_parts + ([fts_query] if fts_query else [])
+    clean_text = " ".join(clean_text_parts).strip()
+
     where_clause = " AND ".join(sql_parts)
 
     sql = "SELECT candidates.id FROM candidates " \
@@ -66,4 +72,4 @@ def parse_query_to_sql(query: str) -> tuple[str, dict[str, object]]:
     if params.get("fts_query"):
         sql += " ORDER BY bm25(candidate_fts)"
 
-    return sql, params
+    return sql, params, clean_text

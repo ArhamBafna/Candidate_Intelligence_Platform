@@ -140,7 +140,7 @@ def test_fallback_sentence_title_dsl_stays_clean(monkeypatch):
     monkeypatch.setattr(jad, "resolve_chat_model", lambda force_refresh=False: None)
 
     recipe = distill_job_ad(SENTENCE_AD)
-    sql, params = parse_query_to_sql(build_search_dsl(recipe))
+    sql, params, clean_text = parse_query_to_sql(build_search_dsl(recipe))
 
     assert params["title"] == "Senior Data Engineer"
 
@@ -156,7 +156,7 @@ def test_build_search_dsl_round_trips_through_parser():
     )
 
     dsl = build_search_dsl(recipe)
-    sql, params = parse_query_to_sql(dsl)
+    sql, params, clean_text = parse_query_to_sql(dsl)
 
     assert params["title"] == "Data Engineer"
     assert params["location"] == "New York"
@@ -164,9 +164,12 @@ def test_build_search_dsl_round_trips_through_parser():
     fts_lower = params["fts_query"].lower()
     assert "python" in fts_lower
     assert "sql" in fts_lower
-    # FTS query now preserves extracted structured filter text (Issue #36)
-    assert "data engineer" in fts_lower
-    assert "new york" in fts_lower
+    # FTS query now correctly drops structured filter text (Issue #1 fix),
+    # but the semantic search input (clean_text) preserves it.
+    assert "data engineer" not in fts_lower
+    assert "data engineer" in clean_text.lower()
+    assert "new york" not in fts_lower
+    assert "new york" in clean_text.lower()
 
 
 def test_recipe_metadata_shape():

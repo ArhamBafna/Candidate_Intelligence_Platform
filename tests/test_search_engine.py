@@ -7,7 +7,7 @@ from candidate_intelligence_platform.search.hybrid_searcher import search_candid
 
 def test_parse_query_to_sql():
     query = "python AND location:'NYC' AND yoe >= 5"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
 
     assert "candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE" in sql
     assert "candidates.total_yoe >= :yoe" not in sql
@@ -16,11 +16,12 @@ def test_parse_query_to_sql():
     assert params["location"] == "NYC"
     assert params["yoe"] == 5
     assert "python" in params["fts_query"]
-    assert "nyc" in params["fts_query"].lower()
+    assert "nyc" not in params.get("fts_query", "").lower()
+    assert "nyc" in clean_text.lower()
 
 def test_parse_query_to_sql_special_chars():
     query = "Java/J2EE hands-on C++"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
     
     assert "candidate_fts MATCH :fts_query" in sql
     # The special characters should be stripped or replaced by spaces
@@ -28,30 +29,31 @@ def test_parse_query_to_sql_special_chars():
 
 def test_parse_title_filter_is_sql_like():
     query = "python AND title:'senior engineer'"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
 
     assert "candidates.current_title LIKE '%' || :title || '%' COLLATE NOCASE" in sql
     assert params["title"] == "senior engineer"
     assert "python" in params["fts_query"]
-    assert "senior engineer" in params["fts_query"].lower()
+    assert "senior engineer" not in params.get("fts_query", "").lower()
+    assert "senior engineer" in clean_text.lower()
 
 def test_parse_title_filter_not_confused_by_substring_field_names():
     query = "subtitle:'junk' python"
-    sql, params = parse_query_to_sql(query)
+    sql, params, clean_text = parse_query_to_sql(query)
 
     assert ":title" not in sql
     assert "title" not in params
     assert params["fts_query"] == "subtitle 'junk' python"
 
 def test_parse_and_substring_words_preserved():
-    sql, params = parse_query_to_sql("SANDPAPER AND python")
+    sql, params, clean_text = parse_query_to_sql("SANDPAPER AND python")
 
     assert "SANDPAPER" in params["fts_query"]
     assert "SPAPER" not in params["fts_query"]
     assert "python" in params["fts_query"]
 
 def test_parse_yoe_accepts_float():
-    sql, params = parse_query_to_sql("python AND yoe >= 2.5")
+    sql, params, clean_text = parse_query_to_sql("python AND yoe >= 2.5")
 
     assert "candidates.total_yoe >= :yoe" not in sql
     assert params["yoe"] == 2.5
@@ -88,7 +90,7 @@ def test_keyword_only_query_orders_by_bm25(db_session):
         )
     db_session.commit()
 
-    sql, params = parse_query_to_sql("python")
+    sql, params, clean_text = parse_query_to_sql("python")
     assert "ORDER BY bm25(candidate_fts)" in sql
 
     ranks = execute_fts_query(sql, params, db_session)
@@ -145,7 +147,7 @@ def test_hybrid_search_candidates(monkeypatch):
     query = "python AND location:'NYC'"
 
     def mock_parse(q):
-        return "SELECT candidates.id FROM candidates WHERE candidates.current_city = :location", {"location": "NYC", "fts_query": "python"}
+        return "SELECT candidates.id FROM candidates WHERE candidates.current_city = :location", {"location": "NYC", "fts_query": "python"}, "python nyc"
 
     def mock_db_fts(sql, params, db):
         return {"cand_1": 1, "cand_2": 2}
@@ -192,7 +194,7 @@ def test_hybrid_search_candidates_applies_tuning_knobs(monkeypatch):
     query = "python"
 
     def mock_parse(q):
-        return "", {"fts_query": "python"}
+        return "", {"fts_query": "python"}, "python"
 
     def mock_db_fts(sql, params, db):
         return {}

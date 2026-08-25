@@ -134,9 +134,8 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     yield ("STARTING", 0, "Initializing search...", None)
     yield ("FTS_SEARCH", 20, "Executing keyword and filter query...", None)
     
-    sql, params = parse_query_to_sql(query)
-    # Embed ONLY the cleaned free-text portion; structured filter values
-    # (city, title, min yoe) must never ride along into the embedding input.
+    sql, params, clean_text = parse_query_to_sql(query)
+    # The FTS query contains only unstructured free-text keywords
     fts_query = params.get("fts_query", "")
     
     fts_ranks = execute_fts_query(sql, params, db)
@@ -158,7 +157,7 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     
     yield ("VECTOR_SEARCH", 40, "Performing semantic vector search...", None)
     
-    vector_input = semantic_query if semantic_query else fts_query
+    vector_input = semantic_query if semantic_query else clean_text
     
     if has_strict_filters and not strict_filtered_ids:
         # Strict filters applied but no matches found in SQLite.
@@ -208,7 +207,7 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
 
     doc_map = dict(zip(top_candidates, documents))
     strict_filters = _describe_strict_filters(params)
-    rerank_input = semantic_query if semantic_query else query
+    rerank_input = semantic_query if semantic_query else clean_text
     try:
         rerank_scores = rerank_candidates(rerank_input, documents)
         reranked = sorted(zip(top_candidates, rerank_scores), key=lambda x: x[1], reverse=True)
