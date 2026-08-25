@@ -50,7 +50,7 @@ def test_generate_manifest(tmp_path: Path, monkeypatch):
     (cas_dir / "ab").mkdir()
     (cas_dir / "ab" / "abcde.pdf").write_text("test")
 
-    # We mock lancedb connection for this test
+    # We mock lancedb for this test
     manager = BackupManager()
     
     # Mock lance row count
@@ -61,3 +61,35 @@ def test_generate_manifest(tmp_path: Path, monkeypatch):
     assert "db_sha256" in manifest
     assert manifest["cas_file_count"] == 2
     assert manifest["vector_count"] == 42
+
+
+def test_lance_row_count_uses_candidate_vectors_table(tmp_path: Path):
+    """Regression test for the P1 audit finding: the manifest row count
+    previously looked for the dead 'candidate_sections' table and always
+    returned 0 with production LanceDB storage (which uses
+    'candidate_vectors'). Now it must count real rows.
+    """
+    import lancedb
+    from storage.vector_store import CandidateSectionVector
+
+    db_path = str(tmp_path / "lancedb_manifest")
+    db = lancedb.connect(db_path)
+    tbl = db.create_table("candidate_vectors", schema=CandidateSectionVector)
+    tbl.add([{
+        "chunk_id": f"chunk_{i}",
+        "candidate_id": "cand_1",
+        "resume_version_id": "rv1",
+        "section_type": "SUMMARY",
+        "chunk_text": "sample",
+        "vector": [0.0] * 384,
+        "start_offset": 0,
+        "end_offset": 0,
+    } for i in range(3)])
+
+    manager = BackupManager()
+    assert manager._get_lance_row_count(db_path) == 3
+
+    # Non-LanceDB path (no tables) returns 0 without crashing.
+    empty_dir = tmp_path / "empty_vectors"
+    empty_dir.mkdir()
+    assert manager._get_lance_row_count(str(empty_dir)) == 0

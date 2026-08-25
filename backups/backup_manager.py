@@ -51,8 +51,8 @@ class BackupManager:
             if not Path(vector_dir).exists():
                 return 0
             db = lancedb.connect(vector_dir)
-            if "candidate_sections" in db.table_names():
-                tbl = db.open_table("candidate_sections")
+            if "candidate_vectors" in db.table_names():
+                tbl = db.open_table("candidate_vectors")
                 return len(tbl)
             return 0
         except Exception:

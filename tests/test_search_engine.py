@@ -690,6 +690,12 @@ def test_reciprocal_rank_fusion_exact_title_bonus_ranks_exact_first(monkeypatch)
 def test_execute_vector_search_missing_table(monkeypatch):
     from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
     
+    # Must be patched, otherwise the real FastEmbed model is loaded (slow).
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.search.hybrid_searcher.generate_single_embedding",
+        lambda text: [0.1, 0.2],
+    )
+
     class MockVectorDB:
         def search(self, table_name):
             raise Exception("Table candidate_vectors does not exist.")
