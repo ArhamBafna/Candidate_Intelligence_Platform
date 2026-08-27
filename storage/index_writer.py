@@ -100,4 +100,5 @@ class StorageIndexWriter:
             self.vector_db.delete_candidate_vectors(candidate_id)
         elif _has_candidate_vectors_table(self.vector_db):
             table = self.vector_db.open_table("candidate_vectors")
-            table.delete(f'candidate_id = "{candidate_id}"')
+            safe_id = candidate_id.replace('"', '""')
+            table.delete(f'candidate_id = "{safe_id}"')

@@ -726,9 +726,9 @@ def test_merge_preserves_fields_when_extraction_omits_them(db_session, test_sett
 
 def test_new_candidate_path_untouched_by_merge_refresh(db_session, test_settings, cas_mgr, vector_db, mock_extraction):
     result = ingest_file(
-        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
-        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
-        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.LEDGER,
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
+        vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
+        timeline_mode=TimelineMode.LEDGER,
     )
     db_session.commit()
 
@@ -737,3 +737,88 @@ def test_new_candidate_path_untouched_by_merge_refresh(db_session, test_settings
     assert cand.first_name == "Jane"
     assert cand.primary_email == "jane.doe@example.com"
     assert cand.current_title == "Engineer"
+
+
+# ---------------------------------------------------------------------------
+# Change 3: _purge_cas_object catches CAS delete exceptions gracefully
+# ---------------------------------------------------------------------------
+
+def test_purge_cas_object_on_delete_exception():
+    """When CASManager.delete() raises, _purge_cas_object catches it, appends
+    a warning, and does not propagate the exception to the caller."""
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+    from unittest.mock import MagicMock
+
+    mock_cas_mgr = MagicMock()
+    mock_cas_mgr.delete.side_effect = RuntimeError("disk error")
+    warnings: List[str] = []
+    intake_module._purge_cas_object(mock_cas_mgr, "some/path.pdf", warnings)
+    assert len(warnings) == 1
+    assert "CAS purge failed" in warnings[0]
+    assert "disk error" in warnings[0]
+
+
+# ---------------------------------------------------------------------------
+# Change 4: ingest_file catches write_candidate_indices exception -> PARTIAL
+# ---------------------------------------------------------------------------
+
+def test_ingest_file_fts_update_failure_returns_partial(
+    db_session, test_settings, cas_mgr, vector_db, mock_extraction, monkeypatch
+):
+    """When StorageIndexWriter.write_candidate_indices raises, ingest_file
+    catches it, records a warning, and returns IntakeStatus.PARTIAL."""
+    from ingestion.entity_resolution import ResolutionAction, ResolutionResult
+
+    mock_resolution = ResolutionResult(
+        action=ResolutionAction.NEW, tier=0, confidence=0.0, matched_id=None,
+    )
+    mock_extraction.update({"facts": []})
+
+    monkeypatch.setattr(
+        "ingestion.entity_resolution.resolve",
+        lambda *a, **kw: mock_resolution,
+    )
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.ingestion.intake.classify_document",
+        lambda text, filename: (True, "VALID_RESUME", "ok"),
+    )
+    monkeypatch.setattr(
+        "ingestion.chunker.chunk_resume",
+        lambda doc, cand_id: [],
+    )
+    monkeypatch.setattr(
+        "storage.index_writer.StorageIndexWriter.write_candidate_indices",
+        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("db locked")),
+    )
+
+    result = ingest_file(
+        content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session,
+        cas_mgr=cas_mgr, vector_db=vector_db, settings=test_settings,
+        source=IntakeSource.UPLOAD, timeline_mode=TimelineMode.NONE,
+    )
+    assert result.status == IntakeStatus.PARTIAL
+    assert any("Search index update failed" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# Change 5: _parse_raw_text falls back on parser exception
+# ---------------------------------------------------------------------------
+
+def test_parse_raw_text_falls_back_on_parser_exception(monkeypatch):
+    """When the structured parser raises, _parse_raw_text catches it, appends
+    a warning, and returns content decoded as raw text."""
+    import candidate_intelligence_platform.ingestion.intake as intake_module
+
+    content = b"Hello raw fallback content"
+    warnings: List[str] = []
+
+    monkeypatch.setattr(
+        "ingestion.parsers.pdf_parser.parse_pdf",
+        lambda path: (_ for _ in ()).throw(RuntimeError("parse error")),
+    )
+
+    result = intake_module._parse_raw_text(content, "file.pdf", ".pdf", warnings)
+    assert result == "Hello raw fallback content"
+    assert len(warnings) == 1
+    assert "Structured parser failed" in warnings[0]
+    assert "parse error" in warnings[0]
