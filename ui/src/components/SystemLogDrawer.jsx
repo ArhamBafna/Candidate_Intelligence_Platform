@@ -94,7 +94,7 @@ export default function SystemLogDrawer() {
           width: '440px',
           maxHeight: '580px',
           borderRadius: '16px',
-          background: 'var(--card)', /* matches app surface token */
+          background: '#171717', /* solid dark background to fix overlap */
           border: '1px solid rgba(255, 255, 255, 0.15)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
           display: 'flex',

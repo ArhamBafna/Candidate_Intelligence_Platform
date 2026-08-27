@@ -902,16 +902,6 @@ function CandidateList() {
                           {candidate.match_percentage}%
                         </span>
                       )}
-                      {candidate.match_scorecard?.title_match === 'exact' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 bg-emerald-500 text-black border border-emerald-400" title="Current title matches the search title verbatim (+20% RRF bonus)">
-                          Exact Title Match +20%
-                        </span>
-                      )}
-                      {candidate.match_scorecard?.title_match === 'semantic' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-sky-500/10 text-sky-300 border border-sky-500/30" title="Current title is semantically related to the searched title (e.g. ML Engineer for AI Engineer)">
-                          Related Title Match
-                        </span>
-                      )}
                       {candidate.rank != null && (
                         <span className="text-[10px] font-mono font-bold text-neutral-400 bg-neutral-800/80 border border-neutral-700 px-1.5 py-0.5 rounded">#{candidate.rank}</span>
                       )}
@@ -968,9 +958,21 @@ function CandidateList() {
               
               <div className="space-y-3 mt-4 text-sm text-neutral-400">
                 {candidate.current_title && (
-                  <div className="flex items-center gap-2">
-                    <Briefcase size={16} className="text-neutral-500" />
-                    <span>{candidate.current_title} {candidate.current_company ? `at ${candidate.current_company}` : ''}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Briefcase size={16} className="text-neutral-500 shrink-0" />
+                      <span className="truncate">{candidate.current_title} {candidate.current_company ? `at ${candidate.current_company}` : ''}</span>
+                    </div>
+                    {candidate.match_scorecard?.title_match === 'exact' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1 bg-emerald-500 text-black border border-emerald-400 whitespace-nowrap shrink-0 ml-auto" title="Current title matches the search title verbatim (+20% RRF bonus)">
+                        Exact Title Match +20%
+                      </span>
+                    )}
+                    {candidate.match_scorecard?.title_match === 'semantic' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-sky-500/10 text-sky-300 border border-sky-500/30 whitespace-nowrap shrink-0 ml-auto" title="Current title is semantically related to the searched title (e.g. ML Engineer for AI Engineer)">
+                        Related Title Match
+                      </span>
+                    )}
                   </div>
                 )}
                 {candidate.current_city && (
@@ -1340,28 +1342,12 @@ function CandidateList() {
       {/* Floating Action Bar for Multi-Selection */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-bar bg-neutral-900/90 border border-emerald-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300 whitespace-nowrap max-w-fit">
-          <div className="flex items-center gap-3 border-r border-neutral-700/80 pr-5 shrink-0">
-            <button 
-              onClick={toggleSelectAll}
-              className="text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 bg-neutral-800/80 hover:bg-neutral-800 px-3 py-1.5 rounded-lg border border-neutral-700 transition-colors whitespace-nowrap shrink-0"
-            >
-              {selectedIds.length === candidates.length && candidates.length > 0 ? (
-                <> <CheckSquare size={15} className="text-emerald-400 shrink-0" /> Deselect All </>
-              ) : (
-                <> <Square size={15} className="text-neutral-400 shrink-0" /> Select All </>
-              )}
-            </button>
-            <span className="text-sm font-semibold text-emerald-300 whitespace-nowrap shrink-0">
-              {selectedIds.length} candidate{selectedIds.length > 1 ? 's' : ''} selected
-            </span>
-          </div>
-
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={handleBatchReprocess}
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/30 border border-emerald-400/30 whitespace-nowrap shrink-0"
             >
-              <RefreshCw size={16} className="shrink-0" /> Re-process ({selectedIds.length})
+              <RefreshCw size={16} className="shrink-0" /> Re-process
             </button>
             <button
               onClick={handleBatchDownloadResumes}
@@ -1373,7 +1359,7 @@ function CandidateList() {
               onClick={() => setShowBatchDeleteModal(true)}
               className="bg-red-600/90 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-red-950/30 border border-red-500/30 whitespace-nowrap shrink-0"
             >
-              <Trash2 size={16} className="shrink-0" /> Delete ({selectedIds.length})
+              <Trash2 size={16} className="shrink-0" /> Delete
             </button>
             <button
               onClick={clearSelection}

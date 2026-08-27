@@ -271,27 +271,6 @@ function CandidateDetail() {
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-4xl mx-auto space-y-6">
           
-          {/* Download Resume Quick Access Card */}
-          <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-emerald-950/80 border border-emerald-500/30 rounded-xl text-emerald-400">
-                <FileText size={24} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-neutral-100">Original Resume Document</h3>
-                <p className="text-xs text-neutral-400">Download the uploaded resume file directly to your device</p>
-              </div>
-            </div>
-            <a
-              href={`/api/candidates/${id}/file`}
-              download
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/20"
-            >
-              <Download size={18} />
-              Download Resume
-            </a>
-          </div>
-
           {/* Profile Data Card */}
           <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-8 shadow-xl">
             <h2 className="text-lg font-semibold text-neutral-200 mb-6 flex items-center gap-2 border-b border-neutral-800 pb-4">
