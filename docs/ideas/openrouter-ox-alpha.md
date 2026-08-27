@@ -1,4 +1,7 @@
-# Switch LLM Backend to OpenRouter OX Alpha (Free Tier) [IMPLEMENTED]
+> [!IMPORTANT]
+> **STATUS: IMPLEMENTED** — This feature is already fully implemented and verified in the codebase. Do NOT take this document as active context or pending work unless the user explicitly requests it.
+
+# Switch LLM Backend to OpenRouter OX Alpha (Free Tier)
 
 **Status:** `COMPLETED`  
 **Implemented In:** `src/candidate_intelligence_platform/intelligence/chat_model.py`, `config/settings.py`  

@@ -1,4 +1,7 @@
-# Centralized AI Prompts [IMPLEMENTED]
+> [!IMPORTANT]
+> **STATUS: IMPLEMENTED** — This feature is already fully implemented and verified in the codebase. Do NOT take this document as active context or pending work unless the user explicitly requests it.
+
+# Centralized AI Prompts
 
 **Status:** `COMPLETED` (Issue #24)  
 **Implemented In:** `src/candidate_intelligence_platform/prompts.py`  

@@ -1,4 +1,7 @@
-# Search Accuracy Evaluation Harness [IMPLEMENTED]
+> [!IMPORTANT]
+> **STATUS: IMPLEMENTED** — This feature is already fully implemented and verified in the codebase. Do NOT take this document as active context or pending work unless the user explicitly requests it.
+
+# Search Accuracy Evaluation Harness
 
 **Status:** `COMPLETED` (Issue #21)  
 **Implemented In:** `tests/test_golden_eval.py`, `tests/fixtures/golden_search_set.json`  

@@ -1,4 +1,7 @@
-# Async AI Candidate Match Insights [IMPLEMENTED]
+> [!IMPORTANT]
+> **STATUS: IMPLEMENTED** — This feature is already fully implemented and verified in the codebase. Do NOT take this document as active context or pending work unless the user explicitly requests it.
+
+# Async AI Candidate Match Insights
 
 **Status:** `COMPLETED`  
 **Implemented In:** `api/routes/candidates.py` (`/insight` endpoint), `ui/src/pages/CandidateList.jsx`  
