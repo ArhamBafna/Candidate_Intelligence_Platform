@@ -125,6 +125,9 @@ def test_get_candidate_file(client: TestClient, db_session: Session, test_settin
     assert response.headers["content-type"] == "application/pdf"
 
 def test_reprocess_candidate(client: TestClient, db_session: Session, monkeypatch):
+    from storage.index_writer import StorageIndexWriter
+    monkeypatch.setattr(StorageIndexWriter, "_update_vectors_with_precomputed", lambda *args, **kwargs: None)
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0]*4 for _ in texts])
     monkeypatch.setattr(
         "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
         lambda text, **kwargs: {"first_name": "Reprocess", "last_name": "Test", "primary_email": "", "primary_phone": "", "current_title": "Software Engineer", "warnings": []}
@@ -164,12 +167,13 @@ def test_reprocess_candidate(client: TestClient, db_session: Session, monkeypatc
     assert any(e["event_type"] == "REPROCESS_TRIGGERED" for e in timeline_data)
 
 def test_reprocess_candidate_stream(client: TestClient, db_session: Session, monkeypatch):
-    from api.services.candidate_service import CandidateService
+    from storage.index_writer import StorageIndexWriter
+    monkeypatch.setattr(StorageIndexWriter, "_update_vectors_with_precomputed", lambda *args, **kwargs: None)
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0]*4 for _ in texts])
     monkeypatch.setattr(
         "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
         lambda text, **kwargs: {"first_name": "Stream", "last_name": "Reprocess", "primary_email": "", "primary_phone": "", "current_title": "Data Scientist", "warnings": []}
     )
-    monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: None)
 
     c_id = str(uuid.uuid4())
     c = Candidate(id=c_id, first_name="Stream", last_name="Reprocess", availability_status="ACTIVE", current_title="Data Scientist")
@@ -285,9 +289,9 @@ def test_batch_delete_candidates(client: TestClient, db_session: Session, monkey
 def test_batch_reprocess_stream(client: TestClient, db_session: Session, monkeypatch) -> None:
     mock_vector_db = MockVectorStore()
     from api.dependencies import get_vector_db
-    from api.services.candidate_service import CandidateService
-    monkeypatch.setattr("api.routes.candidates.get_vector_db", lambda: mock_vector_db)
-    monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: None)
+    from storage.index_writer import StorageIndexWriter
+    monkeypatch.setattr(StorageIndexWriter, "_update_vectors_with_precomputed", lambda *args, **kwargs: None)
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0]*4 for _ in texts])
     
     import api.routes.candidates as routes
     monkeypatch.setattr(

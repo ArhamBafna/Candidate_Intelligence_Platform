@@ -73,6 +73,16 @@ def build_fact_extraction_prompt(resume_text: str) -> str:
     return _EXTRACTION_TEMPLATE.format(resume_text=resume_text)
 
 
+def build_document_classification_prompt(text_sample: str) -> str:
+    return (
+        "You are a document classifier. Determine if the following text comes from a candidate resume/CV "
+        "or a non-resume document (e.g. ID card, visa, passport, bill, contract).\n\n"
+        f"Document text snippet:\n\"\"\"\n{text_sample[:1500]}\n\"\"\"\n\n"
+        "Respond ONLY with a valid JSON object:\n"
+        '{"is_resume": true|false, "category": "RESUME"|"ID"|"VISA"|"BILL"|"OTHER", "confidence": 0.0-1.0}'
+    )
+
+
 _INSIGHT_TEMPLATE = (
     "Given the candidate profile and resume text:\n"
     "{resume_text}\n\n"

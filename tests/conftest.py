@@ -91,7 +91,7 @@ def mock_heavy_models(monkeypatch):
         lambda text: [],
     )
     monkeypatch.setattr(
-        "api.services.candidate_service.generate_embeddings",
+        "candidate_intelligence_platform.intelligence.embeddings.generate_embeddings",
         lambda texts: [[0.0] * 4 for _ in texts],
     )
 

@@ -1,6 +1,9 @@
+> 
+> **ALREADY IMPLEMENTED** — This is already implemented and in codebase. Do NOT take this document as context / pending work unless user explicitly says otherwise.
+
 # Architecture Deepening Opportunities
 
-**Status:** `ACTIVE / PARTIALLY IMPLEMENTED`  
+**Status:** `COMPLETED`  
 **Tracker:** See `docs/task.md` for completed ticket references.
 
 ---
@@ -11,9 +14,9 @@
 |---|---|---|---|---|
 | **1** | Resume Intake Pipeline Unified | **COMPLETED** | Issue #12 (`intake.py`) | Single shared ingestion pipeline for uploads, streaming, reprocess, and bulk scripts |
 | **2** | Search DSL Seam & Soft Filters | **COMPLETED** | Issues #36 & #38 | Soft semantic job title matching, S-curve YoE scoring, clean text passing |
-| **3** | Database Housekeeping Knowledge Scattered | **OPEN** | Future Refactor Ticket | Consolidate table literals, DDL, and vector/FTS writers into Storage IndexWriter |
-| **4** | Hybrid Extractor Internals & spaCy Seam | **OPEN** | Future Refactor Ticket | Injectable NER model loader, clean `extract_profile` outcome boundary, fast mock tests |
-| **5** | CandidateService Helper Dissolution | **OPEN** | Future Refactor Ticket | Merge 3 static methods into unified storage and index layers |
+| **3** | Database Housekeeping Knowledge Scattered | **COMPLETED** | `StorageIndexWriter` (`storage/index_writer.py`) | Consolidate table literals, DDL, and vector/FTS writers into Storage IndexWriter |
+| **4** | Hybrid Extractor Internals & spaCy Seam | **COMPLETED** | `hybrid_extractor.py` & `deterministic_ner.py` | Injectable NER model loader, clean `ExtractionOutcome` dataclass boundary, fast mock tests |
+| **5** | CandidateService Helper Dissolution | **COMPLETED** | `candidate_store.py` | Merge static methods into unified storage and index layers, deleted `candidate_service.py` |
 
 ---
 
@@ -31,7 +34,7 @@
 
 ---
 
-## 3. Database Housekeeping Knowledge Scattered (`OPEN`)
+## 3. Database Housekeeping Knowledge Scattered (`COMPLETED`)
 
 ### 3.1 Problem
 Database table names, column names, record shapes, and model wiring are still duplicated across multiple files:
@@ -77,7 +80,7 @@ class StorageIndexWriter:
 
 ---
 
-## 4. Hybrid Extractor Internals & spaCy Seam (`OPEN`)
+## 4. Hybrid Extractor Internals & spaCy Seam (`COMPLETED`)
 
 ### 4.1 Problem
 - `deterministic_ner.py` loads spaCy at module import time (`nlp = spacy.load("en_core_web_sm")`), which slows down test imports and makes mocking difficult.
@@ -111,7 +114,7 @@ class StorageIndexWriter:
 
 ---
 
-## 5. CandidateService Helper Dissolution (`OPEN`)
+## 5. CandidateService Helper Dissolution (`COMPLETED`)
 
 ### 5.1 Problem
 `api/services/candidate_service.py` is a shallow helper with 3 static methods that contain bare `except: pass` blocks and leak commit transactions.

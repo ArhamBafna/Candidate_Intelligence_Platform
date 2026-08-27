@@ -93,7 +93,7 @@ def test_extract_candidate_profile_hybrid_ai_fallback_failed_warning(monkeypatch
     
     res = extract_candidate_profile_hybrid(text)
     assert res["used_ai_fallback"] is False
-    assert "warnings" in res
+    assert hasattr(res, "warnings") and len(res.warnings) > 0
     assert any("LLM fallback attempted" in w for w in res["warnings"])
 
 def test_extract_candidate_profile_with_page_header_noise():

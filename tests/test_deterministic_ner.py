@@ -1,5 +1,5 @@
 import pytest
-from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts, nlp
+from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts, get_nlp
 
 def test_extract_email():
     text = "Contact me at jane.doe@example.com for more info."
@@ -18,7 +18,7 @@ def test_extract_phone():
     assert "+1 (555) 123-4567" in text
     assert "555" in phones[0]['claim_value']
 
-@pytest.mark.skipif(nlp is None, reason="spaCy model en_core_web_sm is not installed")
+@pytest.mark.skipif(get_nlp() is None, reason="spaCy model en_core_web_sm is not installed")
 def test_extract_name():
     text = "John Doe is a Senior Software Engineer."
     facts = extract_facts(text)
@@ -26,7 +26,7 @@ def test_extract_name():
     assert len(names) >= 1
     assert names[0]['claim_value'] == 'John Doe'
 
-@pytest.mark.skipif(nlp is None, reason="spaCy model en_core_web_sm is not installed")
+@pytest.mark.skipif(get_nlp() is None, reason="spaCy model en_core_web_sm is not installed")
 def test_extract_location():
     text = "I am based in San Francisco, CA."
     facts = extract_facts(text)

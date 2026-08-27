@@ -1,6 +1,9 @@
+> 
+> **ALREADY IMPLEMENTED** — This is already implemented and in codebase. Do NOT take this document as context / pending work unless user explicitly says otherwise.
+
 # Smart OCR & Multi-Stage Classification Pipeline
 
-**Status:** `OPEN / READY FOR IMPLEMENTATION`  
+**Status:** `COMPLETED`  
 **Priority:** Medium-High  
 **Prerequisites:** Issue #12 (Unified Intake Pipeline)  
 

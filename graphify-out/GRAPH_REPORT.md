@@ -1,41 +1,41 @@
-# Graph Report - Candidate_Intelligence_Platform  (2026-08-25)
+# Graph Report - Candidate_Intelligence_Platform  (2026-08-27)
 
 ## Corpus Check
-- 136 files · ~77,426 words
+- 139 files · ~80,772 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1263 nodes · 2548 edges · 95 communities (82 shown, 13 thin omitted)
-- Extraction: 84% EXTRACTED · 16% INFERRED · 0% AMBIGUOUS · INFERRED: 396 edges (avg confidence: 0.91)
+- 1334 nodes · 2650 edges · 95 communities (84 shown, 11 thin omitted)
+- Extraction: 85% EXTRACTED · 15% INFERRED · 0% AMBIGUOUS · INFERRED: 397 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b0fad837`
+- Built from commit: `91f2cf85`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Session
+- routes/candidates.py
 - Python Performance Optimization - advanced reference
-- CandidateSectionVector
+- test_golden_eval.py
 - extract_candidate_profile_hybrid
 - db_models.py
 - resolve
 - devDependencies
-- intake.py
+- reprocess_text
 - End-to-End UI Test Report & Findings
 - Candidate Intelligence Platform (CIP)
 - Bulk Ingestion CLI Script (scripts/bulk_ingest.py)
 - test_chunker.py
-- parse_email
+- ParsedDocument
 - embeddings.py
 - App.jsx
 - Environment & Tools Setup Guide (Windows)
-- CASManager
-- BackupManager
+- intake.py
+- SearchQueryRequest
 - parse_pdf
 - React + Vite Template
-- ParsedDocument
+- models.py
 - Exploration Gate
 - Candidate
 - icons.svg SVG symbol sprite sheet
@@ -47,7 +47,7 @@
 - App Favicon (Purple Lightning Bolt)
 - test_get_logs_endpoint_returns_recent_events
 - test_logging.py
-- test_ui_build
+- StorageIndexWriter
 - ingest_file
 - Vite Logo
 - backups/__init__.py
@@ -63,63 +63,63 @@
 - job_ad_distiller.py
 - test_model_fallbacks.py
 - test_search_engine.py
-- MockVectorStore
+- 3. Detailed Technical Specification
 - search_candidates
 - build_match_rationale
 - reranker.py
 - fixture
 - test_api_insight_fallback.py
-- routes/candidates.py
+- Settings
 - execute_vector_search
-- Async AI Candidate Insights
+- Async AI Candidate Match Insights
 - main.py
-- schemas/candidates.py
+- 3. Detailed Technical Specification
 - Search Accuracy Evaluation Harness
-- CandidateService
+- 3. Detailed Technical Specification
 - reciprocal_rank_fusion
 - Architecture Deepening Opportunities
-- Idea: Switch LLM Backend to OpenRouter OX Alpha (Free Tier)
-- test_api_search_stream.py
+- Switch LLM Backend to OpenRouter OX Alpha (Free Tier)
+- 3. Detailed Technical Specification
 - Deferred T5: Parallel Batch Upload Thread Pool
-- Settings
+- local_llm_fallback.py
 - DB FK Indexes + Single-Transaction Writes (busy_timeout=5000)
-- translate_reprocess_progress
-- Idea: Autonomous Agentic Retrieval System
+- label_for_model
+- Autonomous Agentic Retrieval System
 - Centralized AI Prompts
 - Task Tracker
 - prompts.py
 - End-to-End Test Findings
-- test_golden_eval.py
+- distill_job_ad
 - extract_inferences
-- test_api_search.py
+- chunker.py
 - _run_pipeline_capturing_embedding
 - test_search_ai_availability.py
-- .delete_candidate
-- test_ui_duplicate_chip_wired
+- test_ingestion_concurrency.py
+- test_api_search_stream.py
 
 ## God Nodes (most connected - your core abstractions)
-1. `Candidate` - 74 edges
-2. `Settings` - 63 edges
-3. `ingest_file()` - 56 edges
+1. `Candidate` - 79 edges
+2. `Settings` - 64 edges
+3. `ingest_file()` - 58 edges
 4. `IntakeStatus` - 33 edges
 5. `IntakeSource` - 33 edges
 6. `TimelineMode` - 31 edges
-7. `ResumeVersion` - 30 edges
+7. `ResumeVersion` - 31 edges
 8. `CASManager` - 29 edges
-9. `CandidateService` - 28 edges
-10. `ParsedDocument` - 24 edges
+9. `ParsedDocument` - 27 edges
+10. `search_candidates()` - 27 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `test_vector_search_failure_logs_ai_warning()` --calls--> `execute_vector_search()`  [INFERRED]
   tests/test_ai_failure_logging.py → src/candidate_intelligence_platform/search/hybrid_searcher.py
 - `test_fetch_candidate_documents_empty()` --calls--> `fetch_candidate_documents()`  [INFERRED]
   tests/test_search_engine.py → src/candidate_intelligence_platform/search/hybrid_searcher.py
+- `test_recipe_metadata_shape()` --uses--> `JobAdRecipe`  [INFERRED]
+  tests/test_job_ad_distiller.py → src/candidate_intelligence_platform/search/job_ad_distiller.py
 - `Mission: privacy-first local-first candidate intelligence` --semantically_similar_to--> `Privacy-first local-first principle`  [INFERRED] [semantically similar]
   AGENTS.md → README.md
 - `test_unhandled_exception_still_logs_http_request()` --indirect_call--> `get_db()`  [INFERRED]
   tests/test_api_main.py → api/dependencies.py
-- `lifespan()` --uses--> `Settings`  [INFERRED]
-  api/main.py → config/settings.py
 
 ## Import Cycles
 - None detected.
@@ -134,27 +134,27 @@
 - **Product visual identity system (dark + violet isometric stack)** — ui_src_assets_hero_heroshot, ui_src_assets_hero_stacked_slabs, ui_src_assets_hero_purple_rim_lighting, ui_src_assets_hero_dark_theme_branding [INFERRED 0.95]
 - **Bulk Ingestion Parsing & Filtering Stack** — ingestion_reports_bulk_ingest_summary_pymupdf_parser, ingestion_reports_bulk_ingest_summary_docx_parser, ingestion_reports_bulk_ingest_summary_scanned_image_requires_ocr, ingestion_reports_bulk_ingest_summary_ai_classification_not_resume, ingestion_reports_bulk_ingest_summary_duplicate_detection [INFERRED]
 
-## Communities (95 total, 13 thin omitted)
+## Communities (95 total, 11 thin omitted)
 
-### Community 0 - "Session"
-Cohesion: 0.19
-Nodes (20): batch_delete_candidates(), batch_reprocess_candidate_stream(), get_candidate(), get_candidate_file(), get_candidate_insight(), get_candidate_timeline(), list_candidates(), Any (+12 more)
+### Community 0 - "routes/candidates.py"
+Cohesion: 0.13
+Nodes (28): batch_delete_candidates(), delete_candidate(), get_candidate(), get_candidate_file(), get_candidate_insight(), get_candidate_timeline(), list_candidates(), get (+20 more)
 
 ### Community 1 - "Python Performance Optimization - advanced reference"
 Cohesion: 0.06
 Nodes (52): AGENTS.md - CIP agent guidelines, Implementation rules, Keep candidate data and processing local rule, Mission: privacy-first local-first candidate intelligence, Mock heavy ML models in tests rule, Python Performance Optimization - advanced reference, Python Performance Optimization - standard reference, Pattern 10: Function Call Overhead (+44 more)
 
-### Community 2 - "CandidateSectionVector"
-Cohesion: 0.23
-Nodes (10): DBConnection, LanceModel, CandidateSectionVector, get_lancedb_connection(), Helper to create a vector dictionary record from a chunk and embedding., Connect to the embedded LanceDB instance at the specified path., End-to-end test verifying embedding generation, LanceDB storage, and vector…, Verify LanceDB connection and table initialization. (+2 more)
+### Community 2 - "test_golden_eval.py"
+Cohesion: 0.27
+Nodes (11): evaluation, golden_store(), _load_golden_set(), _metrics(), fixture, Golden-set evaluation harness (issue #21). Opt-in: run with `uv run pytest -m…, Regenerate the recorded baseline: pytest --run-eval --update-baseline., Temporary real store ingested once per module with local models. (+3 more)
 
 ### Community 3 - "extract_candidate_profile_hybrid"
 Cohesion: 0.10
-Nodes (32): update_candidate(), put, skipif, extract_facts(), Extract deterministic facts (emails, phones, locations, names, skills) from…, _apply_llm_fallback(), assess_tier1(), calculate_tier1_confidence() (+24 more)
+Nodes (32): skipif, extract_facts(), get_nlp(), Extract deterministic facts (emails, phones, locations, names, skills) from…, _apply_llm_fallback(), assess_tier1(), calculate_tier1_confidence(), extract_candidate_profile_hybrid() (+24 more)
 
 ### Community 4 - "db_models.py"
-Cohesion: 0.09
-Nodes (33): patch, update_candidate_status(), CandidateStateMachine, InvalidStateTransition, Transitions the candidate to a new status and logs the event., TransitionContext, Any, Session (+25 more)
+Cohesion: 0.12
+Nodes (25): CandidateStateMachine, InvalidStateTransition, Transitions the candidate to a new status and logs the event., TransitionContext, Any, Session, Logs a new event in the candidate's timeline., Retrieves all timeline events for a candidate, ordered by creation date… (+17 more)
 
 ### Community 5 - "resolve"
 Cohesion: 0.06
@@ -164,9 +164,9 @@ Nodes (48): classify_document(), ingest_file(), IntakeProgress, IntakeResult, In
 Cohesion: 0.05
 Nodes (39): autoprefixer, lucide-react, oxlint, @phosphor-icons/react, postcss, react, react-dom, react-router-dom (+31 more)
 
-### Community 7 - "intake.py"
-Cohesion: 0.09
-Nodes (30): _acquire_cas_ref(), _bind_release_on_commit(), _build_audit_criteria(), classify_document(), _emit(), _has_committed_reference(), IntakeResult, _is_dummy_profile() (+22 more)
+### Community 7 - "reprocess_text"
+Cohesion: 0.15
+Nodes (21): _get_sessionmaker(), batch_reprocess_candidate_stream(), Any, post, StreamingResponse, Canonical pipeline stages -> reprocess contracted stage names/progress., reprocess_candidate(), reprocess_candidate_stream() (+13 more)
 
 ### Community 8 - "End-to-End UI Test Report & Findings"
 Cohesion: 0.09
@@ -181,12 +181,12 @@ Cohesion: 0.13
 Nodes (15): Master Audit Telemetry Log (bulk_ingest_report.json), Bulk Ingestion CLI Script (scripts/bulk_ingest.py), Checkpointing & Resumption Engine, Dry-Run Simulation Mode (--dry-run), Entity Resolution Dummy Name Guard, Full-Text Search Tables (candidate_fts, claims_fts), LanceDB Vector Store, Multi-Tier Document Classifier (classify_document) (+7 more)
 
 ### Community 11 - "test_chunker.py"
-Cohesion: 0.12
-Nodes (33): chunk_document(), chunk_resume(), Split raw resume text into (section_name, section_text) pairs. Lines that…, Split a resume into section-aware chunks with true section labels. The document…, A single text chunk produced by the chunker. Attributes: chunk_id: UUIDv4…, Split a ParsedDocument's text into overlapping fixed-size chunks. Strategy: -…, split_resume_sections(), TextChunk (+25 more)
+Cohesion: 0.14
+Nodes (27): chunk_document(), chunk_resume(), Split a resume into section-aware chunks with true section labels. The document…, A single text chunk produced by the chunker. Attributes: chunk_id: UUIDv4…, Split a ParsedDocument's text into overlapping fixed-size chunks. Strategy: -…, TextChunk, _make_doc(), Tests for ingestion/chunker.py Seam under test: chunk_document( doc:… (+19 more)
 
-### Community 12 - "parse_email"
+### Community 12 - "ParsedDocument"
 Cohesion: 0.16
-Nodes (17): _decode_header(), parse_email(), _parse_eml(), _parse_msg(), Path, Email parser supporting .eml (RFC-2822) and .msg (Outlook) files. Public…, Parse an Outlook .msg file using the extract_msg library., Extract body text and header metadata from an email file. Dispatch: - ``.msg``… (+9 more)
+Nodes (19): _decode_header(), parse_email(), _parse_eml(), _parse_msg(), Path, Email parser supporting .eml (RFC-2822) and .msg (Outlook) files. Public…, Parse an Outlook .msg file using the extract_msg library., Extract body text and header metadata from an email file. Dispatch: - ``.msg``… (+11 more)
 
 ### Community 13 - "embeddings.py"
 Cohesion: 0.15
@@ -200,13 +200,13 @@ Nodes (12): oxc, react, warn, plugins, rules, react/only-export-components, reac
 Cohesion: 0.15
 Nodes (17): Candidate Intelligence Platform (CIP), Environment & Tools Setup Guide (Windows), Full Environment & Test Verification (pytest), Git Version Control, Ollama Binary in PATH, CPython 3.14 Windows Runtime, Windows User PATH Configuration, uv Package Manager (+9 more)
 
-### Community 16 - "CASManager"
+### Community 16 - "intake.py"
 Cohesion: 0.11
-Nodes (26): _derive_how_processed(), generate_markdown_summary(), get_file_hash(), process_single_file(), Any, Path, Map extension (+ parser-fallback warning) to the legacy how_processed label., Process a single file through the unified intake pipeline (issue #12), adapting… (+18 more)
+Nodes (21): _bind_release_on_commit(), _has_committed_reference(), _load_existing_identifiers(), _purge_cas_object(), Session, Unified resume intake pipeline (issue #12, Deepening #1). Single shared…, Issue #14: a rejected upload leaves no trace - best-effort CAS purge. Never…, Keep the hash hold until the caller's commit makes the row visible. PR #25… (+13 more)
 
-### Community 17 - "BackupManager"
-Cohesion: 0.18
-Nodes (10): BackupManager, Executes a live hot backup using sqlite3.backup API., Copies any new files from the source CAS directory to the backup CAS directory.…, Attempts to read row count from LanceDB. Returns 0 if missing., Generates a JSON manifest containing SHA256 of the backup DB, CAS file count,…, Handles live backups of the SQLite database and syncing the CAS storage., Path, test_cas_storage_sync() (+2 more)
+### Community 17 - "SearchQueryRequest"
+Cohesion: 0.06
+Nodes (43): _build_search_query(), _build_structured_filter_suffix(), _prepare_query(), Job title DSL term: strict verbatim when exact_title is on, soft otherwise., Only the dedicated filter boxes, never the free-text box., Resolve the search DSL, semantic override, and job-ad recipe. A long pasted…, _title_filter_dsl(), SearchQueryRequest (+35 more)
 
 ### Community 18 - "parse_pdf"
 Cohesion: 0.19
@@ -216,9 +216,9 @@ Nodes (14): _extract_with_pdfplumber(), parse_pdf(), Path, PDF parser using PyMu
 Cohesion: 0.19
 Nodes (16): index.html App Entry Point, Title: Candidate Intelligence Platform, /favicon.svg Asset, /src/main.jsx Module Script Entry, #root Mount Div, HMR (Hot Module Replacement), Oxc, Oxlint (+8 more)
 
-### Community 20 - "ParsedDocument"
-Cohesion: 0.15
-Nodes (16): _match_section_header(), Section-aware text chunker with context injection. Public interface:…, Return the canonical section name if the line is a section header., parse_docx(), Path, DOCX parser using python-docx. Public interface: parse_docx(path: Path) ->…, Extract text and metadata from a Word (.docx) file. Extraction order: 1. All…, ParsedDocument (+8 more)
+### Community 20 - "models.py"
+Cohesion: 0.18
+Nodes (12): parse_docx(), Path, DOCX parser using python-docx. Public interface: parse_docx(path: Path) ->…, Extract text and metadata from a Word (.docx) file. Extraction order: 1. All…, Shared data model for all ingestion parsers., _parse_raw_text(), _make_docx(), Path (+4 more)
 
 ### Community 21 - "Exploration Gate"
 Cohesion: 0.24
@@ -260,153 +260,161 @@ Nodes (5): App Favicon (Purple Lightning Bolt), Lightning Bolt Glyph, Glow Ellip
 Cohesion: 0.07
 Nodes (60): structlog_middleware(), fetch_system_logs(), get, console_renderer(), _DynamicStdoutLogger, _enable_windows_ansi(), _fallback_phrase(), get_recent_logs() (+52 more)
 
+### Community 32 - "StorageIndexWriter"
+Cohesion: 0.20
+Nodes (8): _has_candidate_vectors_table(), Any, Session, Check for the candidate_vectors table across lancedb API variants., Single owner of SQLite FTS5 and LanceDB vector index synchronization., Atomic write to SQLite FTS5 table and LanceDB vector chunks., Atomic deletion from both search stores., StorageIndexWriter
+
 ### Community 33 - "ingest_file"
-Cohesion: 0.17
-Nodes (41): ingest_file(), IntakeSource, IntakeStatus, Enum, str, File-bytes door shared by /upload, /upload-stream and the bulk script. Stage…, Terminal outcome of one document through the pipeline., D3 parameter switch: web doors write the ledger, bulk keeps its own diary. (+33 more)
+Cohesion: 0.06
+Nodes (82): _derive_how_processed(), generate_markdown_summary(), get_file_hash(), process_single_file(), Any, Path, Map extension (+ parser-fallback warning) to the legacy how_processed label., Process a single file through the unified intake pipeline (issue #12), adapting… (+74 more)
 
 ### Community 34 - "Vite Logo"
 Cohesion: 0.67
 Nodes (3): Boilerplate Template Asset, Vite Framework, Vite Logo
 
 ### Community 56 - "routes/search.py"
-Cohesion: 0.27
-Nodes (15): _ai_explanation_warning(), _format_search_results(), _hydrate_candidates(), perform_search(), perform_search_stream(), Any, post, Session (+7 more)
+Cohesion: 0.26
+Nodes (14): _ai_explanation_warning(), _format_search_results(), _hydrate_candidates(), perform_search(), perform_search_stream(), Any, post, Session (+6 more)
 
 ### Community 57 - "resolve_chat_model"
 Cohesion: 0.13
 Nodes (22): chat_retry_candidates(), _installed_ollama_model_names(), normalize_model_name(), Return an available chat model name, or None when none is usable., Clear the cached resolution (used by tests)., Strip the tag suffix so 'llama3.2' matches 'llama3.2:latest'., Ordered chat models to try after the primary fails., Return normalized names of models installed in the local Ollama instance. (+14 more)
 
 ### Community 58 - "job_ad_distiller.py"
-Cohesion: 0.08
-Nodes (42): _build_structured_filter_suffix(), _prepare_query(), Only the dedicated filter boxes, never the free-text box., Resolve the search DSL, semantic override, and job-ad recipe. A long pasted…, build_job_ad_distill_prompt(), Job-ad parsing prompt for the given (already truncated) advertisement text., _ai_distill(), _ai_distill_ollama() (+34 more)
+Cohesion: 0.19
+Nodes (18): _ai_distill(), _ai_distill_ollama(), _ai_distill_openrouter(), _build_summary(), _coerce_recipe(), _extract_title_phrase(), _fallback_distill(), _fallback_extract() (+10 more)
 
 ### Community 59 - "test_model_fallbacks.py"
 Cohesion: 0.16
 Nodes (9): clean_model_env(), fixture, Reset lazy-loaded model singletons so every test starts fresh., Stands in for the module-level structlog logger (which may already be cached-…, reset_lazy_model_globals(), SentinelModel, SpyLogger, test_invalid_embedding_model_falls_back_to_default_with_warning() (+1 more)
 
 ### Community 60 - "test_search_engine.py"
-Cohesion: 0.16
-Nodes (16): parse_query_to_sql(), Parses a strict query string into a SQL query and parameters. Currently…, rrf_k / weights / rerank_pool_size come from settings with env overrides., _run_pipeline(), test_fetch_candidate_documents_empty(), test_hybrid_search_candidates(), test_hybrid_search_candidates_applies_tuning_knobs(), test_keyword_only_query_orders_by_bm25() (+8 more)
+Cohesion: 0.11
+Nodes (23): parse_query_to_sql(), Parses a strict query string into a SQL query and parameters. Currently…, rrf_k / weights / rerank_pool_size come from settings with env overrides., Issue #38: default title filter never emits exclusionary SQL; the title value…, Issue #38: title_exact:'...' compiles to strict case-insensitive verbatim…, Issue #38 user story 1: searching 'ai engineer' must not drop "ML Engineer"…, Issue #38 user story 2: exact_title only keeps literal current_title matches,…, _run_pipeline() (+15 more)
 
-### Community 61 - "MockVectorStore"
-Cohesion: 0.12
-Nodes (11): MockVectorStore, Mock LanceDB vector store connection for isolated test runs., test_parallel_ingest_no_database_locked(), cas_mgr(), mock_extraction(), Any, fixture, Success paths pin their hash until the caller commits; tests that skip the… (+3 more)
+### Community 61 - "3. Detailed Technical Specification"
+Cohesion: 0.15
+Nodes (12): 1. Problem Statement, 2. Target Files & Architecture, 3.1 Multi-Signal Classification Flow, 3.2 Stage 1: High-Confidence Filename Filtering & Safe Verification, 3.3 Stage 2: Clustered Body Heuristics vs Resume Anchors, 3.4.1 Multi-Candidate Batch Document Rejection, 3.4 Recruiter Submission Form Normalization & Contact Extraction, 3.5 System Logging on Rejection (+4 more)
 
 ### Community 62 - "search_candidates"
-Cohesion: 0.32
-Nodes (12): _describe_strict_filters(), execute_fts_query(), execute_strict_filter_query(), fetch_candidate_documents(), _keyword_hits(), Any, Session, Turn parsed query filter params into scorecard descriptors. (+4 more)
+Cohesion: 0.19
+Nodes (19): _build_strict_filter_clause(), _describe_strict_filters(), execute_fts_query(), execute_strict_filter_query(), fetch_candidate_documents(), _keyword_hits(), Any, Session (+11 more)
 
 ### Community 63 - "build_match_rationale"
 Cohesion: 0.31
 Nodes (11): build_match_rationale(), MatchParameters, Builds the Match Rationale scorecard for a candidate search result, including a…, _params(), Tests for candidate_intelligence_platform/intelligence/explainer.py Focus…, test_extreme_rerank_score_does_not_crash_or_default_to_50(), test_missing_rerank_score_derives_percentage_from_rrf(), test_missing_rerank_score_never_fabricates_50_percent() (+3 more)
 
 ### Community 64 - "reranker.py"
-Cohesion: 0.21
-Nodes (12): _check_gpu_available(), _get_reranker(), get_reranker_model_name(), _load_text_cross_encoder(), Any, Lazy-loaded cross-encoder reranker for search results with GPU auto-detect.…, Reranks a list of documents based on a query using a cross-encoder model.…, Check if GPU (CUDA) is available for acceleration. (+4 more)
+Cohesion: 0.27
+Nodes (9): _check_gpu_available(), _get_reranker(), get_reranker_model_name(), _load_text_cross_encoder(), Any, Lazy-loaded cross-encoder reranker for search results with GPU auto-detect.…, Check if GPU (CUDA) is available for acceleration., Lazy-load the cross-encoder model on first use (thread-safe). Loads the… (+1 more)
 
 ### Community 65 - "fixture"
-Cohesion: 0.11
-Nodes (19): MonkeyPatch, Clear cached pricing verdicts (used by tests)., reset_openrouter_pricing_cache(), client(), db_engine(), db_session(), isolate_llm_environment(), isolate_test_environment() (+11 more)
+Cohesion: 0.12
+Nodes (17): MonkeyPatch, client(), db_engine(), db_session(), isolate_llm_environment(), isolate_test_environment(), mock_heavy_models(), mock_vector_db() (+9 more)
 
 ### Community 66 - "test_api_insight_fallback.py"
 Cohesion: 0.38
 Nodes (11): candidate_id(), _parse_events(), fixture, Session, TestClient, _stream_insight(), test_insight_emits_visible_message_when_no_chat_model(), test_insight_invalid_model_retries_fallback_before_giving_up() (+3 more)
 
-### Community 67 - "routes/candidates.py"
-Cohesion: 0.28
-Nodes (8): get_db(), _get_sessionmaker(), get_settings(), get_vector_db(), Session, test_get_db(), test_get_settings(), test_get_vector_db()
+### Community 67 - "Settings"
+Cohesion: 0.20
+Nodes (14): get_db(), get_settings(), get_vector_db(), Session, BaseSettings, Settings, test_get_db(), test_get_settings() (+6 more)
 
 ### Community 68 - "execute_vector_search"
 Cohesion: 0.20
 Nodes (10): execute_vector_search(), Execute vector search., candidate restriction is applied inside the vector store before the limit., No keyword matches means no restriction: global search unchanged., Real LanceDB store: filtered candidate must survive even when it falls outside…, test_execute_vector_search_missing_table(), test_execute_vector_search_no_restriction_for_pure_semantic(), test_execute_vector_search_prefilter_end_to_end() (+2 more)
 
-### Community 69 - "Async AI Candidate Insights"
-Cohesion: 0.18
-Nodes (10): 1. API & Transport Design, 2. Cancellation Lifecycle, Architecture & Technical Decisions, Async AI Candidate Insights, CRITICAL: IMPLEMENTATION SKILLS TO USE, Key Assumptions to Validate, MVP Scope, Not Doing (and Why) (+2 more)
+### Community 69 - "Async AI Candidate Match Insights"
+Cohesion: 0.29
+Nodes (6): 1. Overview & Problem Solved, 2. API & Protocol Specification, 3. Frontend Lifecycle & Cancellation, 4. Test Coverage & Verification, Async AI Candidate Match Insights, Endpoint:
 
 ### Community 70 - "main.py"
 Cohesion: 0.16
 Nodes (15): health_check(), lifespan(), get, get_engine(), Engine, Create a SQLAlchemy engine configured for SQLite with WAL mode., FastAPI, init_db() (+7 more)
 
-### Community 71 - "schemas/candidates.py"
-Cohesion: 0.36
-Nodes (9): BatchCandidateIds, BatchReprocessRequest, CandidateBase, CandidateCreate, CandidateResponse, CandidateStatusUpdate, CandidateUpdate, BaseModel (+1 more)
+### Community 71 - "3. Detailed Technical Specification"
+Cohesion: 0.15
+Nodes (12): 1. Problem Statement, 2. Target Files & Architecture, 3.1 4-Stage Cascading Workflow, 3.2.1 Lazy Pre-Flight OCR Engine Verification, 3.2 Stage 1: Zero-Cost Heuristic Pre-Filtering, 3.3 Stage 2: Selective PyMuPDF OCR on Ambiguous Files, 3.4 Stage 3: Post-OCR Heuristics, 3.5 Stage 4: Local LLM Fallback (+4 more)
 
 ### Community 72 - "Search Accuracy Evaluation Harness"
-Cohesion: 0.22
-Nodes (8): Design, Goal, Golden set, Metrics, Problem, Regression gate, Search Accuracy Evaluation Harness, Success criteria
+Cohesion: 0.25
+Nodes (7): 1. Overview & Problem Solved, 2. Dataset & Fixture Structure, 3.1 Running Evaluation Gate, 3.2 Updating Recorded Baseline, 3. Running & Updating Evaluations, 4. Key Metrics Tracked, Search Accuracy Evaluation Harness
 
-### Community 73 - "CandidateService"
-Cohesion: 0.36
-Nodes (10): CandidateService, fake_embeddings(), fixture, Tests for api/services/candidate_service.py vector indexing. Covers section-…, real_vector_db(), _table_rows(), test_update_vector_index_idempotent_per_candidate(), test_update_vector_index_keeps_other_candidates_intact() (+2 more)
+### Community 73 - "3. Detailed Technical Specification"
+Cohesion: 0.15
+Nodes (12): 1. Problem Statement, 2. Target Files & Architecture, 3.1 Claim Data Model & Categories, 3.2 Expanded Skill Dictionary & Matching, 3.3 Total YOE (Years of Experience) Calculation, 3.4 Ingestion Pipeline Integration (`intake.py`), 3.5 Merge & Re-Upload Handling (`ResolutionAction.MERGE`), 3. Detailed Technical Specification (+4 more)
 
 ### Community 74 - "reciprocal_rank_fusion"
-Cohesion: 0.40
-Nodes (4): Computes weighted Reciprocal Rank Fusion (RRF) for two sets of candidate ranks.…, reciprocal_rank_fusion(), test_reciprocal_rank_fusion(), test_reciprocal_rank_fusion_weights()
+Cohesion: 0.29
+Nodes (6): Computes weighted Reciprocal Rank Fusion (RRF) for two sets of candidate ranks.…, reciprocal_rank_fusion(), Issue #38 user story 4: +20% RRF bonus guarantees verbatim title matches…, test_reciprocal_rank_fusion(), test_reciprocal_rank_fusion_exact_title_bonus_ranks_exact_first(), test_reciprocal_rank_fusion_weights()
 
 ### Community 75 - "Architecture Deepening Opportunities"
-Cohesion: 0.25
-Nodes (7): 1. Resume intake pipeline copied 4 times — and the copies disagree, 2. Search has a weird round-trip that loses information, 3. Database housekeeping knowledge scattered across 7+ files, 4. Name/email extractor exports its internals and has no test seam, 5. CandidateService — shallow helper that would dissolve into the deepened modules, Architecture Deepening Opportunities, Recommendation
+Cohesion: 0.14
+Nodes (13): 1. Resume Intake Pipeline Unified (`COMPLETED`), 2. Search DSL Seam & Soft Filters (`COMPLETED`), 3.1 Problem, 3.2 Target Refactor: `StorageIndexWriter` Module, 3. Database Housekeeping Knowledge Scattered (`COMPLETED`), 4.1 Problem, 4.2 Target Refactor, 4. Hybrid Extractor Internals & spaCy Seam (`COMPLETED`) (+5 more)
 
-### Community 77 - "Idea: Switch LLM Backend to OpenRouter OX Alpha (Free Tier)"
-Cohesion: 0.25
-Nodes (7): Current Ollama Usage Points, Decision, Idea: Switch LLM Backend to OpenRouter OX Alpha (Free Tier), Implementation Requirements, Problem Statement, Proposed Change, Risks
-
-### Community 78 - "test_api_search_stream.py"
-Cohesion: 0.40
-Nodes (5): TestClient, Test that the search stream yields the expected stage events., Test that the POST /search/stream endpoint exists and accepts valid requests., test_search_stream_emits_progress_events(), test_search_stream_endpoint_exists()
-
-### Community 80 - "Settings"
-Cohesion: 0.13
-Nodes (22): stream_openrouter_generate(), BaseSettings, Settings, RuntimeError, _call_ollama(), _call_openrouter(), Call OpenRouter API for inference. Never calls paid models., Call local Ollama for inference. (+14 more)
-
-### Community 82 - "translate_reprocess_progress"
+### Community 77 - "Switch LLM Backend to OpenRouter OX Alpha (Free Tier)"
 Cohesion: 0.29
-Nodes (6): Canonical pipeline stages -> reprocess contracted stage names/progress., translate_reprocess_progress(), IntakeProgress, label_for_model(), Recruiter-friendly AI status messages shown in the interface. Keep every string…, Human name for a model id. 'vendor/model' ids read as Cloud AI.
+Nodes (6): 1. Overview & Architectural Decisions, 2. Configuration Schema, 3. Resolution & Fallback Chain, 4. Test Coverage & Verification, Key Rules Implemented:, Switch LLM Backend to OpenRouter OX Alpha (Free Tier)
 
-### Community 83 - "Idea: Autonomous Agentic Retrieval System"
-Cohesion: 0.29
-Nodes (6): Idea: Autonomous Agentic Retrieval System, Key Assumptions to Validate, MVP Scope, Not doing (and why), Problem Statement, Recommended Direction
+### Community 78 - "3. Detailed Technical Specification"
+Cohesion: 0.17
+Nodes (11): 1. Problem Statement, 2. Target Files & Architecture, 3.1 Section-Weighted Confidence Scoring, 3.2 Syntactic Prefix Stripper, 3.3 Role Grammar Anchor Pattern, 3.4 Discard Filter (Verbs & Degrees), 3.5 Title Selection Algorithm, 3. Detailed Technical Specification (+3 more)
+
+### Community 80 - "local_llm_fallback.py"
+Cohesion: 0.14
+Nodes (20): stream_openrouter_generate(), RuntimeError, _call_ollama(), _call_openrouter(), classify_document_llm(), Call OpenRouter API for inference. Never calls paid models., Use local LLM to classify if document is a resume., Call local Ollama for inference. (+12 more)
+
+### Community 82 - "label_for_model"
+Cohesion: 0.50
+Nodes (3): label_for_model(), Recruiter-friendly AI status messages shown in the interface. Keep every string…, Human name for a model id. 'vendor/model' ids read as Cloud AI.
+
+### Community 83 - "Autonomous Agentic Retrieval System"
+Cohesion: 0.50
+Nodes (3): 1. Concept Overview, 2. Deferred Rationale, Autonomous Agentic Retrieval System
 
 ### Community 84 - "Centralized AI Prompts"
-Cohesion: 0.29
-Nodes (6): Benefits, Centralized AI Prompts, Goal, Open questions, Problem, Sketch
+Cohesion: 0.40
+Nodes (4): 1. Overview & Architecture, 2. Test Verification, Centralized AI Prompts, Named Builders Available:
 
 ### Community 85 - "Task Tracker"
-Cohesion: 0.29
-Nodes (6): Centralized AI Prompts (Issue #24), Completed Tickets, Performance Optimization Tickets, Soft Search Filters (Issue #36), Task Tracker, Unified Intake Pipeline (Issue #12)
+Cohesion: 0.25
+Nodes (7): Centralized AI Prompts (Issue #24), Completed Tickets, Performance Optimization Tickets, Soft Search Filters (Issue #36), Soft Semantic Job Title Search (Issue #38), Task Tracker, Unified Intake Pipeline (Issue #12)
 
 ### Community 86 - "prompts.py"
-Cohesion: 0.25
-Nodes (9): build_fact_extraction_prompt(), build_match_insight_prompt(), Full fact-extraction prompt for the given (already truncated) resume text., Match-rationale prompt for the given resume text, search query, and optional…, Guard tests: prompts moved into candidate_intelligence_platform.prompts must…, test_fact_extraction_prompt_is_byte_identical(), test_match_insight_prompt_is_byte_identical(), test_match_insight_prompt_tolerates_braces_in_inputs() (+1 more)
+Cohesion: 0.20
+Nodes (12): build_fact_extraction_prompt(), build_job_ad_distill_prompt(), build_match_insight_prompt(), Match-rationale prompt for the given resume text, search query, and optional…, Job-ad parsing prompt for the given (already truncated) advertisement text., Full fact-extraction prompt for the given (already truncated) resume text., Guard tests: prompts moved into candidate_intelligence_platform.prompts must…, test_fact_extraction_prompt_is_byte_identical() (+4 more)
 
 ### Community 87 - "End-to-End Test Findings"
 Cohesion: 0.40
 Nodes (4): Bug / Blocker, E2E Run: August 19, 2026, End-to-End Test Findings, System Configuration
 
-### Community 88 - "test_golden_eval.py"
-Cohesion: 0.27
-Nodes (11): evaluation, golden_store(), _load_golden_set(), _metrics(), fixture, Golden-set evaluation harness (issue #21). Opt-in: run with `uv run pytest -m…, Regenerate the recorded baseline: pytest --run-eval --update-baseline., Temporary real store ingested once per module with local models. (+3 more)
+### Community 88 - "distill_job_ad"
+Cohesion: 0.16
+Nodes (17): build_search_dsl(), distill_job_ad(), looks_like_job_ad(), Distill a pasted job ad: configured provider first, local Ollama second,…, Compose the distilled recipe into parser-compatible DSL., Heuristic: a long multi-line paste is treated as a full job ad., _ai_response(), Tests for candidate_intelligence_platform/search/job_ad_distiller.py Paste-a-… (+9 more)
 
 ### Community 89 - "extract_inferences"
 Cohesion: 0.16
 Nodes (12): ollama, extract_inferences(), Extract AI inferences from text using a local LLM via Ollama or remote via…, Test when LLM returns null claim_value and entity in claim_key., test_llm_claim_value_null_logs_warning_and_repairs(), test_llm_extraction_failure_logs_ai_warning(), test_vector_search_failure_logs_ai_warning(), Live integration test against running Ollama instance. (+4 more)
 
-### Community 90 - "test_api_search.py"
-Cohesion: 0.29
-Nodes (10): _ai_json_response(), _mock_embedding(), patch, Session, TestClient, test_job_ad_mode_builds_filters_and_short_semantic_summary(), test_job_ad_mode_returns_recipe_metadata_with_fallback_warning(), test_search_candidates() (+2 more)
+### Community 90 - "chunker.py"
+Cohesion: 0.22
+Nodes (9): _match_section_header(), Section-aware text chunker with context injection. Public interface:…, Return the canonical section name if the line is a section header., Split raw resume text into (section_name, section_text) pairs. Lines that…, split_resume_sections(), test_split_resume_sections_case_insensitive_and_colon(), test_split_resume_sections_detects_true_types(), test_split_resume_sections_no_headers_single_summary() (+1 more)
 
 ### Community 91 - "_run_pipeline_capturing_embedding"
-Cohesion: 0.22
-Nodes (9): _build_search_query(), Run search_candidates with mocked stores; return the embedded text., Direct DSL query: only free text reaches the embedding step., Structured API request flattened to DSL still embeds free text only., No free text at all: nothing gets embedded., _run_pipeline_capturing_embedding(), test_embedding_input_clean_for_structured_api_flatten(), test_embedding_input_excludes_filter_values() (+1 more)
+Cohesion: 0.33
+Nodes (6): Run search_candidates with mocked stores; return the embedded text., Direct DSL query: only free text reaches the embedding step., No free text at all: nothing gets embedded., _run_pipeline_capturing_embedding(), test_embedding_input_excludes_filter_values(), test_pure_filter_query_skips_embedding()
 
 ### Community 92 - "test_search_ai_availability.py"
 Cohesion: 0.64
 Nodes (7): _patch_search(), Session, TestClient, _seed_candidate(), test_search_response_carries_ai_unavailable_warning(), test_search_response_clean_when_chat_model_available(), test_stream_search_response_carries_ai_unavailable_warning()
 
-### Community 93 - ".delete_candidate"
-Cohesion: 0.33
-Nodes (6): delete_candidate(), _has_candidate_vectors_table(), Any, Session, Check for the candidate_vectors table across lancedb API variants., delete
+### Community 93 - "test_ingestion_concurrency.py"
+Cohesion: 0.38
+Nodes (6): concurrency_env(), make_engine(), Any, fixture, Regression: parallel ingest_file must not fail with 'database is locked'.…, Same pragma set as config.database.get_engine but short busy_timeout.
+
+### Community 94 - "test_api_search_stream.py"
+Cohesion: 0.40
+Nodes (5): TestClient, Test that the search stream yields the expected stage events., Test that the POST /search/stream endpoint exists and accepts valid requests., test_search_stream_emits_progress_events(), test_search_stream_endpoint_exists()
 
 ## Ambiguous Edges - Review These
 - `SQLite WAL RDBMS + FTS5` → `SQLAlchemy 2.0 Mapped Refactor of db_models.py`  [AMBIGUOUS]
@@ -429,9 +437,9 @@ Nodes (6): delete_candidate(), _has_candidate_vectors_table(), Any, Session, Che
   ui/public/icons.svg · relation: semantically_similar_to
 
 ## Knowledge Gaps
-- **119 isolated node(s):** `path`, `fs`, `candidate-intelligence-platform`, `SentinelModel`, `$schema` (+114 more)
+- **145 isolated node(s):** `path`, `fs`, `candidate-intelligence-platform`, `SentinelModel`, `$schema` (+140 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **11 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

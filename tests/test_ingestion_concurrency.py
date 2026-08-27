@@ -97,7 +97,7 @@ def concurrency_env(tmp_path: Any, monkeypatch: Any) -> Dict[str, Any]:
         return [[0.0] * 4 for _ in texts]
 
     monkeypatch.setattr(
-        "api.services.candidate_service.generate_embeddings", slow_embeddings
+        "candidate_intelligence_platform.intelligence.embeddings.generate_embeddings", slow_embeddings
     )
 
     db_file = str(tmp_path / "conc.db")

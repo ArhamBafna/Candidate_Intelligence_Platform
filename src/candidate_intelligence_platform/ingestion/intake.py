@@ -20,7 +20,7 @@ import structlog
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
-from api.services.candidate_service import CandidateService
+from storage.index_writer import StorageIndexWriter
 from config.settings import Settings
 from crm.timeline_ledger import TimelineLedger
 from ingestion.entity_resolution import (
@@ -29,7 +29,7 @@ from ingestion.entity_resolution import (
     resolve,
 )
 from storage.cas import CASManager
-from storage.db_models import Candidate, EntityResolutionAudit, ResumeVersion
+from storage.db_models import Candidate, CandidateClaim, EntityResolutionAudit, ResumeVersion
 
 logger = structlog.get_logger(__name__)
 
@@ -138,6 +138,18 @@ RESUME_SIGNALS = [
     "profile", "curriculum vitae", "responsibilities", "academic background"
 ]
 
+FINANCIAL_BILL_KEYWORDS = [
+    "bank statement", "account summary", "routing number", "account number",
+    "billing statement", "invoice", "payment due", "amount enclosed",
+    "tax invoice", "utility bill", "credit card statement", "deposit",
+    "withdrawal", "balance summary", "statement of account"
+]
+
+RECRUITER_SUBMISSION_KEYWORDS = [
+    "candidate submission", "candidate presentation", "submitted by",
+    "recruiter notes", "agency submission", "candidate overview",
+    "rate details", "availability:", "relocation:", "visa status:"
+]
 
 def classify_document(text: str, filename: str) -> Tuple[bool, str, str]:
     """
@@ -174,12 +186,27 @@ def classify_document(text: str, filename: str) -> Tuple[bool, str, str]:
         if kw in clean_fname or kw in clean_text:
             return False, "NON_RESUME_STUDY_OR_TEMPLATE", f"Document identified as interview prep/template format (matched keyword: '{kw}')"
 
+    # 4.5. Check Financial/Bills
+    financial_matches = [kw for kw in FINANCIAL_BILL_KEYWORDS if kw in clean_text]
+    if len(financial_matches) >= 2:
+        return False, "NON_RESUME_FINANCIAL_BILL", f"Document identified as financial/bill from text (matched: {', '.join(financial_matches[:3])})"
+
+    # 4.6. Check Recruiter Submission Sheets
+    recruiter_matches = [kw for kw in RECRUITER_SUBMISSION_KEYWORDS if kw in clean_text]
+    if len(recruiter_matches) >= 2:
+        return False, "NON_RESUME_RECRUITER_SUBMISSION", f"Document identified as recruiter submission sheet from text (matched: {', '.join(recruiter_matches[:3])})"
+
     # 5. Check Resume Signals (must have at least one structural resume section or standard candidate contact indicators)
     signal_count = sum(1 for s in RESUME_SIGNALS if s in clean_text)
     has_email_or_phone = bool(re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text) or re.search(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b", text))
 
     if signal_count == 0 and not has_email_or_phone:
-        return False, "NON_RESUME_INSUFFICIENT_SIGNALS", "Document lacks standard resume sections (no work experience, education, skills, or contact info)"
+        from candidate_intelligence_platform.extraction.local_llm_fallback import classify_document_llm
+        # LLM fallback for ambiguous docs (might be a resume with poor parsing or unusual structure)
+        if classify_document_llm(text):
+            return True, "VALID_RESUME", "Passed candidate resume verification via AI Fallback"
+        
+        return False, "NON_RESUME_INSUFFICIENT_SIGNALS", "Document lacks standard resume sections (no work experience, education, skills, or contact info) and failed AI fallback"
 
     return True, "VALID_RESUME", "Passed candidate resume verification"
 
@@ -412,12 +439,12 @@ def ingest_file(
          (stored bytes purged, #14)
       5. extraction exactly once with settings.extraction_confidence_threshold (D13)
       6. entity resolution vs current candidates, thresholds from Settings (D4)
-      7. vector embeddings via CandidateService.update_vector_index BEFORE any
+      7. vector embeddings via StorageIndexWriter
          DB write, keeping the SQLite write txn short under parallel uploads
          (failure is never fatal)
       8. persist + flush, NO commit - caller commits once and owns rollback (D7)
       9. audit rows per #8 (MERGE and REVIEW write; NEW silent)
-     10. FTS via CandidateService.update_fts_index (single SQL copy, D8)
+     10. FTS via StorageIndexWriter
       11. timeline per timeline_mode (D3)
     """
     warnings: List[str] = []
@@ -550,21 +577,22 @@ def ingest_file(
             is_primary=True,
         )
 
-        # Vectors BEFORE any DB write: update_vector_index never touches the SQL
-        # session (LanceDB + ids only), and embedding generation can take many
-        # seconds. Holding the SQLite write lock across it starves parallel
-        # upload pipelines past busy_timeout ("database is locked").
         vector_failed = False
+        chunks = None
+        embeddings = None
         if vector_db is not None:
             _emit(on_progress, "GENERATING_VECTORS", 75, "Generating vector embeddings")
             try:
-                CandidateService.update_vector_index(vector_db, cand_id, raw_text, rv.id)
-            except Exception:
+                from ingestion.chunker import chunk_resume
+                from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+                from ingestion.parsers.models import ParsedDocument
+                doc_obj = ParsedDocument(text=raw_text, pages=1)
+                chunks = chunk_resume(doc_obj, cand_id)
+                if chunks:
+                    embeddings = generate_embeddings([c.text for c in chunks])
+            except Exception as e:
                 vector_failed = True
-                warnings.append("Vector indexing skipped (embedding engine or vector store unavailable).")
-        else:
-            vector_failed = True
-            warnings.append("Vector indexing skipped (vector store connection unavailable).")
+                warnings.append(f"Vector embeddings generation failed ({str(e)}).")
 
         if is_merge:
             # D12: demote current primary RV(s); incoming RV becomes primary
@@ -603,6 +631,22 @@ def ingest_file(
 
         db.add(rv)
 
+        for claim_dict in extracted.get("facts", []):
+            claim = CandidateClaim(
+                id=str(uuid.uuid4()),
+                candidate_id=cand_id,
+                resume_version_id=rv.id,
+                source_type=claim_dict.get("source_type", "EXPLICIT_FACT"),
+                claim_category=claim_dict.get("claim_category", "UNKNOWN"),
+                claim_key=claim_dict.get("claim_key", ""),
+                claim_value=claim_dict.get("claim_value", ""),
+                confidence_score=claim_dict.get("confidence_score", 1.0),
+                source_char_offset_start=claim_dict.get("source_char_offset_start"),
+                source_char_offset_end=claim_dict.get("source_char_offset_end"),
+                extracted_by=claim_dict.get("extracted_by", "SYSTEM")
+            )
+            db.add(claim)
+
         # 7/8. Persist + audit rows (#8): MERGE and REVIEW write; NEW silent
         _emit(on_progress, "SAVING", 80, "Persisting candidate and resume version")
         if resolution.action == ResolutionAction.MERGE and resolution.matched_id:
@@ -636,16 +680,14 @@ def ingest_file(
             resolution.action == ResolutionAction.MERGE and resolution.matched_id
         ) else IntakeStatus.INGESTED
 
-        # 9. FTS via CandidateService (single SQL copy, D8)
-        _emit(on_progress, "UPDATING_FTS", 85, "Refreshing full-text search index")
+        # 9. FTS and Vectors via StorageIndexWriter (atomic)
+        _emit(on_progress, "UPDATING_FTS", 85, "Refreshing full-text search index and vectors")
         try:
-            if target_candidate is not None:
-                display_name = f"{target_candidate.first_name} {target_candidate.last_name}".strip() or "Candidate"
-            else:
-                display_name = full_name if full_name else "Candidate"
-            CandidateService.update_fts_index(db, cand_id, display_name, target_candidate, raw_text)
+            writer = StorageIndexWriter(db, vector_db)
+            writer.write_candidate_indices(target_candidate, rv.id, raw_text, chunks=chunks, embeddings=embeddings)
         except Exception as e:
-            warnings.append(f"Full-Text Search (FTS) index update failed ({str(e)}).")
+            vector_failed = True
+            warnings.append(f"Search index update failed ({str(e)}).")
 
         # 11. Timeline per mode (D3)
         if timeline_mode == TimelineMode.LEDGER:
@@ -734,19 +776,22 @@ def reprocess_text(
                 "used_ai": True, "model_name": settings.llm_model,
             })
 
-        # Vector refresh BEFORE any DB write so the SQLite write txn stays short
-        # under parallel reprocessing (same rationale as ingest_file).
         vector_failed = False
+        chunks = None
+        embeddings = None
         if vector_db is not None:
             _emit(on_progress, "GENERATING_VECTORS", 75, "Chunking document and re-generating vector embeddings")
             try:
-                CandidateService.update_vector_index(vector_db, candidate_id, raw_text, resume_version_id)
-            except Exception:
+                from ingestion.chunker import chunk_resume
+                from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+                from ingestion.parsers.models import ParsedDocument
+                doc_obj = ParsedDocument(text=raw_text, pages=1)
+                chunks = chunk_resume(doc_obj, candidate_id)
+                if chunks:
+                    embeddings = generate_embeddings([c.text for c in chunks])
+            except Exception as e:
                 vector_failed = True
-                warnings.append("Vector re-indexing skipped (embedding model or vector store error).")
-        else:
-            vector_failed = True
-            warnings.append("Vector re-indexing skipped (LanceDB connection unavailable).")
+                warnings.append(f"Vector embeddings generation failed ({str(e)}).")
 
         candidate.first_name = extracted.get("first_name", candidate.first_name)
         candidate.last_name = extracted.get("last_name", candidate.last_name)
@@ -757,13 +802,31 @@ def reprocess_text(
         if extracted.get("current_title"):
             candidate.current_title = extracted["current_title"]
 
-        # FTS refresh
-        _emit(on_progress, "UPDATING_FTS", 50, "Refreshing FTS search index")
+        db.query(CandidateClaim).filter_by(resume_version_id=resume_version_id).delete()
+        for claim_dict in extracted.get("facts", []):
+            claim = CandidateClaim(
+                id=str(uuid.uuid4()),
+                candidate_id=candidate_id,
+                resume_version_id=resume_version_id,
+                source_type=claim_dict.get("source_type", "EXPLICIT_FACT"),
+                claim_category=claim_dict.get("claim_category", "UNKNOWN"),
+                claim_key=claim_dict.get("claim_key", ""),
+                claim_value=claim_dict.get("claim_value", ""),
+                confidence_score=claim_dict.get("confidence_score", 1.0),
+                source_char_offset_start=claim_dict.get("source_char_offset_start"),
+                source_char_offset_end=claim_dict.get("source_char_offset_end"),
+                extracted_by=claim_dict.get("extracted_by", "SYSTEM")
+            )
+            db.add(claim)
+
+        # FTS and Vector refresh
+        _emit(on_progress, "UPDATING_FTS", 85, "Refreshing full-text search index and vectors")
         try:
-            candidate_name = f"{candidate.first_name} {candidate.last_name}".strip()
-            CandidateService.update_fts_index(db, candidate_id, candidate_name, candidate, raw_text)
+            writer = StorageIndexWriter(db, vector_db)
+            writer.write_candidate_indices(candidate, resume_version_id, raw_text, chunks=chunks, embeddings=embeddings)
         except Exception as e:
-            warnings.append(f"Full-Text Search (FTS) index update failed ({str(e)}).")
+            vector_failed = True
+            warnings.append(f"Search index update failed ({str(e)}).")
 
         # Timeline event
         _emit(on_progress, "LOGGING_TIMELINE", 90, "Logging timeline audit event")

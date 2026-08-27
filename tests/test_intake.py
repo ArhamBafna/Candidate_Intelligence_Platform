@@ -106,7 +106,7 @@ def mock_extraction(monkeypatch) -> Dict[str, Any]:
         fake_extract,
     )
     monkeypatch.setattr(
-        "api.services.candidate_service.generate_embeddings",
+        "candidate_intelligence_platform.intelligence.embeddings.generate_embeddings",
         lambda texts: [[0.0] * 4 for _ in texts],
     )
     return payload
@@ -278,7 +278,7 @@ def test_progress_callback_sequence(db_session, test_settings, cas_mgr, vector_d
     stages = [t.stage for t in ticks]
     expected_prefix = ["HASHING", "PARSING", "CLASSIFYING", "EXTRACTING", "ENTITY_RESOLUTION"]
     assert stages[: len(expected_prefix)] == expected_prefix
-    for later in ["SAVING" in stages, "UPDATING_FTS" in stages, "GENERATING_VECTORS" in stages,
+    for later in ["SAVING" in stages, "UPDATING_FTS" in stages,
                   "LOGGING_TIMELINE" in stages, "COMPLETED" in stages]:
         assert later
     progresses = [t.progress for t in ticks]
@@ -339,8 +339,8 @@ def test_extraction_called_once_with_facts(db_session, test_settings, cas_mgr, v
 
 # 10. Vector failure degrades to PARTIAL, never fatal
 def test_vector_failure_yields_partial(db_session, test_settings, cas_mgr, vector_db, mock_extraction, monkeypatch):
-    from api.services.candidate_service import CandidateService
-    monkeypatch.setattr(CandidateService, "update_vector_index", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
+    from storage.index_writer import StorageIndexWriter
+    monkeypatch.setattr(StorageIndexWriter, "_update_vectors_with_precomputed", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
     result = ingest_file(
         content=RESUME_TEXT.encode("utf-8"), filename="resume.txt", db=db_session, cas_mgr=cas_mgr,
         vector_db=vector_db, settings=test_settings, source=IntakeSource.UPLOAD,
@@ -348,12 +348,15 @@ def test_vector_failure_yields_partial(db_session, test_settings, cas_mgr, vecto
     )
     db_session.commit()
     assert result.status == IntakeStatus.PARTIAL
-    assert any("Vector indexing skipped" in w for w in result.warnings)
+    assert any("Search index update failed" in w for w in result.warnings)
     assert db_session.query(Candidate).count() == 1
 
 
 # 11. reprocess_text applies extracted fields, refreshes FTS, logs REPROCESS_TRIGGERED
-def test_reprocess_text_applies_fields(db_session, test_settings, vector_db, mock_extraction):
+def test_reprocess_text_applies_fields(db_session, test_settings, vector_db, mock_extraction, monkeypatch):
+    from storage.index_writer import StorageIndexWriter
+    monkeypatch.setattr(StorageIndexWriter, "_update_vectors_with_precomputed", lambda *args, **kwargs: None)
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0]*4 for _ in texts])
     cand_id = str(uuid.uuid4())
     rv_id = str(uuid.uuid4())
     db_session.add(Candidate(id=cand_id, first_name="Stale", last_name="Name"))

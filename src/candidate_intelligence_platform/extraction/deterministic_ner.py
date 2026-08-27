@@ -1,15 +1,29 @@
 import re
 import spacy
 
-try:
-    nlp = spacy.load("en_core_web_sm")
-except BaseException:
-    nlp = None
+_nlp = None
+_nlp_loaded = False
+
+def get_nlp():
+    global _nlp, _nlp_loaded
+    if not _nlp_loaded:
+        _nlp_loaded = True
+        try:
+            _nlp = spacy.load("en_core_web_sm")
+        except BaseException:
+            pass
+    return _nlp
 
 EMAIL_REGEX = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")
 PHONE_REGEX = re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
 
-KNOWN_SKILLS = {"python", "c++", "java", "sql", "javascript", "react", "aws", "docker"}
+KNOWN_SKILLS = {
+    "python", "c++", "java", "sql", "javascript", "react", "aws", "docker",
+    "kubernetes", "typescript", "node.js", "go", "rust", "ruby", "php",
+    "c#", ".net", "azure", "gcp", "terraform", "ansible", "linux", "git",
+    "ci/cd", "machine learning", "data science", "angular", "vue.js",
+    "html", "css", "postgresql", "mysql", "mongodb", "redis", "elasticsearch"
+}
 
 KNOWN_SKILLS_REGEXES = {}
 for skill in KNOWN_SKILLS:
@@ -67,10 +81,11 @@ def extract_facts(text: str) -> list[dict]:
 
     # 3. Spacy NER (Names, Locations) - truncate to header for speed
     # Names and locations are always in the first page; long resumes waste CPU
-    if nlp is not None:
+    nlp_instance = get_nlp()
+    if nlp_instance is not None:
         # Truncate to first 5000 chars (covers ~2 pages of text)
         ner_text = text[:5000] if len(text) > 5000 else text
-        doc = nlp(ner_text)
+        doc = nlp_instance(ner_text)
         for ent in doc.ents:
             if ent.label_ == "PERSON":
                 facts.append({

@@ -42,19 +42,17 @@ def parse_pdf(path: Path) -> ParsedDocument:
                 if page_text:
                     full_text_parts.append(page_text)
                 else:
-                    # Tesseract OCR fallback for scanned images
+                    # PyMuPDF OCR fallback for scanned images
                     try:
-                        import pytesseract
-                        import io
-                        from PIL import Image
-                        pix = page.get_pixmap()
-                        img_bytes = pix.tobytes("png")
-                        img = Image.open(io.BytesIO(img_bytes))
-                        ocr_text = pytesseract.image_to_string(img)
-                        if ocr_text.strip():
-                            full_text_parts.append(ocr_text.strip())
-                    except ImportError:
-                        pass
+                        # Attempt PyMuPDF's built-in OCR (requires tesseract installed on host)
+                        import structlog
+                        logger = structlog.get_logger(__name__)
+                        
+                        ocr_tp = page.get_textpage_ocr(flags=0, dpi=150, full=True)
+                        ocr_text = page.get_text("text", textpage=ocr_tp).strip()
+                        if ocr_text:
+                            full_text_parts.append(ocr_text)
+                            logger.info("pymupdf_ocr_success", page=page.number)
                     except Exception as e:
                         import structlog
                         logger = structlog.get_logger(__name__)

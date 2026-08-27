@@ -1,7 +1,27 @@
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass, field
 from candidate_intelligence_platform.extraction.deterministic_ner import extract_facts, EMAIL_REGEX, PHONE_REGEX
 from candidate_intelligence_platform.extraction.local_llm_fallback import extract_inferences
+
+@dataclass
+class ExtractionOutcome:
+    first_name: str = ""
+    last_name: str = ""
+    primary_email: Optional[str] = None
+    primary_phone: Optional[str] = None
+    current_title: str = "Candidate"
+    location: Optional[str] = None
+    facts: List[Dict[str, Any]] = field(default_factory=list)
+    confidence_score: float = 0.0
+    used_ai_fallback: bool = False
+    warnings: List[str] = field(default_factory=list)
+    
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
 
 TITLE_KEYWORDS = {
     "engineer", "developer", "manager", "lead", "architect", "analyst", 
@@ -260,7 +280,7 @@ def extract_candidate_profile_hybrid(
     confidence_threshold: float = 0.70, 
     model_name: Optional[str] = None,
     facts: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, Any]:
+) -> ExtractionOutcome:
     """
     Extract candidate profile using Tier 1 deterministic parsing first.
     If Tier 1 confidence is below confidence_threshold (0.70) or if any of the key fields
@@ -291,10 +311,15 @@ def extract_candidate_profile_hybrid(
     if profile.get("location"):
         profile["location"] = normalize_title(profile["location"])
 
-    return {
-        **profile,
-        "confidence_score": tier1_confidence if not used_ai else 0.85,
-        "used_ai_fallback": used_ai,
-        "facts": facts,
-        "warnings": warnings
-    }
+    return ExtractionOutcome(
+        first_name=profile.get("first_name", ""),
+        last_name=profile.get("last_name", ""),
+        primary_email=profile.get("primary_email"),
+        primary_phone=profile.get("primary_phone"),
+        current_title=profile.get("current_title", "Candidate"),
+        location=profile.get("location"),
+        facts=facts,
+        confidence_score=tier1_confidence if not used_ai else 0.85,
+        used_ai_fallback=used_ai,
+        warnings=warnings,
+    )

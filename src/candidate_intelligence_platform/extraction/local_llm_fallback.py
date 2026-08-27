@@ -3,7 +3,7 @@ import json
 import structlog
 from config.settings import Settings
 from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
-from candidate_intelligence_platform.prompts import build_fact_extraction_prompt
+from candidate_intelligence_platform.prompts import build_fact_extraction_prompt, build_document_classification_prompt
 
 logger = structlog.get_logger(__name__)
 
@@ -199,3 +199,44 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
     except Exception as e:
         logger.warning("ai_llm_extraction_failed", model=selected_model, error=str(e), action="skipping_ai_extraction")
         return []
+
+
+def classify_document_llm(text: str, model_name: str | None = None, timeout_seconds: float = 15.0) -> bool:
+    """Use local LLM to classify if document is a resume."""
+    settings = Settings()
+    provider = get_llm_provider()
+
+    if provider == "openrouter":
+        selected_model = model_name or settings.openrouter_model
+    else:
+        selected_model = model_name or settings.llm_model
+
+    prompt = build_document_classification_prompt(text)
+
+    try:
+        content = None
+        serving_provider = provider
+        if provider == "openrouter":
+            try:
+                response_data = _call_openrouter(prompt, selected_model, timeout_seconds)
+                if response_data is not None:
+                    content = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            except Exception as openrouter_error:
+                content = None
+                serving_provider = "ollama"
+
+        if serving_provider == "ollama":
+            response = _call_ollama(prompt, settings.llm_model if provider == "openrouter" else selected_model, timeout_seconds)
+            content = response.message.content if response else None
+
+        if not content:
+            return False
+
+        try:
+            data = json.loads(content)
+            return bool(data.get("is_resume", False))
+        except json.JSONDecodeError:
+            return False
+    except Exception as e:
+        logger.warning("ai_llm_classification_failed", model=selected_model, error=str(e))
+        return False

@@ -16,7 +16,7 @@ import pytest
 
 from config.database import get_engine
 from storage.db_models import Base, Candidate, ResumeVersion, init_db
-from api.services.candidate_service import CandidateService
+from storage.index_writer import StorageIndexWriter
 from candidate_intelligence_platform.search.hybrid_searcher import search_candidates
 from sqlalchemy.orm import sessionmaker
 
@@ -73,9 +73,9 @@ def golden_store(tmp_path_factory):
             db.add(rv)
             db.commit()
 
-            CandidateService.update_fts_index(db, cid, f"{entry['first_name']} {entry['last_name']}", candidate, entry["resume_text"])
+            writer = StorageIndexWriter(db, vector_db)
+            writer.write_candidate_indices(candidate, rv, entry["resume_text"])
             db.commit()
-            CandidateService.update_vector_index(vector_db, cid, entry["resume_text"], rv.id)
     finally:
         db.close()
 

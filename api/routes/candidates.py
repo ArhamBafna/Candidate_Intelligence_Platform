@@ -14,7 +14,7 @@ from api.schemas.candidates import (
 from storage.db_models import Candidate, ResumeVersion, CandidateTimelineEvent
 from crm.state_machine import CandidateStateMachine, TransitionContext
 from crm.timeline_ledger import TimelineLedger
-from api.services.candidate_service import CandidateService
+from storage.candidate_store import delete_candidate_and_indices
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from candidate_intelligence_platform.ingestion.intake import (
@@ -105,7 +105,7 @@ def delete_candidate(
     db: Session = Depends(get_db),
     vector_db = Depends(get_vector_db)
 ) -> None:
-    success = CandidateService.delete_candidate(db, candidate_id, vector_db)
+    success = delete_candidate_and_indices(db, candidate_id, vector_db)
     if not success:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
@@ -593,7 +593,7 @@ def batch_delete_candidates(
     deleted_ids = []
     try:
         for candidate_id in payload.candidate_ids:
-            if CandidateService.delete_candidate(db, candidate_id, vector_db, commit=False):
+            if delete_candidate_and_indices(db, candidate_id, vector_db, commit=False):
                 deleted_ids.append(candidate_id)
         db.commit()  # Single commit for all deletes
     except Exception:

@@ -12,6 +12,7 @@ LONG_JOHN = b"John Doe\nSoftware Engineer\nEmail: john@example.com\nSkills: Pyth
 LONG_JANE = b"Jane Smith\nData Scientist\nEmail: jane@example.com\nSkills: Python, SQL, machine learning"
 
 def test_upload_stream_multi_resume(client: TestClient, monkeypatch):
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0]*4 for _ in texts])
     def mock_extract(text, **kwargs):
         if "Jane" in text:
             return {"first_name": "Jane", "last_name": "Smith", "primary_email": "jane@example.com", "primary_phone": "", "current_title": "Data Scientist", "warnings": []}
@@ -122,6 +123,7 @@ def test_upload_stream_review_exposes_duplicate_hint_fields(client: TestClient, 
     assert completed[0]["status"] == "SUCCESS"
 
 def test_upload_stream_transparency_events(client: TestClient, monkeypatch):
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0]*4 for _ in texts])
     _patch_extractor(monkeypatch, lambda text, **kwargs: {"first_name": "Sparse", "last_name": "Resume", "primary_email": "", "primary_phone": "", "current_title": "", "warnings": [{"level": "warning", "event": "ai_llm_extraction_failed", "action": "skipping_ai_extraction"}], "used_ai_fallback": True})
     files = [("files", ("sparse_resume.txt", b"Sparse Resume\nRandom text without clear structure but long enough\nEmail: sparse@example.com\nSkills: testing", "text/plain"))]
     response = client.post("/candidates/upload-stream", files=files)
