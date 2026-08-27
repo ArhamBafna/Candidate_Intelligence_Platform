@@ -1,5 +1,5 @@
-> [!IMPORTANT]
-> **STATUS: IMPLEMENTED** — This feature is already fully implemented and verified in the codebase. Do NOT take this document as active context or pending work unless the user explicitly requests it.
+> 
+> **ALREADY IMPLEMENTED** — This is already implemented and in codebase. Do NOT take this document as context / pending work unless user explicitly says otherwise.
 
 # Search Accuracy Evaluation Harness
 
