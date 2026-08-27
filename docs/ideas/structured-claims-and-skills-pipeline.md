@@ -61,6 +61,7 @@ In `deterministic_ner.py`:
   - Data & AI: `postgresql`, `mysql`, `mongodb`, `redis`, `lancedb`, `pytorch`, `tensorflow`, `pandas`, `numpy`, `spacy`.
 - Use word-boundary regex (`\b(?:keyword)\b`) to prevent substring false matches (e.g., `c` in `cat`, `go` in `good`).
 - Record character start and end offsets for every matched skill.
+- **Tier 2 LLM Skill Fallback**: If Tier 1 finds fewer than 3 skills, prompt LLM via `prompts.py` to extract up to 10 key technical skills (`source_type="AI_INFERENCE"`). Clamp output to maximum 10 skills to prevent hallucination bloat.
 
 ### 3.3 Total YOE (Years of Experience) Calculation
 
@@ -70,6 +71,7 @@ Compute `total_yoe` during Step 5 of `ingest_file()` using a two-tier strategy:
    - Extract non-overlapping date intervals from work experience entries:
      - Regex patterns: `(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{1,2})[,\s]+(\d{4})\s*(?:-|–|to)\s*(?:(?:Jan(?:uary)?|Feb(?:ruary)?|...|\d{1,2})[,\s]+(\d{4})|Present|Current)`
      - Interval calculation: Convert dates to decimal years (`year + (month-1)/12`). Treat `"Present"` as current date.
+     - **Vague Year Ranges**: Year-only spans (e.g. `2021 - 2023`) calculate as exact year delta: $2023 - 2021 = 2.0\text{ years}$.
      - Merge overlapping intervals to avoid double-counting concurrent jobs.
      - Compute total span in years: $\text{total\_yoe} = \sum (\text{end} - \text{start})$.
 
@@ -116,12 +118,11 @@ for c in extracted_claims:
 db.commit()
 ```
 
-### 3.5 Merge Handling (`ResolutionAction.MERGE`)
+### 3.5 Merge & Re-Upload Handling (`ResolutionAction.MERGE`)
 
 When an uploaded resume matches an existing candidate:
-- Attach new claims referencing the new `ResumeVersion.id`.
-- Update `Candidate.total_yoe` if the new document shows more recent or higher total experience.
-- Deduplicate identical skill keys in UI queries across versions.
+- Delete existing `candidate_claims` for `candidate.id` and replace with fresh claims from new resume version.
+- Update `Candidate.total_yoe` with the newly computed value.
 
 ---
 
@@ -129,8 +130,9 @@ When an uploaded resume matches an existing candidate:
 
 ### 4.1 Fast Unit Tests (< 2s)
 - Test skill extraction: match known tech stack, verify boundary checks (no false positives for `Go` in `Good`).
-- Test YOE parser: multi-job overlapping dates, single job date range, `"Present"` handling, fallback string regex.
-- Test claim persistence in `tests/test_intake.py`: verify claims written to database with valid foreign keys.
+- Test LLM skill fallback when deterministic dictionary misses rare tech.
+- Test YOE parser: multi-job overlapping dates, year-only intervals (`2021 - 2023 = 2.0`), `"Present"` handling, fallback string regex.
+- Test claim persistence & replacement on re-upload in `tests/test_intake.py`.
 
 ### 4.2 Integration Verification
 - Ingest sample resume (`tests/test-resumes/resume_valid_1.pdf`).

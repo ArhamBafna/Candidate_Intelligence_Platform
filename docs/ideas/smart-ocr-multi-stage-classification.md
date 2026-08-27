@@ -69,6 +69,15 @@ NON_RESUME_IMMIGRATION_PATTERNS = re.compile(
 - **Filename Check**: If filename matches `NON_RESUME_IMMIGRATION_PATTERNS`, mark as `SKIPPED_NON_RESUME` (Category: `NON_RESUME_IMMIGRATION_OR_ID`). **0 ms OCR cost.**
 - **Image Dimension Check**: If image dimensions are $< 600 \times 600$ px (avatar/headshot) or landscape ID aspect ratio ($85 \times 54$ mm ratio), skip immediately.
 
+### 3.2.1 Lazy Pre-Flight OCR Engine Verification
+
+Before running intake on the first scanned/image file:
+- Probe PyMuPDF / Tesseract presence lazily (cached after first check).
+- If OCR engine is not installed on host machine:
+  - Halt scanned document processing immediately with structured status: `OCR_ENGINE_NOT_INSTALLED`.
+  - Return clear error message: `"OCR engine not found on host. Install Tesseract-OCR to process scanned documents."`
+  - Text-based PDFs continue processing normally without interruption.
+
 ### 3.3 Stage 2: Selective PyMuPDF OCR on Ambiguous Files
 
 Use PyMuPDF's built-in Tesseract binding (`page.get_textpage_ocr()`) which avoids external CLI process spawning:
@@ -92,8 +101,8 @@ def extract_text_with_ocr_fallback(pdf_bytes: bytes, max_pages: int = 2) -> tupl
                 text = textpage.extractText()
                 is_ocr = True
             except Exception as e:
-                logger.warning("pymupdf_ocr_failed", page=i, error=str(e))
-                text = ""
+                logger.error("pymupdf_ocr_failed_missing_engine", page=i, error=str(e))
+                raise RuntimeError("OCR engine not available on host system")
         full_text += text + "\n"
         
     return full_text.strip(), is_ocr

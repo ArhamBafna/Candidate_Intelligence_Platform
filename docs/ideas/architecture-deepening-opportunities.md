@@ -51,14 +51,28 @@ class StorageIndexWriter:
         self.vector_db = vector_db
         
     def write_candidate_indices(self, candidate: Candidate, resume_version: ResumeVersion, raw_text: str) -> None:
-        """Atomic write to SQLite FTS5 table and LanceDB vector chunks."""
-        self._update_fts(candidate, raw_text)
-        self._update_vectors(candidate.id, resume_version.id, raw_text)
+        """Atomic write to SQLite FTS5 table and LanceDB vector chunks.
+        
+        If vector write fails after FTS write, roll back DB transaction and log error 
+        to ensure both stores stay strictly consistent without orphaned records.
+        """
+        try:
+            self._update_fts(candidate, raw_text)
+            self._update_vectors(candidate.id, resume_version.id, raw_text)
+        except Exception as e:
+            self.db.rollback()
+            logger.error("index_writer_sync_failed", candidate_id=candidate.id, error=str(e))
+            raise
         
     def delete_candidate_indices(self, candidate_id: str) -> None:
         """Atomic deletion from both search stores."""
-        self._delete_fts(candidate_id)
-        self._delete_vectors(candidate_id)
+        try:
+            self._delete_fts(candidate_id)
+            self._delete_vectors(candidate_id)
+        except Exception as e:
+            self.db.rollback()
+            logger.error("index_writer_delete_failed", candidate_id=candidate_id, error=str(e))
+            raise
 ```
 
 ---

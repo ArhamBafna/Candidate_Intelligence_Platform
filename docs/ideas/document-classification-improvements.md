@@ -43,9 +43,9 @@ flowchart TD
     G -- "Otherwise" --> I["ACCEPT (VALID_RESUME)"]
 ```
 
-### 3.2 Stage 1: High-Confidence Filename Filtering
+### 3.2 Stage 1: High-Confidence Filename Filtering & Safe Verification
 
-Filter filenames before reading document bytes (zero I/O cost):
+Filter filenames before reading document bytes:
 
 ```python
 FINANCIAL_BILL_FILENAME_PATTERNS = re.compile(
@@ -68,7 +68,9 @@ FINANCIAL_BILL_FILENAME_PATTERNS = re.compile(
 )
 ```
 
-If filename matches `FINANCIAL_BILL_FILENAME_PATTERNS` $\rightarrow$ immediately return `IngestOutcome(status=IngestStatus.SKIPPED_NON_RESUME, message="Rejected financial/utility document by filename pattern")`.
+**Safe Verification Rule**: If filename matches `FINANCIAL_BILL_FILENAME_PATTERNS`, check first 1,000 characters of text for resume anchors (`"experience"`, `"education"`, `"skills"`).
+- If anchors $== 0 \rightarrow$ reject immediately as `SKIPPED_NON_RESUME`.
+- If anchors $\ge 2 \rightarrow$ treat as genuine resume (e.g. `John_Contractor_Resume.pdf`).
 
 ### 3.3 Stage 2: Clustered Body Heuristics vs Resume Anchors
 
@@ -102,11 +104,31 @@ Scan the first 2,000 characters of parsed document text:
 
 *Protection for Finance Candidates*: An accountant resume containing `"managed account balance of $5M"` will match resume anchors (`"experience"`, `"skills"`, `"education"`, $N_{\text{anchor}} \ge 3$), easily passing the check.
 
-### 3.4 Recruiter Submission Form Normalization
+### 3.4 Recruiter Submission Form Normalization & Contact Extraction
 
 Vendor / client submission sheets (e.g. `Bhargavi submission details.docx`) often format candidate details in key-value tables:
 - Pattern: `"Candidate Name:\tJohn Doe"`, `"Full Name:\tJane Smith"`, `"Visa:\tH1B"`, `"Rate:\t$70/hr"`.
 - Strip table field prefixes (`"Candidate Name:"`, `"Full Name:"`, `"Name:"`) from candidate names before inserting into `Candidate.first_name` and `Candidate.last_name`.
+
+**Candidate Email Resolution Hierarchy**:
+1. **Explicit Key-Value Match (Primary)**: Extract email on line matching `r'(?:Candidate|Applicant|Consultant)\s*Email\s*[:\t]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'`.
+2. **Top-Header Candidate Email (Fallback 1)**: If no explicit key label, extract first email found in the top 500 characters, ignoring agency/recruiter domain patterns (`@recruiting.com`, `@staffing.com`, `recruiter@`, `submissions@`).
+3. **General Regex (Fallback 2)**: Fall back to standard regex email extractor if no agency noise detected.
+4. **Tier 2 AI Inference (Fallback 3)**: If rule-based extraction finds 0 emails, pass resume text to Tier 2 LLM extractor (`extract_inferences()`) to infer candidate contact email.
+
+### 3.4.1 Multi-Candidate Batch Document Rejection
+
+If a vendor submission sheet or PDF table contains multiple distinct candidate entries (e.g. `Candidate 1: ...`, `Candidate 2: ...`):
+- Reject document immediately with status: `SKIPPED_MULTI_CANDIDATE_BATCH`.
+- Emit structured warning log:
+  ```python
+  logger.warning(
+      "DOCUMENT_REJECTED_MULTI_CANDIDATE",
+      filename=filename,
+      reason="File contains multiple candidate profiles in a single document table; unsupported batch format",
+      action="skipped_ingestion",
+  )
+  ```
 
 ### 3.5 System Logging on Rejection
 
