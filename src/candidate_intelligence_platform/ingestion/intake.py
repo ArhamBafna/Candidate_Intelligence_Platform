@@ -630,6 +630,10 @@ def ingest_file(
             db.add(target_candidate)
 
         db.add(rv)
+        
+        # Flush parent records before inserting claims to guarantee insert order 
+        # since we don't define SQLAlchemy relationships
+        db.flush()
 
         for claim_dict in extracted.get("facts", []):
             claim = CandidateClaim(

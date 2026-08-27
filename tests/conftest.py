@@ -88,7 +88,14 @@ def mock_heavy_models(monkeypatch):
     """Mock spaCy NER facts and embedding generation for API-level tests."""
     monkeypatch.setattr(
         "candidate_intelligence_platform.extraction.deterministic_ner.extract_facts",
-        lambda text: [],
+        lambda text: [{
+            "source_type": "EXPLICIT_FACT",
+            "claim_category": "CONTACT",
+            "claim_key": "email",
+            "claim_value": "test@example.com",
+            "confidence_score": 1.0,
+            "extracted_by": "REGEX_PARSER"
+        }],
     )
     monkeypatch.setattr(
         "candidate_intelligence_platform.intelligence.embeddings.generate_embeddings",

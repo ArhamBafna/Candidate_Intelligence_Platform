@@ -264,9 +264,9 @@
     "semantic_hash": "e851d50cb8647b8c0ce24bc8b3c4f3bf"
   },
   "tests/conftest.py": {
-    "mtime": 1787853787.1595829,
-    "seen": 1787853869.1994145,
-    "ast_hash": "3071c403f6a309c0778c26d125bee674",
+    "mtime": 1787864948.693568,
+    "seen": 1787865964.190851,
+    "ast_hash": "5a12b7982668ae1933dca7a490c02a09",
     "semantic_hash": ""
   },
   "tests/test_ai_failure_logging.py": {
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "ui/src/pages/CandidateList.jsx": {
-    "mtime": 1787791648.4819534,
-    "seen": 1787853869.1995158,
-    "ast_hash": "0f13ec0244bb594fa18a5b0c8262f16c",
+    "mtime": 1787865799.9205065,
+    "seen": 1787865964.1909595,
+    "ast_hash": "b5c52ffa485967a509f17e6730af49b1",
     "semantic_hash": ""
   },
   "ui/tailwind.config.js": {
@@ -684,9 +684,9 @@
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/ingestion/intake.py": {
-    "mtime": 1787855240.922201,
-    "seen": 1787855928.8459036,
-    "ast_hash": "e64522a93d4ebf8ca3f278ed3e1f955a",
+    "mtime": 1787865057.162628,
+    "seen": 1787865964.190815,
+    "ast_hash": "b20bc14e802360c3c3b52c3236a12368",
     "semantic_hash": ""
   },
   "src/candidate_intelligence_platform/intelligence/chat_model.py": {
@@ -744,9 +744,9 @@
     "semantic_hash": ""
   },
   "tests/test_intake.py": {
-    "mtime": 1787854377.4286096,
-    "seen": 1787855928.846037,
-    "ast_hash": "22b2ae0b260f4f1a4de4cb6c85307272",
+    "mtime": 1787860895.0392287,
+    "seen": 1787861138.5255532,
+    "ast_hash": "246aa1a24fb2ffe57ae49d7521890a5a",
     "semantic_hash": ""
   },
   "tests/test_job_ad_distiller.py": {
@@ -846,9 +846,9 @@
     "semantic_hash": ""
   },
   "storage/index_writer.py": {
-    "mtime": 1787854751.0722744,
-    "seen": 1787855928.8459666,
-    "ast_hash": "ebd5c04565db8148b8f686b749730cad",
+    "mtime": 1787857306.4532404,
+    "seen": 1787857802.4758966,
+    "ast_hash": "ac466eb4d02ef3899794c66b3efd49fb",
     "semantic_hash": ""
   },
   "docs/ideas/document-classification-improvements.md": {
@@ -864,15 +864,39 @@
     "semantic_hash": ""
   },
   "docs/ideas/structured-claims-and-skills-pipeline.md": {
-    "mtime": 1787855891.3265874,
-    "seen": 1787855928.8461466,
-    "ast_hash": "067f403604f1398a8f68442fd573d902",
+    "mtime": 1787860296.4707258,
+    "seen": 1787861138.5256004,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "docs/ideas/weighted-job-title-refinement.md": {
     "mtime": 1787849140.859039,
     "seen": 1787853869.199566,
     "ast_hash": "b6be72071ddf0bc6edab71de75ea6d14",
+    "semantic_hash": ""
+  },
+  "tests/test_ast_parser.py": {
+    "mtime": 1787860298.5523112,
+    "seen": 1787861138.5255332,
+    "ast_hash": "3d7e240b1052dff0f271ac734e4e5dce",
+    "semantic_hash": ""
+  },
+  "tests/test_index_writer.py": {
+    "mtime": 1787860940.2582376,
+    "seen": 1787861138.5255506,
+    "ast_hash": "15084f33a6649db5c426ecfe49633aaf",
+    "semantic_hash": ""
+  },
+  "scratch_test.py": {
+    "mtime": 1787865029.0347106,
+    "seen": 1787865964.1907978,
+    "ast_hash": "a4d0de34d5816bfb4784395f9b91bc49",
+    "semantic_hash": ""
+  },
+  "docs/handoffs/2026-08-27-mass-implement.md": {
+    "mtime": 1787861349.6655824,
+    "seen": 1787865964.1909842,
+    "ast_hash": "64953f7d932499f25244efea83985410",
     "semantic_hash": ""
   }
 }

@@ -7,12 +7,19 @@ const AI_NOTES_ENABLED_KEY = 'cip_ai_notes_enabled';
 function CandidateList() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [candidates, setCandidates] = useState([]);
-  const [query, setQuery] = useState('');
-  const [city, setCity] = useState('');
-  const [title, setTitle] = useState('');
-  const [exactTitle, setExactTitle] = useState(false);
-  const [minYoe, setMinYoe] = useState('');
+  const [candidates, setCandidates] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('cip_candidates');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [query, setQuery] = useState(() => sessionStorage.getItem('cip_search_query') || '');
+  const [city, setCity] = useState(() => sessionStorage.getItem('cip_search_city') || '');
+  const [title, setTitle] = useState(() => sessionStorage.getItem('cip_search_title') || '');
+  const [exactTitle, setExactTitle] = useState(() => sessionStorage.getItem('cip_search_exactTitle') === 'true');
+  const [minYoe, setMinYoe] = useState(() => sessionStorage.getItem('cip_search_minYoe') || '');
   const [isSearching, setIsSearching] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
@@ -360,9 +367,31 @@ function CandidateList() {
 
   useEffect(() => {
     if (location.pathname === '/') {
-      fetchCandidates();
+      const savedCandidatesStr = sessionStorage.getItem('cip_candidates');
+      let hasSavedCandidates = false;
+      try {
+        if (savedCandidatesStr) {
+          const parsed = JSON.parse(savedCandidatesStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            hasSavedCandidates = true;
+          }
+        }
+      } catch (e) {}
+      
+      if (!hasSavedCandidates) {
+        fetchCandidates();
+      }
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    sessionStorage.setItem('cip_search_query', query);
+    sessionStorage.setItem('cip_search_city', city);
+    sessionStorage.setItem('cip_search_title', title);
+    sessionStorage.setItem('cip_search_exactTitle', exactTitle);
+    sessionStorage.setItem('cip_search_minYoe', minYoe);
+    sessionStorage.setItem('cip_candidates', JSON.stringify(candidates));
+  }, [query, city, title, exactTitle, minYoe, candidates]);
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
