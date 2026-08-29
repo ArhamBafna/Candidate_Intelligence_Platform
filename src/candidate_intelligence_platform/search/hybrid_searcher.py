@@ -104,10 +104,24 @@ def _semantic_signals(candidate_id: str, vector_ranks: Dict[str, int]) -> List[D
         return []
     return [{"signal": "semantic_similarity", "vector_rank": vector_ranks[candidate_id]}]
 
-def execute_fts_query(sql: str, params: Dict[str, Any], db: Session) -> Dict[str, int]:
+def execute_fts_query(
+    sql: str,
+    params: Dict[str, Any],
+    db: Session,
+    fts_pool_size: Optional[int] = None,
+) -> Dict[str, int]:
+    """Execute a keyword FTS query and return a {candidate_id: rank} mapping.
+
+    *fts_pool_size* caps how many rows are kept before downstream ranking.
+    When provided (and positive), only the first *fts_pool_size* rows are
+    retained; the SQL already orders by BM25 so the best matches survive the
+    truncation.  When None, all rows are returned (backwards-compatible).
+    """
     if not sql:
         return {}
     results = db.execute(text(sql), params).fetchall()
+    if fts_pool_size and fts_pool_size > 0:
+        results = results[:fts_pool_size]
     ranks: Dict[str, int] = {}
     for rank, row in enumerate(results, start=1):
         ranks[row[0]] = rank
@@ -199,7 +213,7 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     # The FTS query contains only unstructured free-text keywords
     fts_query = params.get("fts_query", "")
     
-    fts_ranks = execute_fts_query(sql, params, db)
+    fts_ranks = execute_fts_query(sql, params, db, fts_pool_size=get_settings().rerank_pool_size)
     
     # Strict (exclusionary) filters narrow the vector pool; soft title and
     # yoe never exclude candidates and therefore never restrict it.

@@ -168,7 +168,7 @@ def test_hybrid_search_candidates(monkeypatch):
     def mock_parse(q):
         return "SELECT candidates.id FROM candidates WHERE candidates.current_city = :location", {"location": "NYC", "fts_query": "python"}, "python nyc"
 
-    def mock_db_fts(sql, params, db):
+    def mock_db_fts(sql, params, db, fts_pool_size=None):
         return {"cand_1": 1, "cand_2": 2}
 
     def mock_vector_search(query_text, candidate_ids, vector_db, warnings=None):
@@ -215,7 +215,7 @@ def test_hybrid_search_candidates_applies_tuning_knobs(monkeypatch):
     def mock_parse(q):
         return "", {"fts_query": "python"}, "python"
 
-    def mock_db_fts(sql, params, db):
+    def mock_db_fts(sql, params, db, fts_pool_size=None):
         return {}
 
     def mock_vector_search(query_text, candidate_ids, vector_db, warnings=None):
@@ -435,7 +435,7 @@ def _run_pipeline_capturing_embedding(monkeypatch, query: str):
         return [0.1, 0.2]
 
     monkeypatch.setattr(hs, "generate_single_embedding", fake_embed)
-    monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: {"cand_1": 1})
+    monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db, fts_pool_size=None: {"cand_1": 1})
     monkeypatch.setattr(hs, "execute_strict_filter_query", lambda sql, params, db: ["cand_1"] if "location" in params or "yoe" in params else None)
     monkeypatch.setattr(hs, "reciprocal_rank_fusion", lambda fts, vec, **kw: (([("cand_1", 0.05)] if fts or vec else []), {}, {}))
     monkeypatch.setattr(hs, "rerank_candidates", lambda q, docs: [0.9])
@@ -517,7 +517,7 @@ def _run_pipeline(monkeypatch, query: str, fts_ranks: dict, vector_ranks: dict, 
             return FakeTable()
 
     monkeypatch.setattr(hs, "generate_single_embedding", lambda text: [0.1, 0.2])
-    monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db: fts_ranks)
+    monkeypatch.setattr(hs, "execute_fts_query", lambda sql, params, db, fts_pool_size=None: fts_ranks)
     monkeypatch.setattr(hs, "execute_strict_filter_query", lambda sql, params, db: list(fts_ranks.keys()))
     monkeypatch.setattr(hs, "execute_vector_search", lambda q, ids, vdb, warnings=None: vector_ranks)
     monkeypatch.setattr(hs, "fetch_candidate_documents", lambda ids, db: [docs.get(cid, "") for cid in ids])
@@ -731,3 +731,66 @@ def test_execute_vector_search_end_to_end(tmp_path):
     assert warnings == []
     assert ranks == {"cand_1": 1}
 
+
+# ---------------------------------------------------------------------------
+# P5 — FTS result-set cap
+# ---------------------------------------------------------------------------
+
+def test_execute_fts_query_caps_results_to_pool_size():
+    """execute_fts_query truncates to fts_pool_size when provided."""
+    from candidate_intelligence_platform.search.hybrid_searcher import execute_fts_query
+    from unittest.mock import MagicMock
+
+    # Build 10 fake rows: (candidate_id,)
+    fake_rows = [(f"c{i}",) for i in range(10)]
+    mock_db = MagicMock()
+    mock_db.execute.return_value.fetchall.return_value = fake_rows
+
+    ranks = execute_fts_query("SELECT ...", {}, mock_db, fts_pool_size=4)
+
+    assert len(ranks) == 4
+    # Best matches (first rows) must be retained.
+    assert "c0" in ranks
+    assert "c3" in ranks
+    # Rows beyond the cap must be dropped.
+    assert "c4" not in ranks
+
+
+def test_execute_fts_query_no_cap_returns_all():
+    """When fts_pool_size is None, all rows are returned (backwards compat)."""
+    from candidate_intelligence_platform.search.hybrid_searcher import execute_fts_query
+    from unittest.mock import MagicMock
+
+    fake_rows = [(f"c{i}",) for i in range(10)]
+    mock_db = MagicMock()
+    mock_db.execute.return_value.fetchall.return_value = fake_rows
+
+    ranks = execute_fts_query("SELECT ...", {}, mock_db, fts_pool_size=None)
+    assert len(ranks) == 10
+
+
+def test_search_candidates_passes_rerank_pool_size_as_fts_cap(monkeypatch):
+    """search_candidates wires rerank_pool_size into execute_fts_query."""
+    import candidate_intelligence_platform.search.hybrid_searcher as hs
+
+    captured_fts_pool: list = []
+
+    def mock_parse(q):
+        return "", {"fts_query": "python"}, "python"
+
+    def mock_fts(sql, params, db, fts_pool_size=None):
+        captured_fts_pool.append(fts_pool_size)
+        return {}
+
+    monkeypatch.setattr(hs, "parse_query_to_sql", mock_parse)
+    monkeypatch.setattr(hs, "execute_fts_query", mock_fts)
+    monkeypatch.setattr(hs, "execute_vector_search", lambda *a, **kw: {})
+    monkeypatch.setattr(hs, "reciprocal_rank_fusion", lambda *a, **kw: ([], {}, {}))
+    monkeypatch.setenv("CIP_RERANK_POOL_SIZE", "7")
+
+    gen = hs.search_candidates("python", None, None)
+    for _ in gen:
+        pass
+
+    assert len(captured_fts_pool) == 1
+    assert captured_fts_pool[0] == 7

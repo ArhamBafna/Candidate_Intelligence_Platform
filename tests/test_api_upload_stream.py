@@ -145,3 +145,37 @@ def test_upload_stream_transparency_events(client: TestClient, monkeypatch):
     completed = [e for e in events if e.get("stage") == "COMPLETED"]
     assert len(completed) == 1
     assert "used_ai_fallback" in completed[0]
+
+
+# ---------------------------------------------------------------------------
+# P2 — file size cap on /upload-stream
+# ---------------------------------------------------------------------------
+
+def test_upload_stream_rejects_oversized_file(client: TestClient, monkeypatch):
+    """Oversized file emits FAILED SSE event; stream endpoint stays alive for other files."""
+    from api.main import app
+    from api.dependencies import get_settings
+    from config.settings import Settings
+    import json as _json
+
+    # 0 MB limit → every file is "too large"
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        max_upload_size_mb=0,
+    )
+    try:
+        files = [("files", ("huge.pdf", b"any content at all", "application/pdf"))]
+        response = client.post("/candidates/upload-stream", files=files)
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+
+        events = []
+        for line in response.iter_lines():
+            if line and line.startswith("data: "):
+                events.append(_json.loads(line[6:]))
+
+        failed_events = [e for e in events if e.get("status") == "FAILED"]
+        assert len(failed_events) == 1
+        assert "exceeds" in failed_events[0]["message"].lower()
+        assert failed_events[0]["file_name"] == "huge.pdf"
+    finally:
+        app.dependency_overrides.pop(get_settings, None)

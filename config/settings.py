@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     vector_pool_size: int = 100
     rerank_pool_size: int = 50
     default_top_k: int = 10
+    max_upload_size_mb: int = 50
 
     model_config = {
         "env_prefix": "CIP_",

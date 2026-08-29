@@ -349,12 +349,58 @@ def test_get_candidate_insight_stream(client: TestClient, db_session: Session, m
         yield "match."
 
     monkeypatch.setattr("api.routes.candidates.stream_ollama_generate", mock_generate)
-    
+
     response = client.get(f"/candidates/{c_id}/insight?query=Software Engineer")
     assert response.status_code == 200
     assert "text/event-stream" in response.headers.get("content-type", "")
-    
+
     text_content = response.text
     assert "This" in text_content
     assert "match." in text_content
 
+
+# ---------------------------------------------------------------------------
+# P2 — file size cap on /upload
+# ---------------------------------------------------------------------------
+
+def test_upload_rejects_oversized_file(client: TestClient, test_settings, monkeypatch):
+    """POST /candidates/upload returns 413 when file exceeds max_upload_size_mb."""
+    from api.main import app
+    from api.dependencies import get_settings
+    from config.settings import Settings
+
+    # Configure a tiny limit (0 MB → 0 bytes) so any real content triggers the check.
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        db_path=test_settings.db_path,
+        cas_root_dir=test_settings.cas_root_dir,
+        vector_db_path=test_settings.vector_db_path,
+        max_upload_size_mb=0,
+    )
+    try:
+        response = client.post(
+            "/candidates/upload",
+            files={"file": ("big.pdf", b"some content", "application/pdf")},
+        )
+        assert response.status_code == 413
+        assert "exceeds" in response.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+
+
+def test_upload_accepts_file_within_size_limit(client: TestClient, monkeypatch):
+    """POST /candidates/upload succeeds (not 413) when file is within the limit."""
+    content = b"Alice Smith\nSoftware Engineer\nEmail: alice@example.com"
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {
+            "first_name": "Alice", "last_name": "Smith",
+            "primary_email": "alice@example.com", "primary_phone": "",
+            "current_title": "Software Engineer", "warnings": []
+        }
+    )
+    monkeypatch.setattr("storage.index_writer.generate_embeddings", lambda texts: [[0.0] * 4 for _ in texts])
+    response = client.post(
+        "/candidates/upload",
+        files={"file": ("alice.txt", content, "text/plain")},
+    )
+    assert response.status_code != 413

@@ -355,7 +355,13 @@ async def upload_resume(
     settings: Settings = Depends(get_settings),
     vector_db = Depends(get_vector_db)
 ) -> Dict[str, Any]:
+    max_bytes = settings.max_upload_size_mb * 1024 * 1024
     content = await file.read()
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large: {len(content)} bytes exceeds the {settings.max_upload_size_mb} MB limit.",
+        )
     cas_mgr = CASManager(settings.cas_root_dir)
 
     def run_pipeline() -> IntakeResult:
@@ -486,7 +492,18 @@ async def upload_stream_resumes(
                     )
 
             try:
+                max_bytes = settings.max_upload_size_mb * 1024 * 1024
                 content = await file.read()
+                if len(content) > max_bytes:
+                    await event_queue.put(json.dumps({
+                        'file_name': file.filename,
+                        'stage': 'ERROR',
+                        'status': 'FAILED',
+                        'progress': 100,
+                        'message': f"File too large: {len(content)} bytes exceeds the {settings.max_upload_size_mb} MB limit.",
+                        'warnings': []
+                    }))
+                    return
                 cas_mgr = CASManager(settings.cas_root_dir)
 
                 def run_pipeline() -> IntakeResult:
