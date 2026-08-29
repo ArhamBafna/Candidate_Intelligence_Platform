@@ -38,6 +38,18 @@ function CandidateList() {
       return true;
     }
   });
+  const [activeSearchParams, setActiveSearchParams] = useState(() => {
+    try {
+      const q = sessionStorage.getItem('cip_search_query');
+      const c = sessionStorage.getItem('cip_search_city');
+      const t = sessionStorage.getItem('cip_search_title');
+      const et = sessionStorage.getItem('cip_search_exactTitle') === 'true';
+      const y = sessionStorage.getItem('cip_search_minYoe');
+      return (q && q.trim()) ? { query: q.trim(), city: c || '', title: t || '', minYoe: y || '', exactTitle: et } : null;
+    } catch {
+      return null;
+    }
+  });
   const aiNotesEnabledRef = useRef(aiNotesEnabled);
   const insightControllersRef = useRef(new Map());
   const lastSearchParamsRef = useRef({ query: '', city: '', title: '', minYoe: '', exactTitle: false });
@@ -107,10 +119,10 @@ function CandidateList() {
       insightControllersRef.current.clear();
       setInsights({});
     } else {
-      const activeParams = lastSearchParamsRef.current?.query?.trim()
-        ? lastSearchParamsRef.current
-        : { query, city, title, minYoe };
-      if (activeParams.query && activeParams.query.trim()) {
+      const activeParams = activeSearchParams?.query?.trim()
+        ? activeSearchParams
+        : (lastSearchParamsRef.current?.query?.trim() ? lastSearchParamsRef.current : null);
+      if (activeParams && activeParams.query && activeParams.query.trim()) {
         fireTopInsights(candidates, activeParams);
       }
     }
@@ -463,6 +475,7 @@ function CandidateList() {
       setIsSearching(false);
       setSearchProgress(null);
       setSearchWarnings([]);
+      setActiveSearchParams(null);
       lastSearchParamsRef.current = { query: '', city: '', title: '', minYoe: '', exactTitle: false };
       insightControllersRef.current.forEach((controller) => controller.abort());
       insightControllersRef.current.clear();
@@ -474,7 +487,9 @@ function CandidateList() {
     setIsSearching(true);
     setSearchProgress({ stage: 'STARTING', progress: 0, message: 'Initializing search…' });
     setCandidates([]);
-    lastSearchParamsRef.current = { query, city, title, minYoe, exactTitle };
+    const currentParams = { query, city, title, minYoe, exactTitle };
+    lastSearchParamsRef.current = currentParams;
+    setActiveSearchParams(currentParams);
 
     const requestBody = { query_text: query, top_k: 10 };
     if (city.trim()) requestBody.city = city.trim();
@@ -698,7 +713,8 @@ function CandidateList() {
                   setIsSearching(false);
                   setSearchProgress(null);
                   setSearchWarnings([]);
-                  lastSearchedQueryRef.current = '';
+                  setActiveSearchParams(null);
+                  lastSearchParamsRef.current = { query: '', city: '', title: '', minYoe: '', exactTitle: false };
                   insightControllersRef.current.forEach((controller) => controller.abort());
                   insightControllersRef.current.clear();
                   setInsights({});
@@ -1013,9 +1029,9 @@ function CandidateList() {
               </div>
               
               {/* AI Insight Box */}
-              {query.trim().length > 0 && aiNotesEnabled && (
+              {Boolean(activeSearchParams?.query?.trim()) && aiNotesEnabled && (
                 <div className="mt-4 border-t border-neutral-800 pt-4" onClick={e => e.stopPropagation()}>
-                  {insights[candidate.id] ? (
+                  {insights[candidate.id] && insights[candidate.id].status !== 'cancelled' ? (
                     <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-3 text-sm">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-emerald-300 font-semibold flex items-center gap-1.5 text-xs uppercase tracking-wider">
@@ -1031,7 +1047,7 @@ function CandidateList() {
                           </button>
                         ) : (
                           <button 
-                            onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, lastSearchParamsRef.current?.query ? lastSearchParamsRef.current : { query, city, title, minYoe }); }}
+                            onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, activeSearchParams || lastSearchParamsRef.current || { query, city, title, minYoe }); }}
                             className="text-emerald-400 hover:text-emerald-300 text-xs px-2 py-1 rounded transition-colors"
                           >
                             Regenerate
@@ -1047,13 +1063,12 @@ function CandidateList() {
                       <div className="text-neutral-300 leading-relaxed text-sm max-h-32 overflow-y-auto">
                         {insights[candidate.id].text}
                         {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-emerald-400 animate-pulse"></span>}
-                        {insights[candidate.id].status === 'cancelled' && <span className="text-neutral-500 italic block mt-1 text-xs">Generation cancelled.</span>}
                         {insights[candidate.id].status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">{insights[candidate.id].errorMessage || 'Generation failed.'}</span>}
                       </div>
                     </div>
                   ) : (
                     <button 
-                      onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, lastSearchParamsRef.current?.query ? lastSearchParamsRef.current : { query, city, title, minYoe }); }}
+                      onClick={(e) => { e.stopPropagation(); generateInsight(candidate.id, activeSearchParams || lastSearchParamsRef.current || { query, city, title, minYoe }); }}
                       className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                     >
                       Generate AI Note

@@ -103,9 +103,12 @@
 - [x] UI: “Exact Match Only” checkbox next to the Job Title input; enables `exact_title` flag; “Exact Title Match +20%” / “Related Title Match” badges rendered on result cards
 - [x] Tests: soft-by-default parser, strict verbatim parser, soft search surfaces related titles with badges, exact mode restricts vector pool, RRF exact-first ordering, API DSL flag; full suite green (235 passed)
 
-## Repo Audit P3 + P4 (Issue #40)
+## Repo Audit P1 - P5 (Issue #40)
 
-- [x] P3 — Settings singleton: add `get_settings()` with `@lru_cache(maxsize=1)` to `config/settings.py`; update all 13 production `Settings()` call sites across `hybrid_searcher`, `reranker`, `job_ad_distiller`, `chat_model`, `embeddings`, `local_llm_fallback`, `bulk_ingest`, `api/main`, `api/dependencies` to use `get_settings()`; env file parsed exactly once per process
-- [x] P3 — Test isolation: add global `clear_settings_cache` autouse fixture in `conftest.py` so `monkeypatch.setenv` changes in individual tests are visible to the cached singleton; add 2 new assertions to `tests/test_settings.py` verifying cache-hit and `cache_clear()` semantics
-- [x] P4 — Centralize location/title SQL: rewrite `_build_strict_filter_clause` in `hybrid_searcher.py` to derive WHERE predicates by iterating `FILTER_SPECS` from `ast_parser.py` instead of repeating them; duplicate SQL fragments removed; single edit to any predicate in `FILTER_SPECS` now propagates to both the FTS stage and the strict-filter stage automatically
-- [x] Full suite green: 255 passed, 6 skipped
+- [x] P1 — Correctness: backup manifest vector count uses `candidate_vectors` table instead of dead `candidate_sections`
+- [x] P2 — Robustness: add `Settings.max_upload_size_mb` (default 50 MB, env `CIP_MAX_UPLOAD_SIZE_MB`); reject oversized files with HTTP 413 on `/upload` and FAILED SSE event on `/upload-stream`
+- [x] P3 — Settings singleton: add `get_settings()` with `@lru_cache(maxsize=1)` to `config/settings.py`; update all production `Settings()` call sites to `get_settings()`; env file parsed exactly once per process
+- [x] P3 — Test isolation: add global `clear_settings_cache` autouse fixture in `conftest.py`; verify cache semantics in `tests/test_settings.py`
+- [x] P4 — Centralize location/title SQL: rewrite `_build_strict_filter_clause` in `hybrid_searcher.py` to derive WHERE predicates by iterating `FILTER_SPECS` from `ast_parser.py`
+- [x] P5 — Performance: cap FTS keyword result set to `rerank_pool_size` via `execute_fts_query(..., fts_pool_size=...)` in `hybrid_searcher.py` to avoid unbounded in-memory matches
+- [x] Full suite green: 261 passed, 6 skipped
