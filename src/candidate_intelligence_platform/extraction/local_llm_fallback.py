@@ -1,7 +1,7 @@
 import concurrent.futures
 import json
 import structlog
-from config.settings import Settings
+from config.settings import get_settings
 from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
 from candidate_intelligence_platform.prompts import build_fact_extraction_prompt, build_document_classification_prompt
 
@@ -20,7 +20,7 @@ def _call_openrouter(prompt: str, model_name: str, timeout_seconds: float):
         mark_openrouter_model_paid,
     )
 
-    settings = Settings()
+    settings = get_settings()
     if not settings.openrouter_api_key:
         return None
     if not is_openrouter_model_free(model_name):
@@ -68,7 +68,7 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
     Defaults to configured Settings model (llama3.2 or stealth/ox-alpha).
     Includes validation, anomaly logging, and self-healing for LLM schema deviations.
     """
-    settings = Settings()
+    settings = get_settings()
     provider = get_llm_provider()
 
     if provider == "openrouter":
@@ -203,7 +203,7 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
 
 def classify_document_llm(text: str, model_name: str | None = None, timeout_seconds: float = 15.0) -> bool:
     """Use local LLM to classify if document is a resume."""
-    settings = Settings()
+    settings = get_settings()
     provider = get_llm_provider()
 
     if provider == "openrouter":

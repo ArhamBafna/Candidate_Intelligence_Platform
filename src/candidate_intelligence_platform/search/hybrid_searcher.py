@@ -2,8 +2,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import Optional, Callable, Dict, List, Any, Generator, Tuple
 import json
-from config.settings import Settings
-from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql
+from config.settings import get_settings
+from candidate_intelligence_platform.search.ast_parser import parse_query_to_sql, FILTER_SPECS
 from candidate_intelligence_platform.search.rank_fusion import reciprocal_rank_fusion
 from candidate_intelligence_platform.search.reranker import rerank_candidates
 from candidate_intelligence_platform.intelligence.explainer import build_match_rationale
@@ -30,20 +30,33 @@ def _describe_strict_filters(params: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def _build_strict_filter_clause(params: Dict[str, Any]) -> Optional[str]:
-    """Exclusionary SQL filters: location, and exact title only.
+    """Build exclusionary SQL WHERE clause from FILTER_SPECS fragments.
 
-    The soft job title filter never contributes SQL here; it is scored via
-    the vector/FTS query and the RRF exact-match bonus instead, so
-    semantically related titles are never dropped before fusion.
+    Derives predicates from the same FILTER_SPECS table used by ast_parser so
+    the FTS stage and the strict-filter stage can never drift: a single edit to
+    any predicate in FILTER_SPECS propagates here automatically.
+
+    Only non-empty sql_fragment entries are included; soft filters (yoe, soft
+    title) have empty fragments and never exclude candidates.
     """
     where_parts: List[str] = []
-    if "location" in params:
-        where_parts.append("(candidates.current_city LIKE '%' || :location || '%' COLLATE NOCASE OR candidate_fts.resume_content LIKE '%' || :location || '%' COLLATE NOCASE)")
-    if params.get("title_exact") and "title" in params:
-        where_parts.append("(LOWER(candidates.current_title) = LOWER(:title))")
+    for _pattern, sql_fragment, param_name, _cast, is_exact in FILTER_SPECS:
+        if not sql_fragment:
+            continue  # soft filter — never excludes via SQL
+        if is_exact:
+            # title_exact: only exclude when the query was parsed in exact-title mode
+            if params.get("title_exact") and param_name in params:
+                where_parts.append(sql_fragment)
+        else:
+            if param_name in params:
+                where_parts.append(sql_fragment)
     if not where_parts:
         return None
-    return "SELECT candidates.id FROM candidates JOIN candidate_fts ON candidates.id = candidate_fts.candidate_id WHERE " + " AND ".join(where_parts)
+    return (
+        "SELECT candidates.id FROM candidates "
+        "JOIN candidate_fts ON candidates.id = candidate_fts.candidate_id "
+        "WHERE " + " AND ".join(where_parts)
+    )
 
 
 def resolve_title_match(
@@ -127,7 +140,7 @@ def execute_vector_search(query_text: str, candidate_ids: Optional[List[str]], v
             warnings.append("Semantic vector search skipped (candidate_vectors table not found); showing keyword matches.")
         return {}
         
-    pool_size = Settings().vector_pool_size
+    pool_size = get_settings().vector_pool_size
     try:
         search_query = table.search(query_vector)
         if candidate_ids:
@@ -208,7 +221,7 @@ def search_candidates(query: str, db: Session, vector_db: Any, return_warnings: 
     
     yield ("RANK_FUSION", 60, "Fusing keyword and semantic ranks...", None)
         
-    settings = Settings()
+    settings = get_settings()
     
     from storage.db_models import Candidate
     all_cids = set(fts_ranks.keys()).union(vector_ranks.keys())

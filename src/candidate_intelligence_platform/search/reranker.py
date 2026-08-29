@@ -8,7 +8,7 @@ import threading
 from typing import Any
 import structlog
 
-from config.settings import Settings
+from config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -70,7 +70,7 @@ def _get_reranker() -> Any:
     if _reranker_model is None:
         with _reranker_lock:
             if _reranker_model is None:
-                configured_model = Settings().reranker_model
+                configured_model = get_settings().reranker_model
                 
                 try:
                     _reranker_model = _load_text_cross_encoder(configured_model)

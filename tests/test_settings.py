@@ -1,5 +1,5 @@
 import pytest
-from config.settings import Settings
+from config.settings import Settings, get_settings
 
 DEFAULTS = [
     "CIP_EMBEDDING_MODEL",
@@ -18,6 +18,7 @@ DEFAULTS = [
 def clean_model_env(monkeypatch):
     for key in DEFAULTS:
         monkeypatch.delenv(key, raising=False)
+
 
 def test_default_settings(monkeypatch):
     """Verify that default settings conform to the architectural directives."""
@@ -67,3 +68,16 @@ def test_model_and_tuning_settings_support_env_overrides(monkeypatch):
     assert settings.vector_pool_size == 25
     assert settings.rerank_pool_size == 8
     assert settings.default_top_k == 5
+
+def test_get_settings_returns_cached_singleton():
+    """get_settings() must return the same object on repeated calls (lru_cache contract)."""
+    a = get_settings()
+    b = get_settings()
+    assert a is b, "get_settings() should return the same cached instance"
+
+def test_get_settings_cache_clear_produces_new_instance():
+    """cache_clear() must invalidate the singleton so tests can get a fresh instance."""
+    a = get_settings()
+    get_settings.cache_clear()
+    b = get_settings()
+    assert a is not b, "get_settings() after cache_clear() should return a new instance"

@@ -17,7 +17,7 @@ import threading
 import time
 import structlog
 
-from config.settings import Settings
+from config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -122,7 +122,7 @@ def is_openrouter_model_free(model_name: str, force_refresh: bool = False) -> bo
     try:
         import httpx
 
-        settings = Settings()
+        settings = get_settings()
         response = httpx.get(
             f"{settings.openrouter_base_url}/models",
             timeout=10.0,
@@ -172,7 +172,7 @@ def reset_openrouter_pricing_cache() -> None:
 
 def get_llm_provider() -> str:
     """Effective provider. API key is IGNORED unless provider=openrouter."""
-    settings = Settings()
+    settings = get_settings()
     provider = settings.llm_provider.lower()
 
     if provider != "openrouter":
@@ -202,7 +202,7 @@ def resolve_chat_model(force_refresh: bool = False) -> str | None:
         if not force_refresh and _cached_at >= 0.0 and (now - _cached_at) < _PROBE_TTL_SECONDS:
             return _cached_model
 
-        settings = Settings()
+        settings = get_settings()
         provider = settings.llm_provider.lower()
         resolved: str | None = None
 

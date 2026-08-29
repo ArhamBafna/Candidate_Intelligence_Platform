@@ -1,7 +1,7 @@
 from typing import Generator
 from functools import lru_cache
 from sqlalchemy.orm import Session, sessionmaker
-from config.settings import Settings
+from config.settings import Settings, get_settings
 from config.database import get_engine
 from storage.vector_store import get_lancedb_connection
 
@@ -9,9 +9,6 @@ from storage.vector_store import get_lancedb_connection
 def _get_sessionmaker(db_path: str):
     engine = get_engine(f"sqlite:///{db_path}")
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def get_settings() -> Settings:
-    return Settings()
 
 def get_db() -> Generator[Session, None, None]:
     settings = get_settings()

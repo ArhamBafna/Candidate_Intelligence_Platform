@@ -12,14 +12,14 @@ logger = structlog.get_logger(__name__)
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from config.settings import Settings
+from config.settings import get_settings
 from config.database import get_engine
 from storage.db_models import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize database schema on startup
-    settings = Settings()
+    settings = get_settings()
     engine = get_engine(f"sqlite:///{settings.db_path}")
     init_db(engine)
     yield

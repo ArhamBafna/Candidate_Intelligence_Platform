@@ -15,7 +15,7 @@ import traceback
 from datetime import datetime
 from typing import Set, Dict, Any, Tuple, List, Optional
 
-from config.settings import Settings
+from config.settings import get_settings
 from api.dependencies import _get_sessionmaker, get_vector_db
 from storage.cas import CASManager
 from storage.db_models import Candidate, CandidateTimelineEvent
@@ -195,7 +195,7 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
         db=db,
         cas_mgr=cas_mgr,
         vector_db=get_vector_db(),
-        settings=Settings(),
+        settings=get_settings(),
         source=IntakeSource.BULK,
         timeline_mode=TimelineMode.NONE,
         folder_tag=folder_tag,
@@ -331,8 +331,8 @@ def run_bulk_ingest(
         except Exception:
             pass
 
-    cas_mgr = CASManager(Settings().cas_root_dir)
-    SessionLocal = _get_sessionmaker(Settings().db_path)
+    cas_mgr = CASManager(get_settings().cas_root_dir)
+    SessionLocal = _get_sessionmaker(get_settings().db_path)
     db = SessionLocal()
     
     scanned_count = 0

@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 from pydantic_settings import BaseSettings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,3 +31,13 @@ class Settings(BaseSettings):
         "env_file": os.path.join(BASE_DIR, ".env"),
         "extra": "ignore",
     }
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Return the process-wide Settings singleton.
+
+    Cached after the first call so the env file is parsed exactly once.
+    Call ``get_settings.cache_clear()`` in tests that need a fresh instance.
+    """
+    return Settings()

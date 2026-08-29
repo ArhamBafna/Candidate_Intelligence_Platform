@@ -9,7 +9,7 @@ import functools
 from typing import Any
 import structlog
 
-from config.settings import Settings
+from config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -71,7 +71,7 @@ def _get_embedding_model() -> Any:
     if _embedding_model is None:
         with _embedding_lock:
             if _embedding_model is None:
-                configured_model = Settings().embedding_model
+                configured_model = get_settings().embedding_model
                 
                 try:
                     _embedding_model = _load_text_embedding(configured_model)

@@ -28,7 +28,7 @@ from candidate_intelligence_platform.intelligence.chat_model import (
     resolve_chat_model,
 )
 from candidate_intelligence_platform.prompts import build_job_ad_distill_prompt
-from config.settings import Settings
+from config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -180,7 +180,7 @@ def _ai_distill_openrouter(ad_text: str, model_name: str, timeout_seconds: float
         mark_openrouter_model_paid,
     )
 
-    settings = Settings()
+    settings = get_settings()
     if not settings.openrouter_api_key:
         return None
     if not is_openrouter_model_free(model_name):
@@ -367,7 +367,7 @@ def _raw_distill(ad_text: str) -> JobAdRecipe:
 def distill_job_ad(ad_text: str, timeout_seconds: float = 45.0) -> JobAdRecipe:
     """Distill a pasted job ad: configured provider first, local Ollama second, heuristics third, raw last."""
     text = (ad_text or "").strip()
-    settings = Settings()
+    settings = get_settings()
 
     try:
         model_name = resolve_chat_model()

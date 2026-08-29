@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from api.main import app
 from api.dependencies import get_db, get_vector_db, get_settings
-from config.settings import Settings
+from config.settings import Settings, get_settings as _get_settings
 from storage.db_models import Base
 
 @pytest.fixture(scope="session", autouse=True)
@@ -27,6 +27,17 @@ def isolate_test_environment(tmp_path_factory):
     os.environ.pop("CIP_DB_PATH", None)
     os.environ.pop("CIP_CAS_ROOT_DIR", None)
     os.environ.pop("CIP_VECTOR_DB_PATH", None)
+
+@pytest.fixture(autouse=True)
+def clear_settings_cache():
+    """Clear the get_settings() lru_cache before and after every test.
+
+    Required because monkeypatch.setenv changes must be visible to get_settings()
+    rather than being hidden by a stale cache entry from a previous test.
+    """
+    _get_settings.cache_clear()
+    yield
+    _get_settings.cache_clear()
 
 @pytest.fixture(autouse=True)
 def isolate_llm_environment(monkeypatch: pytest.MonkeyPatch) -> None:
