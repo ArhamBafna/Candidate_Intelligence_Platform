@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     fallback_llm_model: str = "llama3.2"
     llm_provider: str = "ollama"
     openrouter_api_key: str = ""
-    openrouter_model: str = "stealth/ox-alpha"
+    openrouter_model: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     extraction_confidence_threshold: float = 0.40
     entity_res_auto_merge_threshold: float = 0.85

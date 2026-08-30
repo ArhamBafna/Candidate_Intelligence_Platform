@@ -128,7 +128,8 @@ IMMIGRATION_ID_CONTENT_KEYWORDS = [
 STUDY_TEMPLATE_KEYWORDS = [
     "submission format", "question bank", "interview questions",
     "key components of spring", "spring boot key components", "study guide",
-    "cheat sheet", "sample test", "client portal submission"
+    "cheat sheet", "sample test", "client portal submission",
+    "skills matrix", "years used", "last used"
 ]
 
 RESUME_SIGNALS = [

@@ -17,4 +17,6 @@ storage/lancedb/
 test-resumes/
 .freebuff/
 bulk_ingest_unprocessed*.json
+storage/tessdata/
+bulk-ingestions/reports/
 .env

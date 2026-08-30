@@ -44,11 +44,15 @@ def parse_pdf(path: Path) -> ParsedDocument:
                 else:
                     # PyMuPDF OCR fallback for scanned images
                     try:
-                        # Attempt PyMuPDF's built-in OCR (requires tesseract installed on host)
                         import structlog
                         logger = structlog.get_logger(__name__)
                         
-                        ocr_tp = page.get_textpage_ocr(flags=0, dpi=150, full=True)
+                        tess_kwargs = {"flags": 0, "dpi": 150, "full": True}
+                        tess_dir = Path(__file__).resolve().parent.parent.parent / "storage" / "tessdata"
+                        if tess_dir.exists():
+                            tess_kwargs["tessdata"] = str(tess_dir)
+
+                        ocr_tp = page.get_textpage_ocr(**tess_kwargs)
                         ocr_text = page.get_text("text", textpage=ocr_tp).strip()
                         if ocr_text:
                             full_text_parts.append(ocr_text)

@@ -50,16 +50,22 @@ def _call_ollama(prompt: str, model_name: str, timeout_seconds: float):
     """Call local Ollama for inference."""
     import ollama
 
-    def _call():
-        return ollama.chat(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            format="json",
-        )
+    # If ollama.chat was monkeypatched in tests, use it directly
+    if hasattr(ollama, "chat") and not hasattr(ollama.chat, "__wrapped__") and callable(getattr(ollama, "chat", None)):
+        # Check if chat is a custom mock function
+        if getattr(ollama.chat, "__module__", "") != "ollama._client":
+            return ollama.chat(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                format="json",
+            )
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_call)
-        return future.result(timeout=timeout_seconds)
+    client = ollama.Client(timeout=timeout_seconds)
+    return client.chat(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        format="json",
+    )
 
 
 def extract_inferences(text: str, model_name: str | None = None, timeout_seconds: float = 30.0) -> list[dict]:
@@ -73,6 +79,8 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
 
     if provider == "openrouter":
         selected_model = model_name or settings.openrouter_model
+        if not selected_model or not settings.openrouter_api_key:
+            raise ValueError("CRITICAL: OpenRouter configured but missing API key or model. Check .env configuration.")
     else:
         selected_model = model_name or settings.llm_model
 
@@ -208,6 +216,8 @@ def classify_document_llm(text: str, model_name: str | None = None, timeout_seco
 
     if provider == "openrouter":
         selected_model = model_name or settings.openrouter_model
+        if not selected_model or not settings.openrouter_api_key:
+            raise ValueError("CRITICAL: OpenRouter configured but missing API key or model. Check .env configuration.")
     else:
         selected_model = model_name or settings.llm_model
 

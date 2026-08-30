@@ -31,6 +31,7 @@ logger = structlog.get_logger(__name__)
 
 SUPPORTED_EXTENSIONS = {".docx", ".doc", ".pdf", ".msg", ".eml", ".txt"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".jfif", ".gif"}
+DEFAULT_EXCLUDED_DIRS = {"candidate details"}
 
 def get_file_hash(filepath: Path) -> str:
     hasher = hashlib.sha256()
@@ -287,6 +288,7 @@ def run_bulk_ingest(
     report_file: Optional[str] = None,
     unprocessed_log: Optional[str] = None,
     summary_file: Optional[str] = None,
+    exclude_dirs: Optional[List[str]] = None,
     dry_run: bool = False
 ):
     base_dir = Path(source_dir)
@@ -351,8 +353,21 @@ def run_bulk_ingest(
     print(f"  Summary Report:  {summary_path}")
     print(f"=======================================================\n")
     
+    excluded_dirs_set = {d.strip().lower() for d in (exclude_dirs or [])} | DEFAULT_EXCLUDED_DIRS
+
     # Generator-based traversal
-    for root, _, files in os.walk(base_dir):
+    for root, dirs, files in os.walk(base_dir):
+        # Prune excluded subdirectories in-place so os.walk does not descend into them
+        dirs[:] = [d for d in dirs if d.lower() not in excluded_dirs_set]
+
+        # Guard: check if current root path is inside an excluded directory
+        try:
+            rel_root = Path(root).relative_to(base_dir)
+            if any(part.lower() in excluded_dirs_set for part in rel_root.parts):
+                continue
+        except Exception:
+            pass
+
         for filename in files:
             # Silently skip MS Word temporary/lock files & system files
             if filename.startswith("~$") or filename.startswith("._") or filename in ["desktop.ini", ".DS_Store"]:
@@ -489,6 +504,7 @@ if __name__ == "__main__":
     parser.add_argument("--report-file", type=str, default=None, help="Name or path to master audit JSON report (saved in output-dir by default)")
     parser.add_argument("--unprocessed-log", type=str, default=None, help="Name or path to unprocessed non-resume log JSON file (saved in output-dir by default)")
     parser.add_argument("--summary-file", type=str, default=None, help="Name or path to generated Markdown summary report (saved in output-dir by default)")
+    parser.add_argument("--exclude-dirs", nargs="*", default=["Candidate details"], help="Directory names to skip during ingestion traversal")
     parser.add_argument("--dry-run", action="store_true", help="Scan and list files without processing")
     
     args = parser.parse_args()
@@ -501,5 +517,6 @@ if __name__ == "__main__":
         report_file=args.report_file,
         unprocessed_log=args.unprocessed_log,
         summary_file=args.summary_file,
+        exclude_dirs=args.exclude_dirs,
         dry_run=args.dry_run
     )
