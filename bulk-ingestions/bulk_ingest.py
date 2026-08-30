@@ -282,7 +282,7 @@ def process_single_file(filepath: Path, base_dir: Path, db, cas_mgr: CASManager)
 def run_bulk_ingest(
     source_dir: str,
     batch_size: int,
-    output_dir: Optional[str] = "bulk-ingestions",
+    output_dir: Optional[str] = "bulk-ingestions/reports",
     checkpoint_file: Optional[str] = None,
     report_file: Optional[str] = None,
     unprocessed_log: Optional[str] = None,
@@ -484,7 +484,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bulk Resume Ingestion Script")
     parser.add_argument("--source-dir", type=str, default=r"G:\My Drive\intellect_iSolutons\All_Resumes\Resumes", help="Path to resumes folder")
     parser.add_argument("--batch-size", type=int, default=500, help="Number of valid resumes to ingest in this run")
-    parser.add_argument("--output-dir", type=str, default="bulk-ingestions", help="Directory where all generated reports, summaries, and checkpoints are stored")
+    parser.add_argument("--output-dir", type=str, default="bulk-ingestions/reports", help="Directory where all generated reports, summaries, and checkpoints are stored")
     parser.add_argument("--checkpoint-file", type=str, default=None, help="Name or path to checkpoint JSON file (saved in output-dir by default)")
     parser.add_argument("--report-file", type=str, default=None, help="Name or path to master audit JSON report (saved in output-dir by default)")
     parser.add_argument("--unprocessed-log", type=str, default=None, help="Name or path to unprocessed non-resume log JSON file (saved in output-dir by default)")
