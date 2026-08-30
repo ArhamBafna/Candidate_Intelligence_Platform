@@ -1,13 +1,21 @@
+import importlib
 import json
 import os
+import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from scripts.bulk_ingest import (
-    run_bulk_ingest,
-    get_file_hash,
-    process_single_file
-)
+# Import bulk_ingest module from bulk-ingestions folder
+_bulk_ingest_path = Path(__file__).resolve().parent.parent / "bulk-ingestions" / "bulk_ingest.py"
+_spec = importlib.util.spec_from_file_location("bulk_ingest", str(_bulk_ingest_path))
+bulk_ingest_module = importlib.util.module_from_spec(_spec)
+sys.modules["bulk_ingest"] = bulk_ingest_module
+_spec.loader.exec_module(bulk_ingest_module)
+
+run_bulk_ingest = bulk_ingest_module.run_bulk_ingest
+get_file_hash = bulk_ingest_module.get_file_hash
+process_single_file = bulk_ingest_module.process_single_file
+
 from candidate_intelligence_platform.ingestion.intake import classify_document
 
 def test_get_file_hash(tmp_path):
@@ -59,8 +67,8 @@ def test_classify_document():
     assert is_res
     assert cat == "VALID_RESUME"
 
-@patch("scripts.bulk_ingest.CASManager")
-@patch("scripts.bulk_ingest._get_sessionmaker")
+@patch("bulk_ingest.CASManager")
+@patch("bulk_ingest._get_sessionmaker")
 def test_bulk_ingest_dry_run(mock_sessionmaker, mock_cas_mgr, tmp_path):
     source_dir = tmp_path / "Resumes"
     source_dir.mkdir()
@@ -89,9 +97,9 @@ def test_bulk_ingest_dry_run(mock_sessionmaker, mock_cas_mgr, tmp_path):
     assert not report_file.exists()
     assert not unprocessed_log.exists()
 
-@patch("scripts.bulk_ingest.process_single_file")
-@patch("scripts.bulk_ingest.CASManager")
-@patch("scripts.bulk_ingest._get_sessionmaker")
+@patch("bulk_ingest.process_single_file")
+@patch("bulk_ingest.CASManager")
+@patch("bulk_ingest._get_sessionmaker")
 def test_bulk_ingest_master_report_logging(mock_sessionmaker, mock_cas_mgr, mock_process, tmp_path):
     source_dir = tmp_path / "Resumes"
     source_dir.mkdir()
@@ -174,7 +182,7 @@ def test_bulk_ingest_master_report_logging(mock_sessionmaker, mock_cas_mgr, mock
 
 def test_process_single_file_delegates_to_intake(db_session, tmp_path, monkeypatch):
     """Adapter maps IntakeResult to legacy telemetry strings; adds resolution_action."""
-    import scripts.bulk_ingest as bi
+    bi = bulk_ingest_module
     from storage.cas import CASManager
 
     monkeypatch.setattr(bi, "get_vector_db", lambda: None)
