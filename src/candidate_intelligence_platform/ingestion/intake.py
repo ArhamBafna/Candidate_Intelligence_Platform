@@ -503,6 +503,7 @@ def ingest_file(
             raw_text,
             confidence_threshold=settings.extraction_confidence_threshold,
             facts=facts,
+            filename=filename
         )
         if extracted.get("warnings"):
             warnings.extend(extracted["warnings"])

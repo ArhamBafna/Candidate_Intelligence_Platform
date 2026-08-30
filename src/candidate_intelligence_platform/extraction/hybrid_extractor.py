@@ -335,8 +335,10 @@ def _apply_llm_fallback(profile: Dict[str, Any], text: str, facts: List[Dict[str
                 or current_first in ("uploaded", "candidate", "profile", "summary", "curriculum", "resume", "objective", "experience", "education")
             ):
                 parts = str(val).split()
-                profile["first_name"] = normalize_name(parts[0][:50])
-                profile["last_name"] = normalize_name(" ".join(parts[1:])[:50] if len(parts) > 1 else "Candidate")
+                # Guard against hallucinated names
+                if len(parts) <= 4 and not any(kw in str(val).lower() for kw in ("motivated", "oriented", "experienced", "professional", "lead", "developer", "engineer")):
+                    profile["first_name"] = normalize_name(parts[0][:50])
+                    profile["last_name"] = normalize_name(" ".join(parts[1:])[:50] if len(parts) > 1 else "Candidate")
             elif cat == "CONTACT" and key in ("email", "contact") and val and "@" in str(val) and not profile["primary_email"]:
                 profile["primary_email"] = str(val).strip()
             elif cat == "CONTACT" and key in ("phone", "tel") and val and not profile["primary_phone"]:
@@ -388,7 +390,8 @@ def extract_candidate_profile_hybrid(
     text: str, 
     confidence_threshold: float = 0.70, 
     model_name: Optional[str] = None,
-    facts: Optional[List[Dict[str, Any]]] = None
+    facts: Optional[List[Dict[str, Any]]] = None,
+    filename: Optional[str] = None
 ) -> ExtractionOutcome:
     """
     Extract candidate profile using Tier 1 deterministic parsing first.
@@ -402,6 +405,7 @@ def extract_candidate_profile_hybrid(
         model_name: Optional Ollama model name override.
         facts: Optional precomputed facts from extract_facts(). If provided, avoids
                re-running spaCy NER (significant speedup for multi-page resumes).
+        filename: Optional filename to use as a fallback if name extraction fails.
     """
     # Use precomputed facts if provided, otherwise extract fresh
     facts = facts if facts is not None else extract_facts(text)
@@ -416,6 +420,18 @@ def extract_candidate_profile_hybrid(
     # Final normalization guarantee
     profile["first_name"] = normalize_name(profile["first_name"])
     profile["last_name"] = normalize_name(profile["last_name"])
+    
+    # Filename fallback layer
+    if filename and (not profile["first_name"] or profile["first_name"].lower() in ("uploaded", "candidate")):
+        clean_name = re.sub(r'[_.\-]', ' ', filename)
+        clean_name = re.sub(r'(resume|cv|h1b|developer|engineer).*', '', clean_name, flags=re.IGNORECASE).strip()
+        parts = clean_name.split()
+        if len(parts) >= 2:
+            profile["first_name"] = normalize_name(parts[0])
+            profile["last_name"] = normalize_name(" ".join(parts[1:3]))
+        elif len(parts) == 1:
+            profile["first_name"] = normalize_name(parts[0])
+
     profile["current_title"] = normalize_title(profile["current_title"])
     if profile.get("location"):
         profile["location"] = normalize_title(profile["location"])

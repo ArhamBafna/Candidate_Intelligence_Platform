@@ -26,6 +26,7 @@ Rules:
 - claim_key must be the descriptor/type (e.g., 'name', 'email', 'phone', 'title', 'company', 'skill', 'degree', 'institution', 'location').
 - claim_value must contain the actual extracted text snippet (NEVER null or empty).
 - confidence_score must be a float between 0.80 and 1.00.
+- NEVER extract job titles, adjectives, or introductory phrases (e.g. 'Experienced Software Engineer', 'Self-Motivated Professional') as a PERSON name. If no personal name is explicitly present, omit the PERSON claim.
 
 Return ONLY valid JSON matching this schema:
 {{
