@@ -74,14 +74,32 @@ def normalize_name(text: str | None) -> str:
     words = text.split()
     return " ".join(w.capitalize() if (w.isupper() or w.islower()) else w for w in words)
 
+def is_valid_title_text(text: str | None) -> bool:
+    """Check if string is valid textual title, rejecting binary garbage/noise."""
+    if not text:
+        return False
+    clean = text.strip()
+    if not clean or clean.lower() == "candidate":
+        return True
+    letters = sum(1 for c in clean if c.isalpha())
+    if letters < 3:
+        return False
+    if any(ord(c) < 32 and c not in ("\t", "\n", "\r") for c in clean):
+        return False
+    if "pk!" in clean.lower():
+        return False
+    symbols = sum(1 for c in clean if not c.isalnum() and not c.isspace() and c not in "-/&,.'\"()")
+    return symbols <= letters
+
+
 def normalize_title(text: str | None) -> str:
     """
-    Format candidate job title cleanly in Title Case.
+    Format candidate job title cleanly in Title Case, filtering out binary artifacts.
     """
-    if not text:
+    if not text or not is_valid_title_text(text):
         return "Candidate"
     text = " ".join(text.strip().split())
-    if not text:
+    if not text or not is_valid_title_text(text):
         return "Candidate"
     if text.isupper() or text.islower():
         return text.title()

@@ -1,5 +1,7 @@
 import concurrent.futures
 import json
+import re
+import time
 import structlog
 from config.settings import get_settings
 from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
@@ -8,6 +10,33 @@ from candidate_intelligence_platform.prompts import build_fact_extraction_prompt
 logger = structlog.get_logger(__name__)
 
 VALID_CATEGORIES = {"PERSON", "CONTACT", "EMPLOYMENT", "SKILL", "EDUCATION", "LOCATION"}
+
+
+def _clean_and_parse_json(content: str) -> dict | list | None:
+    """Safely parse JSON from LLM output, stripping code blocks and markdown fences if present."""
+    if not content:
+        return None
+    cleaned = content.strip()
+    # Strip markdown code blocks
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Fallback: extract the outermost JSON object or list
+        match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", cleaned)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+    return None
 
 
 def _call_openrouter(prompt: str, model_name: str, timeout_seconds: float):
@@ -27,23 +56,27 @@ def _call_openrouter(prompt: str, model_name: str, timeout_seconds: float):
         return None
 
     with httpx.Client(timeout=timeout_seconds) as client:
-        response = client.post(
-            f"{settings.openrouter_base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.openrouter_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model_name,
-                "messages": [{"role": "user", "content": prompt}],
-                "response_format": {"type": "json_object"},
-            },
-        )
-        if response.status_code == 402:
-            mark_openrouter_model_paid(model_name)
-            raise OpenRouterModelPaidError(model_name)
-        response.raise_for_status()
-        return response.json()
+        for attempt in range(2):
+            response = client.post(
+                f"{settings.openrouter_base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "response_format": {"type": "json_object"},
+                },
+            )
+            if response.status_code == 402:
+                mark_openrouter_model_paid(model_name)
+                raise OpenRouterModelPaidError(model_name)
+            if response.status_code == 429 and attempt == 0:
+                time.sleep(2.0)
+                continue
+            response.raise_for_status()
+            return response.json()
 
 
 def _call_ollama(prompt: str, model_name: str, timeout_seconds: float):
@@ -116,10 +149,9 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
             logger.warning("ai_llm_empty_content_returned", model=selected_model)
             return []
 
-        try:
-            data = json.loads(content)
-        except json.JSONDecodeError as jde:
-            logger.warning("ai_llm_json_decode_failed", model=selected_model, error=str(jde), raw_content=content)
+        data = _clean_and_parse_json(content)
+        if not data:
+            logger.warning("ai_llm_json_decode_failed", model=selected_model, raw_content=content)
             return []
 
         if not isinstance(data, dict) or "claims" not in data or not isinstance(data["claims"], list):
@@ -242,11 +274,10 @@ def classify_document_llm(text: str, model_name: str | None = None, timeout_seco
         if not content:
             return False
 
-        try:
-            data = json.loads(content)
+        data = _clean_and_parse_json(content)
+        if isinstance(data, dict):
             return bool(data.get("is_resume", False))
-        except json.JSONDecodeError:
-            return False
+        return False
     except Exception as e:
         logger.warning("ai_llm_classification_failed", model=selected_model, error=str(e))
         return False
