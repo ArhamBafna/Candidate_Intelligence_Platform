@@ -1,7 +1,8 @@
 import pytest
 from candidate_intelligence_platform.extraction.hybrid_extractor import (
     calculate_tier1_confidence,
-    extract_candidate_profile_hybrid
+    extract_candidate_profile_hybrid,
+    validate_name_against_email
 )
 
 def test_calculate_tier1_confidence_high():
@@ -117,3 +118,18 @@ def test_extract_candidate_profile_with_page_header_noise():
 
 
 
+def test_validate_name_against_email():
+    # True positives
+    assert validate_name_against_email("John Doe", "john.doe@example.com") is True
+    assert validate_name_against_email("John Doe", "johndoe@example.com") is True
+    assert validate_name_against_email("John Smith", "jsmith@example.com") is True
+    assert validate_name_against_email("John Smith", "j.smith@example.com") is True
+    # Fuzzy / typos
+    assert validate_name_against_email("Jonathan Doe", "jon.doe@example.com") is True
+    # No email
+    assert validate_name_against_email("Jane Smith", None) is True
+    assert validate_name_against_email("Jane Smith", "") is True
+    # False positives
+    assert validate_name_against_email("Executive Summary", "john.doe@example.com") is False
+    assert validate_name_against_email("Profile Overview", "jsmith@example.com") is False
+    assert validate_name_against_email("John", "alex.smith@example.com") is False

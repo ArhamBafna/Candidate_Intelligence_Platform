@@ -60,6 +60,44 @@ def is_noise_header_line(line: str) -> bool:
             return True
     return False
 
+def validate_name_against_email(name: str, email: str | None) -> bool:
+    """
+    Validates a candidate name against their email address.
+    Returns True if validated or if email is None/empty (neutral gate).
+    """
+    if not email:
+        return True
+    
+    clean_name = re.sub(r'[^a-zA-Z\s]', '', name).lower().strip()
+    if not clean_name:
+        return False
+        
+    local_part = email.split('@')[0].lower()
+    clean_local = re.sub(r'[^a-z]', '', local_part)
+    
+    name_parts = clean_name.split()
+    
+    # Strategy 1: All parts are in the email
+    if all(part in clean_local for part in name_parts):
+        return True
+        
+    # Strategy 2: Initial(s) + Surname
+    if len(name_parts) >= 2:
+        first_initial = name_parts[0][0]
+        last_name = name_parts[-1]
+        if f"{first_initial}{last_name}" in clean_local:
+            return True
+            
+    # Add a fallback for fuzzy / partial typo or single name token
+    for part in name_parts:
+        if len(part) >= 3 and (part in clean_local or clean_local in part):
+            return True
+        if len(part) >= 4 and (part.startswith(clean_local[:4]) or clean_local.startswith(part[:4])):
+            return True
+
+    return False
+
+
 def normalize_name(text: str | None) -> str:
     """
     Format candidate name cleanly in Title Case while preserving special casing.
@@ -164,11 +202,18 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     first_name = "Uploaded"
     last_name = "Candidate"
+    valid_name_found = False
     
-    if name_from_ner:
-        parts = name_from_ner.split()
-        first_name = normalize_name(parts[0])
-        last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
+    def process_name_str(n_str):
+        parts = n_str.split()
+        if len(parts) > 0:
+            return normalize_name(parts[0]), normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
+        return "Uploaded", "Candidate"
+
+    # Stage 1: Primary Discovery (Top Lines / NER)
+    if name_from_ner and validate_name_against_email(name_from_ner, email):
+        first_name, last_name = process_name_str(name_from_ner)
+        valid_name_found = True
     elif lines:
         for line in lines[:8]:
             clean_line = line.strip()
@@ -182,11 +227,42 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
             if any(w.lower().rstrip(".,") in TITLE_KEYWORDS for w in parts) or clean_line.lower() in TITLE_IGNORE_HEADINGS:
                 continue
             if 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts):
-                first_name = normalize_name(parts[0])
-                last_name = normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
-                break
+                candidate_str = " ".join(parts)
+                if validate_name_against_email(candidate_str, email):
+                    first_name, last_name = process_name_str(candidate_str)
+                    valid_name_found = True
+                    break
 
-    if email:
+    # Stage 2: Contact Block Positional Anchoring
+    if not valid_name_found and lines:
+        contact_idx = -1
+        for i, line in enumerate(lines):
+            clean_line = line.strip()
+            if EMAIL_REGEX.search(clean_line) or PHONE_REGEX.search(clean_line):
+                contact_idx = i
+                break
+                
+        if contact_idx != -1:
+            start_idx = max(0, contact_idx - 3)
+            end_idx = min(len(lines), contact_idx + 2)
+            for i in range(start_idx, end_idx):
+                if i == contact_idx:
+                    continue
+                clean_line = lines[i].strip()
+                if not clean_line or is_noise_header_line(clean_line):
+                    continue
+                parts = clean_line.split()
+                if any(w.lower().rstrip(".,") in TITLE_KEYWORDS for w in parts) or clean_line.lower() in TITLE_IGNORE_HEADINGS:
+                    continue
+                if 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts):
+                    candidate_str = " ".join(parts)
+                    if validate_name_against_email(candidate_str, email):
+                        first_name, last_name = process_name_str(candidate_str)
+                        valid_name_found = True
+                        break
+
+    # Fallback: strict inference from email
+    if not valid_name_found and email:
         local_part = email.split("@")[0]
         if "." in local_part:
             email_parts = local_part.split(".")
