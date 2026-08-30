@@ -32,12 +32,15 @@ TITLE_KEYWORDS = {
 
 TITLE_IGNORE_HEADINGS = {
     "summary", "professional summary", "executive summary", "career summary",
-    "overview", "profile", "professional profile", "career profile",
+    "overview", "profile", "professional profile", "career profile", "profile summary",
+    "personal profile", "personal summary", "summary of qualifications", "qualifications summary",
     "experience", "work experience", "professional experience", "employment history",
-    "contact", "contact info", "contact information",
+    "work history", "career history", "professional background", "employment background",
+    "contact", "contact info", "contact information", "personal details", "personal information",
     "about", "about me", "objective", "career objective",
-    "skills", "technical skills", "core competencies",
-    "education", "academic background", "certifications",
+    "skills", "technical skills", "core competencies", "key skills",
+    "technical expertise", "areas of expertise", "core qualifications",
+    "education", "academic background", "certifications", "references",
     "resume", "curriculum vitae", "cv"
 }
 
@@ -246,7 +249,11 @@ def _apply_llm_fallback(profile: Dict[str, Any], text: str, facts: List[Dict[str
             val = claim.get("claim_value")
             key = (claim.get("claim_key") or "").lower()
             
-            if cat == "PERSON" and val and (profile["first_name"] == "Uploaded" or not profile["first_name"] or profile["first_name"] == "Candidate"):
+            current_first = profile["first_name"].lower()
+            if cat == "PERSON" and val and (
+                not current_first 
+                or current_first in ("uploaded", "candidate", "profile", "summary", "curriculum", "resume", "objective", "experience", "education")
+            ):
                 parts = str(val).split()
                 profile["first_name"] = normalize_name(parts[0][:50])
                 profile["last_name"] = normalize_name(" ".join(parts[1:])[:50] if len(parts) > 1 else "Candidate")
@@ -283,8 +290,12 @@ def assess_tier1(
         f.get("claim_category") in ("SKILL", "LOCATION") for f in facts
     )
     
+    current_first = profile["first_name"].lower()
+    is_false_name = current_first in ("uploaded", "candidate", "profile", "summary", "curriculum", "resume", "objective", "experience", "education")
+    
     missing_key_fields = (
-        profile["first_name"] == "Uploaded" 
+        not profile["first_name"]
+        or is_false_name
         or profile["current_title"] in ("Candidate", "Summary")
         or not has_skills_or_loc
     )

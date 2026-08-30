@@ -49,6 +49,10 @@ def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path:
     duplicates = [r for r in report_records if r.get("status") == "SKIPPED_DUPLICATE"]
     failed = [r for r in report_records if r.get("status") == "FAILED"]
 
+    new_candidates = [r for r in ingested if r.get("resolution_action") == "NEW"]
+    merged_resumes = [r for r in ingested if r.get("resolution_action") == "MERGE"]
+    unique_candidates = {r.get("candidate_id") for r in ingested if r.get("candidate_id")}
+
     # Category counts for non-resumes
     category_counts: Dict[str, int] = {}
     for r in skipped_non_resumes:
@@ -59,7 +63,10 @@ def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path:
         "# Bulk Resume Ingestion Summary Report",
         "",
         f"- **Total Files Evaluated:** {len(report_records)}",
-        f"- **Ingested (Valid Resumes):** {len(ingested)}",
+        f"- **Ingested Resumes (Files Processed):** {len(ingested)}",
+        f"  - **New Candidates Created:** {len(new_candidates)}",
+        f"  - **Resumes Merged into Existing:** {len(merged_resumes)}",
+        f"  - **Unique Candidate Cards in UI:** {len(unique_candidates)}",
         f"- **Skipped (Non-Resumes & Docs):** {len(skipped_non_resumes)}",
         f"- **Skipped (Duplicates):** {len(duplicates)}",
         f"- **Failed / Ingestion Errors:** {len(failed)}",
@@ -68,20 +75,22 @@ def generate_markdown_summary(report_records: List[Dict[str, Any]], output_path:
         "",
         "## 1. Ingested Resumes",
         "",
-        "| # | Candidate Name | Parser Engine | AI Used | Folder | File Name |",
-        "|---|----------------|---------------|---------|--------|-----------|",
+        "| # | Candidate Name | Action | Parser Engine | AI Used | Folder | File Name |",
+        "|---|----------------|--------|---------------|---------|--------|-----------|",
     ]
 
     for idx, r in enumerate(ingested, 1):
         name = r.get("candidate_name") or "Unknown"
+        action = r.get("resolution_action") or "NEW"
+        action_str = "Merge" if action == "MERGE" else "New"
         parser = r.get("how_processed") or "N/A"
         ai_used = "Yes" if r.get("ai_used") else "No"
         folder = r.get("folder_tag") or "Root"
         fname = r.get("file_name") or ""
-        md_lines.append(f"| {idx} | **{name}** | `{parser}` | {ai_used} | `{folder}` | `{fname}` |")
+        md_lines.append(f"| {idx} | **{name}** | `{action_str}` | `{parser}` | {ai_used} | `{folder}` | `{fname}` |")
 
     if not ingested:
-        md_lines.append("| - | *No resumes ingested in this run* | - | - | - | - |")
+        md_lines.append("| - | *No resumes ingested in this run* | - | - | - | - | - |")
 
     md_lines.extend([
         "",
@@ -340,6 +349,9 @@ def run_bulk_ingest(
     scanned_count = 0
     success_count = 0
     partial_count = 0
+    new_candidate_count = 0
+    merged_resume_count = 0
+    unique_candidate_ids: Set[str] = set()
     duplicate_count = 0
     unprocessed_count = 0
     failed_count = 0
@@ -436,8 +448,19 @@ def run_bulk_ingest(
             cand_name = telemetry.get("candidate_name") or "N/A"
             how_proc = telemetry.get("how_processed")
             ai_flag = "Ollama" if telemetry.get("ai_used") else "Deterministic"
+            res_action = telemetry.get("resolution_action")
 
             if success:
+                if res_action == "MERGE":
+                    merged_resume_count += 1
+                    action_tag = " (Merged)"
+                else:
+                    new_candidate_count += 1
+                    action_tag = ""
+
+                if telemetry.get("candidate_id"):
+                    unique_candidate_ids.add(telemetry["candidate_id"])
+
                 if status == "SKIPPED_DUPLICATE":
                     duplicate_count += 1
                     print(f"[  -  ] (File #{scanned_count:3d}) [SKIP] Duplicate File: {filepath.name}")
@@ -445,12 +468,12 @@ def run_bulk_ingest(
                     partial_count += 1
                     db.commit()
                     curr = success_count + partial_count
-                    print(f"[{curr:2d}/{batch_size}] (File #{scanned_count:3d}) [OK]   Ingested Resume (Partial): '{cand_name}' | {how_proc} | {rel_path_str}")
+                    print(f"[{curr:2d}/{batch_size}] (File #{scanned_count:3d}) [OK]   Ingested Resume (Partial){action_tag}: '{cand_name}' | {how_proc} | {rel_path_str}")
                 else:
                     success_count += 1
                     db.commit()
                     curr = success_count + partial_count
-                    print(f"[{curr:2d}/{batch_size}] (File #{scanned_count:3d}) [OK]   Ingested Resume: '{cand_name}' | {how_proc} ({ai_flag}) | {rel_path_str}")
+                    print(f"[{curr:2d}/{batch_size}] (File #{scanned_count:3d}) [OK]   Ingested Resume{action_tag}: '{cand_name}' | {how_proc} ({ai_flag}) | {rel_path_str}")
             else:
                 db.rollback()
                 if status == "SKIPPED_NON_RESUME":
@@ -471,8 +494,12 @@ def run_bulk_ingest(
             if success_count + partial_count >= batch_size:
                 print(f"\n=======================================================")
                 print(f"  Batch Ingestion Limit ({batch_size}) Reached!")
-                print(f"  - Ingested (Full Success):    {success_count}")
-                print(f"  - Ingested (Partial Success): {partial_count}")
+                print(f"  - Ingested Resumes (Files):   {success_count + partial_count}")
+                print(f"    * Full Success:             {success_count}")
+                print(f"    * Partial Success:          {partial_count}")
+                print(f"    * New Candidates Created:   {new_candidate_count}")
+                print(f"    * Resumes Merged:           {merged_resume_count}")
+                print(f"    * Unique Candidate Cards:   {len(unique_candidate_ids)}")
                 print(f"  - Skipped Duplicates:         {duplicate_count}")
                 print(f"  - Skipped Non-Resumes:        {unprocessed_count}")
                 print(f"  - Failed / Errors:            {failed_count}")
@@ -484,8 +511,12 @@ def run_bulk_ingest(
 
     print(f"\n=======================================================")
     print(f"  Ingestion Complete! No more files to process.")
-    print(f"  - Ingested (Full Success):    {success_count}")
-    print(f"  - Ingested (Partial Success): {partial_count}")
+    print(f"  - Ingested Resumes (Files):   {success_count + partial_count}")
+    print(f"    * Full Success:             {success_count}")
+    print(f"    * Partial Success:          {partial_count}")
+    print(f"    * New Candidates Created:   {new_candidate_count}")
+    print(f"    * Resumes Merged:           {merged_resume_count}")
+    print(f"    * Unique Candidate Cards:   {len(unique_candidate_ids)}")
     print(f"  - Skipped Duplicates:         {duplicate_count}")
     print(f"  - Skipped Non-Resumes:        {unprocessed_count}")
     print(f"  - Failed / Errors:            {failed_count}")

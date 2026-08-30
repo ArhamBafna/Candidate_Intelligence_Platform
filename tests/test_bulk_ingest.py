@@ -15,6 +15,7 @@ _spec.loader.exec_module(bulk_ingest_module)
 run_bulk_ingest = bulk_ingest_module.run_bulk_ingest
 get_file_hash = bulk_ingest_module.get_file_hash
 process_single_file = bulk_ingest_module.process_single_file
+generate_markdown_summary = bulk_ingest_module.generate_markdown_summary
 
 from candidate_intelligence_platform.ingestion.intake import classify_document
 
@@ -237,3 +238,62 @@ def test_process_single_file_delegates_to_intake(db_session, tmp_path, monkeypat
     assert success3 is False
     assert telemetry3["status"] == "SKIPPED_NON_RESUME"
     assert telemetry3["category"] == "NON_RESUME_LEGAL_CONTRACT"
+
+
+def test_generate_markdown_summary_candidate_breakdown(tmp_path):
+    records = [
+        {
+            "status": "SUCCESS",
+            "resolution_action": "NEW",
+            "candidate_id": "cand-1",
+            "candidate_name": "Alice Smith",
+            "how_processed": "PyMuPDF_Parser",
+            "ai_used": False,
+            "folder_tag": "Engineering",
+            "file_name": "alice.pdf",
+        },
+        {
+            "status": "SUCCESS",
+            "resolution_action": "MERGE",
+            "candidate_id": "cand-1",
+            "candidate_name": "Alice Smith",
+            "how_processed": "PyMuPDF_Parser",
+            "ai_used": False,
+            "folder_tag": "Engineering",
+            "file_name": "alice_v2.pdf",
+        },
+        {
+            "status": "PARTIAL_SUCCESS",
+            "resolution_action": "NEW",
+            "candidate_id": "cand-2",
+            "candidate_name": "Bob Jones",
+            "how_processed": "Docx_Parser",
+            "ai_used": True,
+            "folder_tag": "Marketing",
+            "file_name": "bob.docx",
+        },
+        {
+            "status": "SKIPPED_NON_RESUME",
+            "category": "NON_RESUME_IMMIGRATION_OR_ID",
+            "file_name": "passport.pdf",
+        },
+        {
+            "status": "SKIPPED_DUPLICATE",
+            "file_name": "duplicate.docx",
+        },
+    ]
+
+    out_file = tmp_path / "summary.md"
+    generate_markdown_summary(records, out_file)
+
+    assert out_file.exists()
+    content = out_file.read_text(encoding="utf-8")
+
+    assert "- **Total Files Evaluated:** 5" in content
+    assert "- **Ingested Resumes (Files Processed):** 3" in content
+    assert "  - **New Candidates Created:** 2" in content
+    assert "  - **Resumes Merged into Existing:** 1" in content
+    assert "  - **Unique Candidate Cards in UI:** 2" in content
+    assert "| `Merge` |" in content
+    assert "| `New` |" in content
+
