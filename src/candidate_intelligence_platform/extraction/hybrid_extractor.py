@@ -60,6 +60,10 @@ def is_noise_header_line(line: str) -> bool:
             return True
     return False
 
+def is_valid_name_format(parts: List[str]) -> bool:
+    """Check if the sequence of words matches a plausible name format."""
+    return 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts)
+
 def validate_name_against_email(name: str, email: str | None) -> bool:
     """
     Validates a candidate name against their email address.
@@ -204,7 +208,7 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
     last_name = "Candidate"
     valid_name_found = False
     
-    def process_name_str(n_str):
+    def process_name_str(n_str: str) -> Tuple[str, str]:
         parts = n_str.split()
         if len(parts) > 0:
             return normalize_name(parts[0]), normalize_name(" ".join(parts[1:])) if len(parts) > 1 else "Candidate"
@@ -226,7 +230,7 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
             parts = clean_line.split()
             if any(w.lower().rstrip(".,") in TITLE_KEYWORDS for w in parts) or clean_line.lower() in TITLE_IGNORE_HEADINGS:
                 continue
-            if 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts):
+            if is_valid_name_format(parts):
                 candidate_str = " ".join(parts)
                 if validate_name_against_email(candidate_str, email):
                     first_name, last_name = process_name_str(candidate_str)
@@ -254,7 +258,7 @@ def _extract_deterministic_profile(text: str, facts: List[Dict[str, Any]]) -> Di
                 parts = clean_line.split()
                 if any(w.lower().rstrip(".,") in TITLE_KEYWORDS for w in parts) or clean_line.lower() in TITLE_IGNORE_HEADINGS:
                     continue
-                if 1 <= len(parts) <= 4 and all(re.match(r"^[A-Za-z\.\'\-]+$", p) for p in parts):
+                if is_valid_name_format(parts):
                     candidate_str = " ".join(parts)
                     if validate_name_against_email(candidate_str, email):
                         first_name, last_name = process_name_str(candidate_str)
