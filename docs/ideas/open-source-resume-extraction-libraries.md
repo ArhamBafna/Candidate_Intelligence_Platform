@@ -58,6 +58,24 @@ To achieve enterprise-grade accuracy while preserving CIP's **privacy-first and 
 
 ---
 
+### D. All-in-One Vector DB Ingestion Frameworks (Automatic Extract + Vector Store)
+
+For pipelines that handle parsing, chunking, embedding, and automatic indexing directly into vector databases:
+
+1. **[Unstructured.io (`unstructured`)](https://github.com/Unstructured-IO/unstructured)**
+   - **Approach:** Complete ETL framework for vector databases. Partitions raw PDFs/DOCX with layout intelligence, chunks data, and includes native connectors to vector stores (LanceDB, Chroma, Qdrant).
+   - **Fit for CIP:** Excellent for clean layout chunking with direct vector store ingestion.
+
+2. **[LlamaIndex (`llama-index`)](https://github.com/run-llama/llama_index)**
+   - **Approach:** Document readers (`SimpleDirectoryReader`) paired with ingestion pipelines and `LanceDBVectorStore`.
+   - **Fit for CIP:** Seamless native fit with CIP's existing LanceDB vector store and fastembed embeddings.
+
+3. **[Embedchain (`embedchain` / Mem0)](https://github.com/mem0ai/mem0)**
+   - **Approach:** Minimal two-line abstraction (`app.add("resume.pdf")`) that parses, embeds, and loads into vector stores automatically.
+   - **Fit for CIP:** Good for quick prototypes, though offers less granular schema control than CIP's explicit candidate claims ledger.
+
+---
+
 ## 3. Proposed CIP Target Architecture
 
 ```
@@ -67,7 +85,7 @@ Raw File (PDF / DOCX / EML)
 [SHA-256 CAS Deduplication] (Existing)
        │
        ▼
-[Layout-Aware Parser (e.g. Docling / PyMuPDF Columns)]
+[Layout-Aware Parser (e.g. Docling / Unstructured / PyMuPDF Columns)]
    ──► Converts to Clean Structured Markdown (Preserves reading order & tables)
        │
        ▼
@@ -89,7 +107,7 @@ Raw File (PDF / DOCX / EML)
 
 1. **Benchmark & Evaluation**:
    - Create a benchmark test suite using diverse resume formats (single-column, two-column sidebar, tabular).
-   - Benchmark `Docling` vs `PyMuPDF` layout extraction quality and speed.
+   - Benchmark `Docling` / `Unstructured` vs `PyMuPDF` layout extraction quality and speed.
 2. **Pydantic Extraction Schema**:
    - Define a comprehensive `ExtractedResumeSchema` in `candidate_intelligence_platform` to capture:
      - Contact details (name, email, phone, location, links)
@@ -99,5 +117,12 @@ Raw File (PDF / DOCX / EML)
      - Work authorization / visa signals
 3. **Local LLM Structured Output Integration**:
    - Integrate `instructor` with CIP's existing Ollama client configuration.
-4. **Testing & Performance Validation**:
+4. **Vector Pipeline Integration**:
+   - Explore integrating layout chunkers directly into CIP's LanceDB table loader.
+5. **Testing & Performance Validation**:
    - Ensure all model operations remain fast and mockable in unit tests (< 2s per test file) per `AGENTS.md`.
+
+---
+
+## TO CHECK IN FUTURE:
+- https://github.com/OmkarPathak/ResumeParser
