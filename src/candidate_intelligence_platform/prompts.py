@@ -88,7 +88,7 @@ _INSIGHT_TEMPLATE = (
     "Given the candidate profile and resume text:\n"
     "{resume_text}\n\n"
     "Explain why this candidate is a good match for the search query: '{query}'. "
-    "Provide a concise match rationale."
+    "Output in bullet points in two sections: strengths and weaknesses (anything not matching/missing from the search query)."
 )
 
 _INSIGHT_WITH_CRITERIA_TEMPLATE = (

@@ -72,7 +72,7 @@ def test_match_insight_prompt_is_byte_identical() -> None:
         "Given the candidate profile and resume text:\n"
         "Jane Doe profile\n\n"
         "Explain why this candidate is a good match for the search query: "
-        "'python developer'. Provide a concise match rationale."
+        "'python developer'. Output in bullet points in two sections: strengths and weaknesses (anything not matching/missing from the search query)."
     )
     assert rendered == expected
 
