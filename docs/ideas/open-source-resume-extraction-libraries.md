@@ -1,7 +1,7 @@
-# Next-Gen Open-Source Resume Extraction & Layout Parsing
+# Next-Gen Open-Source Resume Extraction & Vector Database Indexing
 
 **Status:** `PROPOSED`  
-**Category:** Ingestion / Extraction / NLP / AI Pipeline  
+**Category:** Ingestion / Extraction / Vector Store / AI Pipeline  
 
 ---
 
@@ -14,7 +14,7 @@ While effective for standard single-column resumes, resumes in the wild frequent
 - Nested tables and non-standard font hierarchies.
 - Inconsistent entity extraction across varied ATS templates.
 
-To achieve enterprise-grade accuracy while preserving CIP's **privacy-first and local-first** core, we propose evaluating and integrating modern open-source parsing and structured extraction frameworks.
+To achieve enterprise-grade accuracy while preserving CIP's **privacy-first and local-first** core, this document outlines the top open-source parsing libraries, structured extraction frameworks, and all-in-one vector database ingestion toolkits.
 
 ---
 
@@ -37,6 +37,8 @@ To achieve enterprise-grade accuracy while preserving CIP's **privacy-first and 
    - **Strengths:** Fast, deterministic.
    - **Limitations:** Brittle with multi-column layouts, legacy dependencies (`nltk`, `textract`).
 
+---
+
 ### B. Next-Gen Document & Layout Analyzers (Foundation Layer)
 
 1. **[IBM Docling (`docling`)](https://github.com/DS4SD/docling)**
@@ -46,6 +48,8 @@ To achieve enterprise-grade accuracy while preserving CIP's **privacy-first and 
 
 2. **[Marker (`marker-pdf`)](https://github.com/VikParuchuri/marker)**
    - Deep learning pipeline converting PDF documents to clean Markdown (tables, bullet points, headers).
+
+---
 
 ### C. Constrained Structured Extraction Frameworks
 
@@ -60,19 +64,62 @@ To achieve enterprise-grade accuracy while preserving CIP's **privacy-first and 
 
 ### D. All-in-One Vector DB Ingestion Frameworks (Automatic Extract + Vector Store)
 
-For pipelines that handle parsing, chunking, embedding, and automatic indexing directly into vector databases:
+Libraries and frameworks specifically designed to handle parsing, chunking, embedding, and automatic indexing directly into vector databases:
 
-1. **[Unstructured.io (`unstructured`)](https://github.com/Unstructured-IO/unstructured)**
-   - **Approach:** Complete ETL framework for vector databases. Partitions raw PDFs/DOCX with layout intelligence, chunks data, and includes native connectors to vector stores (LanceDB, Chroma, Qdrant).
-   - **Fit for CIP:** Excellent for clean layout chunking with direct vector store ingestion.
+1. **[Unstructured.io (`unstructured`)](https://github.com/Unstructured-IO/unstructured)** *(Industry Standard ETL)*
+   - **How it works:** Complete ETL framework for vector databases. Partitions raw files (PDFs, DOCX, emails) using layout-aware intelligence, chunks text into semantic blocks, and provides built-in connectors to vector stores.
+   - **Vector DB Connectors:** Native support for LanceDB, Chroma, Qdrant, Milvus, and Pinecone.
+   - **Pipeline Pattern:**
+     ```python
+     from unstructured.partition.pdf import partition_pdf
+     from sentence_transformers import SentenceTransformer
+     import lancedb
 
-2. **[LlamaIndex (`llama-index`)](https://github.com/run-llama/llama_index)**
-   - **Approach:** Document readers (`SimpleDirectoryReader`) paired with ingestion pipelines and `LanceDBVectorStore`.
+     elements = partition_pdf("resume.pdf")
+     resume_text = "\n".join([str(el) for el in elements])
+     ```
+   - **Fit for CIP:** High fit for clean layout chunking with direct vector store ingestion.
+
+2. **[LlamaIndex (`llama-index`)](https://github.com/run-llama/llama_index)** *(Best for Structured + Vector Workflows)*
+   - **How it works:** Provides document readers (`SimpleDirectoryReader`) paired with ingestion pipelines and vector store connectors.
+   - **LanceDB Integration:**
+     ```python
+     from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+     from llama_index.vector_stores.lancedb import LanceDBVectorStore
+
+     vector_store = LanceDBVectorStore(uri="./storage/lancedb", table_name="resumes")
+     documents = SimpleDirectoryReader(input_files=["resume.pdf"]).load_data()
+     # Automatically parses, embeds via local FastEmbed, and indexes to LanceDB
+     index = VectorStoreIndex.from_documents(documents, vector_store=vector_store)
+     ```
    - **Fit for CIP:** Seamless native fit with CIP's existing LanceDB vector store and fastembed embeddings.
 
-3. **[Embedchain (`embedchain` / Mem0)](https://github.com/mem0ai/mem0)**
-   - **Approach:** Minimal two-line abstraction (`app.add("resume.pdf")`) that parses, embeds, and loads into vector stores automatically.
+3. **[Embedchain (`embedchain` / Mem0)](https://github.com/mem0ai/mem0)** *(Single-Command Ingestion)*
+   - **How it works:** Minimal abstraction layer for instant parse + embed + store in 2 lines:
+     ```python
+     from embedchain import App
+     app = App()  # Local ChromaDB/LanceDB + local embeddings
+     app.add("candidate_resume.pdf", data_type="pdf_file")
+     results = app.query("Find candidates with 5+ years of FastAPI and LanceDB experience")
+     ```
    - **Fit for CIP:** Good for quick prototypes, though offers less granular schema control than CIP's explicit candidate claims ledger.
+
+4. **[Haystack by deepset (`haystack-ai`)](https://github.com/deepset-ai/haystack)** *(Production Pipeline Architecture)*
+   - **How it works:** Modular directed graphs: `PDFToText -> Cleaner -> DocumentSplitter -> Embedder -> DocumentWriter (VectorDB)`.
+   - **Fit for CIP:** Scalable orchestration for complex multi-stage agentic retrieval.
+
+---
+
+### E. Framework Comparison Summary
+
+| Library | Primary Strength | Automatic Vector DB Support | Fit for CIP |
+| :--- | :--- | :--- | :--- |
+| **`docling`** | Best layout & multi-column table parsing | Export to Markdown/JSON | **Very High** (Document pre-processing) |
+| **`instructor`** | Pydantic v2 validation with local LLMs (Ollama) | Via Pydantic models | **Very High** (Structured claims extraction) |
+| **`unstructured`** | Layout ETL + Vector DB connectors | Direct connectors (LanceDB, Qdrant) | **High** (ETL pipeline) |
+| **`llama-index`** | Native LanceDB vector indexer + Readers | Native `LanceDBVectorStore` | **High** (Drop-in vector store pipeline) |
+| **`pyresume`** | Lever-style ATS local extraction | Exports structured JSON | **High** (Domain-specific extraction) |
+| **`embedchain`** | Zero-config instant prototype | Native (Chroma, Qdrant) | **Medium** (Less granular claim tracking) |
 
 ---
 
