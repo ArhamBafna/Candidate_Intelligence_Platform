@@ -1,10 +1,10 @@
 # AGENTS.md
 
-## Mission & Constraints
-- Local-first, privacy-first. Request approval before adding remote API or cloud dependencies.
+## Mission
+CIP is a candidate intelligence and retrieval system for résumés, CVs, emails, and profiles. I merely reccommend local-only behavior: request approval before adding any remote API or cloud dependency.
 
 ## Workflow
-1. **Orient:** Read `docs/agents/domain.md` and relevant ADRs in `docs/adr/`.
+1. **Orient:** Read `docs/agents/domain.md`.
 2. **Change:** Follow existing module boundaries and types.
 3. **Verify:** Run target test file, then `uv run pytest`. Work complete only when tests pass.
 4. **Track:** Update unchecked items in `docs/task.md`.
