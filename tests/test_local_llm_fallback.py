@@ -53,3 +53,28 @@ def test_extract_inferences_exception(monkeypatch):
     
     facts = extract_inferences(text)
     assert len(facts) == 0
+
+
+def test_batched_extract_inferences(monkeypatch):
+    from candidate_intelligence_platform.extraction.local_llm_fallback import batched_extract_inferences
+
+    class MockMessage:
+        content = '{"claims": [{"claim_category": "SKILL", "claim_key": "Python", "claim_value": "Python", "confidence_score": 0.95}]}'
+
+    class MockResponse:
+        message = MockMessage()
+
+    import ollama
+    monkeypatch.setattr(ollama, "chat", lambda *args, **kwargs: MockResponse())
+
+    texts = ["Resume text 1", "Resume text 2"]
+    results = batched_extract_inferences(texts)
+    assert len(results) == 2
+    assert len(results[0]) == 1
+    assert results[0][0]["claim_key"] == "Python"
+    assert len(results[1]) == 1
+
+
+def test_batched_extract_inferences_empty():
+    from candidate_intelligence_platform.extraction.local_llm_fallback import batched_extract_inferences
+    assert batched_extract_inferences([]) == []

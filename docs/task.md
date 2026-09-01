@@ -58,10 +58,10 @@
   - [x] Skip vector search when FTS returns 0 results
   - [x] Verify all existing tests pass
 
-- [ ] Ticket P5: Parallel batch upload (deferred)
-  - [ ] Bounded ThreadPoolExecutor with per-file DB sessions
-  - [ ] Ordered results preservation
-  - [ ] Note: Main bottleneck (CPU blocking event loop) already fixed by P2
+- [x] Ticket P5: Parallel batch upload (deferred)
+  - [x] Bounded ThreadPoolExecutor with per-file DB sessions
+  - [x] Ordered results preservation
+  - [x] Note: Main bottleneck (CPU blocking event loop) already fixed by P2
 
 - [x] Ticket P6: GPU auto-detect with CPU fallback
   - [x] Probe CUDA availability in embedding model loading
@@ -117,8 +117,8 @@
 
 - [x] Add prompt templates and builders (`build_consolidated_match_insight_prompt`, `build_batched_extraction_prompt`, `build_json_repair_prompt`) to `src/candidate_intelligence_platform/prompts.py`
 - [x] Add snapshot tests in `tests/test_prompts.py`
-- [ ] Implement 4-stage self-healing JSON recovery in `src/candidate_intelligence_platform/extraction/local_llm_fallback.py`
-- [ ] Implement bounded 5-resume batching for AI fallback in `src/candidate_intelligence_platform/ingestion/intake.py`
-- [ ] Update candidate match insight route in `api/routes/candidates.py` to use consolidated prompt with live SSE streaming
-- [ ] Add and pass unit/integration tests (`tests/test_local_llm_fallback.py`, `tests/test_intake.py`, `tests/test_api_candidates.py`)
+- [x] Implement 4-stage self-healing JSON recovery in `src/candidate_intelligence_platform/extraction/local_llm_fallback.py`
+- [x] Implement bounded 5-resume batching for AI fallback in `src/candidate_intelligence_platform/ingestion/intake.py`
+- [x] Update candidate match insight route in `api/routes/candidates.py` to use consolidated prompt with live SSE streaming
+- [x] Add and pass unit/integration tests (`tests/test_local_llm_fallback.py`, `tests/test_intake.py`, `tests/test_api_candidates.py`)
 

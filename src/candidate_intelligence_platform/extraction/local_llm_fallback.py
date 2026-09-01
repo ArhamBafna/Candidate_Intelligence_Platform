@@ -276,9 +276,19 @@ def batched_extract_inferences(texts: list[str], model_name: str | None = None, 
         # Batch size is strictly bounded to 5 per requirements
         logger.warning("batched_extract_inferences_exceeded_limit", count=len(texts))
         
-    results = []
-    for text in texts:
-        results.append(extract_inferences(text, model_name, timeout_seconds))
+    results = [[] for _ in texts]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_idx = {
+            executor.submit(extract_inferences, text, model_name, timeout_seconds): i
+            for i, text in enumerate(texts)
+        }
+        for future in concurrent.futures.as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                logger.error("batched_extract_inferences_item_failed", index=idx, error=str(e))
+                results[idx] = []
     return results
 
 
