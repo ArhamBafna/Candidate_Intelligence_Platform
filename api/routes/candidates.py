@@ -43,7 +43,7 @@ from candidate_intelligence_platform.intelligence.ai_messages import (
     DEVICE_FALLBACK_NOTICE,
     label_for_model,
 )
-from candidate_intelligence_platform.prompts import build_match_insight_prompt
+from candidate_intelligence_platform.prompts import build_consolidated_match_insight_prompt
 import structlog
 import json
 import time
@@ -840,7 +840,7 @@ async def get_candidate_insight(
     effective_title = job_title or title
     effective_min_years = min_years if min_years is not None else min_yoe
 
-    prompt = build_match_insight_prompt(
+    prompt = build_consolidated_match_insight_prompt(
         raw_text,
         query,
         city=city,

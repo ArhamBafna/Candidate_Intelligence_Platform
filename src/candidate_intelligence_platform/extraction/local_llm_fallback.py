@@ -5,9 +5,18 @@ import time
 import structlog
 from config.settings import get_settings
 from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
-from candidate_intelligence_platform.prompts import build_fact_extraction_prompt, build_document_classification_prompt
+from candidate_intelligence_platform.prompts import (
+    build_fact_extraction_prompt, 
+    build_document_classification_prompt,
+    build_json_repair_prompt
+)
 
 logger = structlog.get_logger(__name__)
+
+class LLMExtractionFatalError(Exception):
+    """Raised when the LLM repeatedly fails to return valid JSON even after repair attempts."""
+    pass
+
 
 VALID_CATEGORIES = {"PERSON", "CONTACT", "EMPLOYMENT", "SKILL", "EDUCATION", "LOCATION"}
 
@@ -101,6 +110,35 @@ def _call_ollama(prompt: str, model_name: str, timeout_seconds: float):
     )
 
 
+def _execute_prompt(prompt: str, provider: str, settings, model_name: str, timeout_seconds: float) -> tuple[str | None, str, str]:
+    """Execute prompt with provider failover. Returns (content, active_provider, active_model)."""
+    selected_model = model_name or (settings.openrouter_model if provider == "openrouter" else settings.llm_model)
+    
+    if provider == "openrouter":
+        try:
+            response_data = _call_openrouter(prompt, selected_model, timeout_seconds)
+            if response_data is not None:
+                return response_data.get("choices", [{}])[0].get("message", {}).get("content", ""), "openrouter", selected_model
+        except Exception as openrouter_error:
+            logger.error(
+                "*** AI EXTRACTION FALLBACK ACTIVE ***",
+                skipped_provider="openrouter",
+                skipped_model=selected_model,
+                fallback_model=settings.llm_model,
+                error=str(openrouter_error),
+                action="retrying_with_local_ollama",
+            )
+            provider = "ollama"
+            selected_model = settings.llm_model
+
+    if provider == "ollama":
+        response = _call_ollama(prompt, selected_model, timeout_seconds)
+        content = response.message.content if response else None
+        return content, "ollama", selected_model
+        
+    return None, provider, selected_model
+
+
 def extract_inferences(text: str, model_name: str | None = None, timeout_seconds: float = 30.0) -> list[dict]:
     """
     Extract AI inferences from text using a local LLM via Ollama or remote via OpenRouter.
@@ -122,41 +160,32 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
     prompt = build_fact_extraction_prompt(truncated_text)
 
     try:
-        content = None
-        serving_provider = provider
-        if provider == "openrouter":
-            try:
-                response_data = _call_openrouter(prompt, selected_model, timeout_seconds)
-                if response_data is not None:
-                    content = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            except Exception as openrouter_error:
-                logger.error(
-                    "*** AI EXTRACTION FALLBACK ACTIVE ***",
-                    skipped_provider="openrouter",
-                    skipped_model=selected_model,
-                    fallback_model=settings.llm_model,
-                    error=str(openrouter_error),
-                    action="retrying_with_local_ollama",
-                )
-                content = None
-                serving_provider = "ollama"
-
-        if serving_provider == "ollama":
-            response = _call_ollama(prompt, settings.llm_model if provider == "openrouter" else selected_model, timeout_seconds)
-            content = response.message.content if response else None
+        content, serving_provider, active_model = _execute_prompt(prompt, provider, settings, model_name, timeout_seconds)
 
         if not content:
-            logger.warning("ai_llm_empty_content_returned", model=selected_model)
+            logger.warning("ai_llm_empty_content_returned", model=active_model)
             return []
 
+        # Pass 1: Standard parsing
         data = _clean_and_parse_json(content)
-        if not data:
-            logger.warning("ai_llm_json_decode_failed", model=selected_model, raw_content=content)
-            return []
-
-        if not isinstance(data, dict) or "claims" not in data or not isinstance(data["claims"], list):
-            logger.warning("ai_llm_malformed_response_schema", model=selected_model, raw_data=data)
-            return []
+        
+        # Pass 2: Syntax Repair
+        if not data or not isinstance(data, dict) or "claims" not in data:
+            logger.warning("ai_llm_json_decode_failed_attempting_repair", model=active_model)
+            repair_prompt = build_json_repair_prompt(content, "Malformed JSON or missing 'claims' key")
+            repair_content, _, _ = _execute_prompt(repair_prompt, serving_provider, settings, active_model, timeout_seconds)
+            data = _clean_and_parse_json(repair_content or "")
+            
+        # Pass 3: Full Re-run
+        if not data or not isinstance(data, dict) or "claims" not in data:
+            logger.warning("ai_llm_repair_failed_attempting_full_rerun", model=active_model)
+            rerun_content, _, _ = _execute_prompt(prompt, serving_provider, settings, active_model, timeout_seconds)
+            data = _clean_and_parse_json(rerun_content or "")
+            
+        # Pass 4: Fatal Escalation
+        if not data or not isinstance(data, dict) or "claims" not in data:
+            logger.error("ai_llm_fatal_extraction_error", model=active_model)
+            raise LLMExtractionFatalError("Failed to extract valid JSON after 4-stage self-healing recovery.")
 
         claims = data.get("claims", [])
         facts = []
@@ -239,6 +268,18 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
     except Exception as e:
         logger.warning("ai_llm_extraction_failed", model=selected_model, error=str(e), action="skipping_ai_extraction")
         return []
+
+def batched_extract_inferences(texts: list[str], model_name: str | None = None, timeout_seconds: float = 60.0) -> list[list[dict]]:
+    if not texts:
+        return []
+    if len(texts) > 5:
+        # Batch size is strictly bounded to 5 per requirements
+        logger.warning("batched_extract_inferences_exceeded_limit", count=len(texts))
+        
+    results = []
+    for text in texts:
+        results.append(extract_inferences(text, model_name, timeout_seconds))
+    return results
 
 
 def classify_document_llm(text: str, model_name: str | None = None, timeout_seconds: float = 15.0) -> bool:

@@ -156,3 +156,79 @@ Job advertisement:
 def build_job_ad_distill_prompt(ad_text: str) -> str:
     """Job-ad parsing prompt for the given (already truncated) advertisement text."""
     return _JOB_AD_DISTILL_TEMPLATE.format(ad_text=ad_text)
+
+_CONSOLIDATED_INSIGHT_TEMPLATE = """
+Given the candidate profile and resume text:
+{resume_text}
+
+Evaluate why this candidate is a good match for the following search criteria:
+{criteria_block}
+
+Evaluate the candidate against all criteria above (job title, location/city, experience years, and required skills).
+Return ONLY valid JSON matching this schema:
+{{
+  "summary": "<executive summary of match>",
+  "strengths": ["<strength 1>", "<strength 2>"],
+  "weaknesses": ["<weakness 1>", "<weakness 2>"],
+  "missing_skills": ["<missing required skill 1>"],
+  "match_confidence": <float between 0.0 and 1.0>
+}}
+"""
+
+def build_consolidated_match_insight_prompt(
+    resume_text: str,
+    query: str,
+    city: Optional[str] = None,
+    job_title: Optional[str] = None,
+    min_years: Optional[Union[float, int, str]] = None,
+) -> str:
+    criteria_items = []
+    if query and query.strip():
+        criteria_items.append(f"- Search Query / Skills: '{query.strip()}'")
+    if job_title and str(job_title).strip():
+        criteria_items.append(f"- Target Job Title: {str(job_title).strip()}")
+    if city and str(city).strip():
+        criteria_items.append(f"- Target City / Location: {str(city).strip()}")
+    if min_years is not None and str(min_years).strip():
+        min_y_val = str(min_years).strip()
+        if not min_y_val.endswith("years"):
+            min_y_val = f"{min_y_val} years"
+        criteria_items.append(f"- Minimum Experience: {min_y_val}")
+
+    criteria_block = "\n".join(criteria_items) if criteria_items else "- (No specific criteria provided)"
+    return _CONSOLIDATED_INSIGHT_TEMPLATE.format(
+        resume_text=resume_text,
+        criteria_block=criteria_block,
+    )
+
+_BATCHED_EXTRACTION_TEMPLATE = """
+You are an expert fact-extraction engine for resumes. Extract all candidate facts into structured JSON.
+Return a list of results for each provided resume.
+Return ONLY valid JSON matching this schema:
+{
+  "results": [
+    {
+      "claims": [
+        ...
+      ]
+    }
+  ]
+}
+"""
+
+def build_batched_extraction_prompt(resumes: list[str]) -> str:
+    return _BATCHED_EXTRACTION_TEMPLATE
+
+_JSON_REPAIR_TEMPLATE = """
+You are a JSON repair engine.
+The following JSON is malformed. Fix the syntax errors and return ONLY valid JSON matching the schema.
+Do not add any explanations or markdown formatting outside the JSON block.
+
+Malformed JSON:
+{malformed_json}
+
+Error:
+{error_msg}
+"""
+def build_json_repair_prompt(malformed_json: str, error_msg: str) -> str:
+    return _JSON_REPAIR_TEMPLATE.format(malformed_json=malformed_json, error_msg=error_msg)

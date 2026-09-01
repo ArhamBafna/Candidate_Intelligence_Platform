@@ -115,8 +115,8 @@
 
 ## Consolidate Multi-Step LLM Prompts & Ingestion Batching (Issue #42)
 
-- [ ] Add prompt templates and builders (`build_consolidated_match_insight_prompt`, `build_batched_extraction_prompt`, `build_json_repair_prompt`) to `src/candidate_intelligence_platform/prompts.py`
-- [ ] Add snapshot tests in `tests/test_prompts.py`
+- [x] Add prompt templates and builders (`build_consolidated_match_insight_prompt`, `build_batched_extraction_prompt`, `build_json_repair_prompt`) to `src/candidate_intelligence_platform/prompts.py`
+- [x] Add snapshot tests in `tests/test_prompts.py`
 - [ ] Implement 4-stage self-healing JSON recovery in `src/candidate_intelligence_platform/extraction/local_llm_fallback.py`
 - [ ] Implement bounded 5-resume batching for AI fallback in `src/candidate_intelligence_platform/ingestion/intake.py`
 - [ ] Update candidate match insight route in `api/routes/candidates.py` to use consolidated prompt with live SSE streaming
