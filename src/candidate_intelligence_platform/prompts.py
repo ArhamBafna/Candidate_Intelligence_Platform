@@ -165,14 +165,12 @@ Evaluate why this candidate is a good match for the following search criteria:
 {criteria_block}
 
 Evaluate the candidate against all criteria above (job title, location/city, experience years, and required skills).
-Return ONLY valid JSON matching this schema:
-{{
-  "summary": "<executive summary of match>",
-  "strengths": ["<strength 1>", "<strength 2>"],
-  "weaknesses": ["<weakness 1>", "<weakness 2>"],
-  "missing_skills": ["<missing required skill 1>"],
-  "match_confidence": <float between 0.0 and 1.0>
-}}
+Please provide your evaluation in a clear, well-formatted markdown format.
+Include the following sections:
+- **Summary**: An executive summary of the match.
+- **Strengths**: A bulleted list of strengths.
+- **Weaknesses**: A bulleted list of weaknesses or missing required skills.
+- **Match Confidence**: A score out of 10 or a percentage.
 """
 
 def build_consolidated_match_insight_prompt(
