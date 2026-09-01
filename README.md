@@ -1,31 +1,29 @@
 # Candidate Intelligence Platform (CIP)
 
-> **Privacy-First, Local-First AI Candidate Intelligence & Résumé Retrieval Platform**
+> Local candidate intelligence and résumé retrieval platform.
 
 [![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue.svg)](https://www.python.org/)
 [![Database SQLite](https://img.shields.io/badge/database-SQLite_WAL-green.svg)](https://www.sqlite.org/)
 [![Vector Store LanceDB](https://img.shields.io/badge/vector_store-LanceDB-orange.svg)](https://lancedb.github.io/lancedb/)
 [![License MIT](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
 
-Candidate Intelligence Platform (CIP) process, index, parse, search, manage candidate profiles, résumés, communication timelines locally. Combines CAS, SQLite WAL, LanceDB vector search, section chunker, entity resolution. Fast search, zero external API calls.
+Candidate Intelligence Platform (CIP) parses, indexes, searches, and manages candidate profiles, résumés, and communication timelines locally without external API dependencies.
 
 ---
 
-## 🌟 Key Features
+## Key features
 
-- 📄 **Multi-Format Parsing**: Extract PDF (PyMuPDF, pdfplumber + OCR), Word (`.docx`), Outlook (`.msg`).
-- 🔒 **Content-Addressable Storage (CAS)**: SHA-256 binary hash storage, exact deduplication.
-- 🧩 **Section-Aware Chunker**: Segment docs preserving semantic context (work, education, skills).
-- 🆔 **Two-Tier Entity Resolution**:
-  - **Tier 1 (Deterministic)**: Exact match on email, phone, social.
-  - **Tier 2 (Probabilistic)**: Jaro-Winkler name similarity matching.
-- ⚡ **Hybrid Search**: **LanceDB** vector store + **SQLite WAL FTS5** full-text search.
-- 🌐 **FastAPI & Recruiter UI**: REST endpoints for candidate retrieval, CRM status management, and a Vite + React + Tailwind CSS dashboard.
-- 🛡️ **100% Local & Private**: 100% offline, zero cloud dep.
+- Document parsing: extracts text and metadata from PDF (PyMuPDF, pdfplumber with OCR), Word (`.docx`), and Outlook (`.msg`) files.
+- Content-addressable storage: deduplicates files using SHA-256 hashes.
+- Section-aware chunking: segments documents while preserving semantic context across work, education, and skills.
+- Two-tier entity resolution: combines exact matches on email, phone, and social profiles with Jaro-Winkler name similarity.
+- Hybrid search: pairs LanceDB vector search with SQLite FTS5 full-text indexing.
+- Web dashboard and API: provides a FastAPI backend alongside a recruiter dashboard built with Vite, React, and Tailwind CSS.
+- Local execution: runs completely offline with no required cloud services.
 
 ---
 
-## 🏗️ System Architecture
+## System architecture
 
 ```
                                ┌─────────────────────────┐
@@ -74,111 +72,108 @@ Candidate Intelligence Platform (CIP) process, index, parse, search, manage cand
 
 ---
 
-## 🛠️ Technology Stack
+## Technology stack
 
 | Component | Technology | Purpose |
 | :--- | :--- | :--- |
 | **Runtime** | Python `>=3.14` | Execution environment |
-| **Package Manager** | `uv` / `uv_build` | Dependency management & project build |
-| **Relational Database** | SQLite (WAL Mode) + SQLAlchemy 2.0 | Transactional storage & metadata |
-| **Vector Database** | LanceDB `^0.36` | Embedded vector storage & ANN search |
-| **API Framework** | FastAPI `^0.141` | REST services & API endpoints |
-| **Frontend Framework** | Vite + React + Tailwind CSS | Recruiter Web Dashboard |
-| **PDF Extraction** | PyMuPDF + pdfplumber | Document parse & OCR text extract |
-| **DOCX Extraction** | `python-docx` | Word doc parse |
-| **Email Extraction** | `extract-msg` | Outlook `.msg` parse |
+| **Package Manager** | `uv` / `uv_build` | Dependency management and build |
+| **Relational Database** | SQLite (WAL Mode) + SQLAlchemy 2.0 | Transactional storage and metadata |
+| **Vector Database** | LanceDB `^0.36` | Embedded vector storage and ANN search |
+| **API Framework** | FastAPI `^0.141` | REST services and endpoints |
+| **Frontend Framework** | Vite + React + Tailwind CSS | Recruiter web dashboard |
+| **PDF Extraction** | PyMuPDF + pdfplumber | Document parsing and OCR text extraction |
+| **DOCX Extraction** | `python-docx` | Word document parsing |
+| **Email Extraction** | `extract-msg` | Outlook `.msg` parsing |
 | **Validation** | Pydantic v2 & `pydantic-settings` | Schema validation |
-| **Test Engine** | `pytest` | Unit & integration testing |
+| **Test Engine** | `pytest` | Unit and integration testing |
 
 ---
 
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
 
-- **Python**: `>=3.14` installed.
-- **Node.js**: `>=18` installed.
+- Python `>=3.14`, Node.js `>=18`, Git
+- `uv`: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"` (ensure `~/.local/bin` in PATH)
+- Ollama (offline AI extraction): `winget install Ollama.Ollama` or [ollama.com](https://ollama.com/download/windows)
 
-### Installation
+### Quickstart
 
-1. **Clone Repository**:
+1. **Clone repository and install dependencies**:
    ```bash
    git clone https://github.com/ArhamBafna/Candidate_Intelligence_Platform.git
    cd Candidate_Intelligence_Platform
-   ```
-
-2. **Set Up Environment**:
-   ```bash
-   # Using uv
    uv sync
-
-   # Or standard venv
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\Scripts\activate
-   pip install -e .
    ```
 
-3. **Run Backend API**:
+2. **Download extraction model**:
+   ```bash
+   ollama pull llama3.2
+   ```
+
+3. **Start backend API**:
    ```bash
    uv run uvicorn api.main:app --reload
    ```
 
-4. **Run Recruiter Dashboard UI**:
+4. **Start recruiter dashboard**:
    ```bash
-   cd ui
-   npm install
-   npm run dev
+   cd ui && npm install && npm run dev
    ```
+
+### Configuration (optional)
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `CIP_LLM_MODEL` | `llama3.2` | Local LLM model |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama service endpoint |
 
 ---
 
-## 📁 Repository Structure
+## Repository structure
 
 ```
 Candidate_Intelligence_Platform/
-├── AGENTS.md                  # Compressed guidelines for AI agents
-├── README.md                  # Project overview & documentation
-├── pyproject.toml             # Project configuration & dependencies
-├── config/                    # Global settings & SQLite setup
-├── storage/                   # Storage layer (cas.py, db_models.py, vector_store.py)
-├── ingestion/                 # Processing pipeline (parsers/, chunker.py, entity_resolution.py)
+├── AGENTS.md                  # Guidelines for AI agents
+├── README.md                  # Project overview and documentation
+├── pyproject.toml             # Project configuration and dependencies
+├── config/                    # Global settings and database configuration
+├── storage/                   # Storage layer (CAS, database models, LanceDB)
+├── ingestion/                 # Pipeline (parsers, chunker, entity resolution)
 ├── api/                       # FastAPI routes, dependencies, schemas
-├── ui/                        # Vite + React + Tailwind CSS Recruiter UI
-├── docs/                      # Arch specs & task roadmap
-└── tests/                     # Unit test suite
+├── ui/                        # Recruiter UI (Vite + React + Tailwind CSS)
+├── docs/                      # Architecture specifications and roadmaps
+└── tests/                     # Test suite
 ```
 
 ---
 
-## 🧪 Testing
-
-Run test suite via `pytest`:
+## Testing
 
 ```bash
-pytest
+# Run test suite
+uv run pytest
+
+# Verify local LLM fallback
+uv run pytest tests/test_local_llm_fallback.py
 ```
 
 ### Search accuracy evaluation (golden set)
 
-The golden-set harness measures Recall@10 and MRR of hybrid search over a
-versioned fixture (`tests/fixtures/golden_search_set.json`) using real local
-models (FastEmbed + cross-encoder reranker) on a temporary store. It is
-skipped by default to keep the fast suite mocked and quick.
+The golden-set harness measures Recall@10 and MRR for hybrid search over `tests/fixtures/golden_search_set.json` using local FastEmbed and cross-encoder models. These tests are skipped during default test runs.
 
 ```bash
-# Run the evaluation against the recorded baseline
+# Run evaluation against the baseline
 uv run pytest tests/test_golden_eval.py -m evaluation --run-eval -q -s
 
-# Regenerate the baseline after an intentional accuracy change
+# Regenerate baseline
 uv run pytest tests/test_golden_eval.py -m evaluation --run-eval --update-baseline -q
 ```
 
-Metrics print to stdout; the test fails if either metric drops more than the
-recorded tolerance below `tests/fixtures/golden_baseline.json`.
-
 ---
 
-## 🗺️ Status & Roadmap
+## Status and roadmap
 
 Tracked in [`docs/task.md`](docs/task.md):
 
@@ -191,6 +186,6 @@ Tracked in [`docs/task.md`](docs/task.md):
 
 ---
 
-## 📄 License
+## License
 
 MIT License.
