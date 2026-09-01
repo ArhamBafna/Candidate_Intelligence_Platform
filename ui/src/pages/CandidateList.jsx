@@ -1,8 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
 import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X, XCircle } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 const AI_NOTES_ENABLED_KEY = 'cip_ai_notes_enabled';
+
+const ExpandableInsight = ({ insight }) => {
+  const [expanded, setExpanded] = useState(false);
+  const needsExpansion = insight.text && insight.text.length > 250;
+  return (
+    <div className="flex flex-col">
+      <div className={`text-neutral-300 leading-relaxed text-sm ${expanded ? '' : 'max-h-48 overflow-hidden relative'}`}>
+        <MarkdownRenderer content={insight.text || ''} isStreaming={insight.status === 'loading'} />
+        {insight.status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">{insight.errorMessage || 'Generation failed.'}</span>}
+        {!expanded && needsExpansion && (
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-neutral-900 to-transparent pointer-events-none" />
+        )}
+      </div>
+      {needsExpansion && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} 
+          className="text-emerald-400 hover:text-emerald-300 text-xs font-medium self-start mt-2 transition-colors"
+        >
+          {expanded ? 'Show Less' : 'Show More'}
+        </button>
+      )}
+    </div>
+  );
+};
 
 function CandidateList() {
   const navigate = useNavigate();
@@ -1060,11 +1085,7 @@ function CandidateList() {
                           <span className="text-amber-200/90 text-xs leading-5">{insights[candidate.id].notice}</span>
                         </div>
                       )}
-                      <div className="text-neutral-300 leading-relaxed text-sm max-h-32 overflow-y-auto">
-                        {insights[candidate.id].text}
-                        {insights[candidate.id].status === 'loading' && <span className="inline-block w-1.5 h-3 ml-1 bg-emerald-400 animate-pulse"></span>}
-                        {insights[candidate.id].status === 'error' && <span className="text-red-400 italic block mt-1 text-xs">{insights[candidate.id].errorMessage || 'Generation failed.'}</span>}
-                      </div>
+                      <ExpandableInsight insight={insights[candidate.id]} />
                     </div>
                   ) : (
                     <button 
