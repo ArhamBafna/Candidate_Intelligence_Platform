@@ -88,3 +88,23 @@ def test_execute_prompt_invalid_provider_raises_value_error():
     with pytest.raises(ValueError, match="Unsupported LLM provider: invalid_provider"):
         _execute_prompt("test prompt", "invalid_provider", settings, None, 10.0)
 
+
+def test_execute_prompt_openrouter_none_falls_back_to_ollama(monkeypatch):
+    import candidate_intelligence_platform.extraction.local_llm_fallback as fallback_mod
+    from config.settings import get_settings
+
+    monkeypatch.setattr(fallback_mod, "_call_openrouter", lambda *args, **kwargs: None)
+    
+    class MockMessage:
+        content = '{"fallback": true}'
+    class MockResponse:
+        message = MockMessage()
+        
+    monkeypatch.setattr(fallback_mod, "_call_ollama", lambda *args, **kwargs: MockResponse())
+
+    settings = get_settings()
+    content, active_provider, active_model = fallback_mod._execute_prompt("test prompt", "openrouter", settings, None, 10.0)
+    assert content == '{"fallback": true}'
+    assert active_provider == "ollama"
+
+

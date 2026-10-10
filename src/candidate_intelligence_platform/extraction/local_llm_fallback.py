@@ -122,6 +122,16 @@ def _execute_prompt(prompt: str, provider: str, settings: Settings, model_name: 
             response_data = _call_openrouter(prompt, selected_model, timeout_seconds)
             if response_data is not None:
                 return response_data.get("choices", [{}])[0].get("message", {}).get("content", ""), "openrouter", selected_model
+            logger.warning(
+                "*** AI EXTRACTION FALLBACK ACTIVE ***",
+                skipped_provider="openrouter",
+                skipped_model=selected_model,
+                fallback_model=settings.llm_model,
+                reason="openrouter_returned_none",
+                action="retrying_with_local_ollama",
+            )
+            provider = "ollama"
+            selected_model = settings.llm_model
         except Exception as openrouter_error:
             logger.error(
                 "*** AI EXTRACTION FALLBACK ACTIVE ***",
