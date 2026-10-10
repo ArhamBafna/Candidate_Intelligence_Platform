@@ -284,6 +284,9 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
             })
 
         return facts
+    except LLMExtractionFatalError as fatal_err:
+        logger.error("ai_llm_extraction_fatal_error", model=selected_model, error=str(fatal_err))
+        raise
     except Exception as e:
         logger.warning("ai_llm_extraction_failed", model=selected_model, error=str(e), action="skipping_ai_extraction")
         return []

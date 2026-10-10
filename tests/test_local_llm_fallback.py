@@ -1,5 +1,5 @@
 import pytest
-from candidate_intelligence_platform.extraction.local_llm_fallback import extract_inferences
+from candidate_intelligence_platform.extraction.local_llm_fallback import extract_inferences, LLMExtractionFatalError
 
 def test_extract_inferences(monkeypatch):
     text = "Led a team of 5 engineers building distributed systems in Go."
@@ -39,8 +39,8 @@ def test_extract_inferences_malformed_json(monkeypatch):
     import ollama
     monkeypatch.setattr(ollama, "chat", mock_chat)
     
-    facts = extract_inferences(text)
-    assert len(facts) == 0
+    with pytest.raises(LLMExtractionFatalError, match="Failed to extract valid JSON after 4-stage self-healing recovery"):
+        extract_inferences(text)
 
 def test_extract_inferences_exception(monkeypatch):
     text = "Text"
