@@ -196,3 +196,55 @@ Error:
 Expected quote
 """
     assert rendered == expected
+
+
+def test_consolidated_match_insight_prompt_all_criteria() -> None:
+    rendered = build_consolidated_match_insight_prompt(
+        resume_text="Jane Doe profile",
+        query="Python, AWS",
+        city="London",
+        job_title="Lead Architect",
+        min_years=8,
+    )
+    assert "- Search Query / Skills: 'Python, AWS'" in rendered
+    assert "- Target Job Title: Lead Architect" in rendered
+    assert "- Target City / Location: London" in rendered
+    assert "- Minimum Experience: 8 years" in rendered
+
+
+def test_consolidated_match_insight_prompt_no_criteria() -> None:
+    rendered = build_consolidated_match_insight_prompt(
+        resume_text="Jane Doe profile",
+        query="",
+        city=None,
+        job_title="",
+        min_years=None,
+    )
+    assert "- (No specific criteria provided)" in rendered
+
+
+def test_batched_extraction_prompt_three_resumes() -> None:
+    resumes = [
+        "Candidate One\nSkills: Go",
+        "Candidate Two\nSkills: Rust",
+        "Candidate Three\nSkills: TypeScript",
+    ]
+    rendered = build_batched_extraction_prompt(resumes)
+    assert "Resume 1:\nCandidate One\nSkills: Go" in rendered
+    assert "Resume 2:\nCandidate Two\nSkills: Rust" in rendered
+    assert "Resume 3:\nCandidate Three\nSkills: TypeScript" in rendered
+
+
+def test_json_repair_prompt_edge_cases() -> None:
+    # Empty payload and empty error
+    rendered_empty = build_json_repair_prompt("", "")
+    assert "Malformed JSON:\n\n" in rendered_empty
+    assert "Error:\n\n" in rendered_empty
+
+    # Payload with special characters, quotes, and newlines
+    payload = "{\n  \"key\": 'single quotes',\n  \"trailing\": 123,\n}"
+    err = "Invalid character at line 2 col 10"
+    rendered = build_json_repair_prompt(payload, err)
+    assert payload in rendered
+    assert err in rendered
+
