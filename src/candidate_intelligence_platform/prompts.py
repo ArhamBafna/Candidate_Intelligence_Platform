@@ -173,6 +173,7 @@ Include the following sections:
 - **Match Confidence**: A score out of 10 or a percentage.
 """
 
+
 def build_consolidated_match_insight_prompt(
     resume_text: str,
     query: str,
@@ -180,6 +181,11 @@ def build_consolidated_match_insight_prompt(
     job_title: Optional[str] = None,
     min_years: Optional[Union[float, int, str]] = None,
 ) -> str:
+    """Build consolidated match insight prompt.
+
+    Handles optional criteria including job_title, city, and min_years.
+    Explicitly supports min_years=0 (or 0.0, "0") to denote 0 years of experience.
+    """
     criteria_items = []
     if query and query.strip():
         criteria_items.append(f"- Search Query / Skills: '{query.strip()}'")

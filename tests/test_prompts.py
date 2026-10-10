@@ -146,6 +146,12 @@ Include the following sections:
     assert rendered == expected
 
 
+def test_consolidated_match_insight_prompt_min_years_zero() -> None:
+    rendered = build_consolidated_match_insight_prompt("Jane Doe profile", "python developer", min_years=0)
+    assert "- Minimum Experience: 0 years" in rendered
+
+
+
 def test_batched_extraction_prompt_is_byte_identical() -> None:
     rendered = build_batched_extraction_prompt(["Resume 1"])
     expected = """
