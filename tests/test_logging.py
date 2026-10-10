@@ -273,3 +273,89 @@ def test_setup_logging_json_mode_renders_parseable_json(capsys):
     assert '"probe_event"' in captured.out
 
     setup_logging("console")
+
+
+# ---------------------------------------------------------------------------
+# Wide Event & Subsystem Logging (Upload, Search, AI Failures)
+# ---------------------------------------------------------------------------
+
+def test_upload_resume_emits_wide_event(client, monkeypatch):
+    LOG_BUFFER.clear()
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.extraction.hybrid_extractor.extract_candidate_profile_hybrid",
+        lambda text, **kwargs: {"first_name": "Test", "last_name": "User", "primary_email": "", "primary_phone": "", "current_title": "Engineer", "warnings": []}
+    )
+    test_file_content = b"Test User\nSenior Engineer\nEmail: test.user@example.com\nSkills: Python, Docker\nExperience: 6 years building backend services"
+    files = {"file": ("test_resume.pdf", test_file_content, "application/pdf")}
+
+    response = client.post("/candidates/upload", files=files)
+    assert response.status_code == 200, response.text
+
+    upload_events = [log for log in get_recent_logs(200) if log.get("event") == "resume_upload_complete"]
+    assert len(upload_events) == 1
+    event = upload_events[0]
+    assert event["status"] == "success"
+    assert "file_hash" in event
+    assert "candidate_name" not in event
+    assert "file_name" not in event
+
+
+def test_search_emits_wide_event(client):
+    LOG_BUFFER.clear()
+    response = client.post("/search", json={"query_text": "test query"})
+    assert response.status_code == 200, response.text
+
+    search_events = [log for log in get_recent_logs(200) if log.get("event") == "candidate_search_complete"]
+    assert len(search_events) == 1
+    event = search_events[0]
+    assert event["query"] == "test query"
+    assert "candidates_returned" in event
+    assert "total_duration_ms" in event
+
+
+def test_vector_search_failure_logs_ai_warning(monkeypatch):
+    from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
+    LOG_BUFFER.clear()
+
+    def mock_embeddings(text):
+        raise RuntimeError("Embedding model server timeout")
+    monkeypatch.setattr("candidate_intelligence_platform.search.hybrid_searcher.generate_single_embedding", mock_embeddings)
+    warnings = []
+    ranks = execute_vector_search("python developer", ["cid-1"], vector_db=None, warnings=warnings)
+    assert ranks == {}
+    events = [log for log in get_recent_logs(20) if log.get("event") == "ai_vector_search_failed"]
+    assert len(events) == 1
+    assert events[0]["error"] == "Embedding model server timeout"
+
+
+def test_llm_extraction_failure_and_repair_logs(monkeypatch):
+    from candidate_intelligence_platform.extraction.local_llm_fallback import extract_inferences
+    import ollama
+
+    # 1. Failure log
+    LOG_BUFFER.clear()
+
+    def mock_err(*args, **kwargs):
+        raise RuntimeError("Ollama connection refused")
+    monkeypatch.setattr(ollama, "chat", mock_err)
+    facts = extract_inferences("Some resume text")
+    assert facts == []
+    events = [log for log in get_recent_logs(20) if log.get("event") == "ai_llm_extraction_failed"]
+    assert len(events) == 1
+    assert "Ollama connection refused" in events[0]["error"]
+
+    # 2. Repair log
+    LOG_BUFFER.clear()
+
+    class MockMessage:
+        content = '{"claims": [{"claim_category": "SKILL", "claim_key": "Go", "claim_value": null, "confidence_score": 0.0}]}'
+
+    class MockResponse:
+        message = MockMessage()
+
+    monkeypatch.setattr(ollama, "chat", lambda *args, **kwargs: MockResponse())
+    facts = extract_inferences("Experience in Go")
+    assert len(facts) == 1
+    assert facts[0]["claim_key"] == "skill"
+    assert facts[0]["claim_value"] == "Go"
+    assert any(log.get("event") == "ai_llm_claim_value_missing_repaired" for log in get_recent_logs(20))
