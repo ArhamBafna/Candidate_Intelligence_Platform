@@ -876,6 +876,11 @@ async def get_candidate_insight(
                 return
             
             model_used = resolved
+            if provider == "openrouter" and normalize_model_name(model_used) != normalize_model_name(settings.openrouter_model):
+                provider = "ollama"
+                notice = CLOUD_FALLBACK_TO_DEVICE
+                yield f"data: {json.dumps({'notice': notice})}\n\n"
+
             tokens_sent = 0
             try:
                 async for token in stream_tokens(model_used, provider):
@@ -892,7 +897,7 @@ async def get_candidate_insight(
                 # Build fallback chain based on provider
                 if provider == "openrouter":
                     # OpenRouter ox-alpha first; on failure go straight to local Ollama
-                    fallback_models = chat_retry_candidates(settings.llm_model, settings.fallback_llm_model)
+                    fallback_models = [settings.llm_model, *chat_retry_candidates(settings.llm_model, settings.fallback_llm_model, failed_model=model_used)]
                     fallback_models = [m for m in fallback_models if normalize_model_name(m) != normalize_model_name(model_used)]
                 else:
                     fallback_models = chat_retry_candidates(settings.llm_model, settings.fallback_llm_model, failed_model=model_used)

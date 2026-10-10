@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X, XCircle } from '@phosphor-icons/react';
+import { MagnifyingGlass as Search, MapPin, Briefcase, CaretRight as ChevronRight, User, Upload, CheckCircle as CheckCircle2, WarningCircle as AlertCircle, ArrowsClockwise as RefreshCw, DotsThreeVertical as MoreVertical, DownloadSimple as Download, Trash as Trash2, CheckSquare, Square, X, XCircle, Sparkle } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 
@@ -142,7 +142,15 @@ function CandidateList() {
     if (!next) {
       insightControllersRef.current.forEach((controller) => controller.abort());
       insightControllersRef.current.clear();
-      setInsights({});
+      setInsights(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(id => {
+          if (updated[id]?.status === 'loading') {
+            updated[id] = { ...updated[id], status: 'cancelled' };
+          }
+        });
+        return updated;
+      });
     } else {
       const activeParams = activeSearchParams?.query?.trim()
         ? activeSearchParams
@@ -154,7 +162,6 @@ function CandidateList() {
   };
 
   const generateInsight = async (candidateId, searchCriteria) => {
-    if (!aiNotesEnabledRef.current) return;
     const existingController = insightControllersRef.current.get(candidateId);
     if (existingController) existingController.abort();
     const controller = new AbortController();
@@ -220,12 +227,12 @@ function CandidateList() {
                       notice: event.notice
                     }
                   }));
-                } else if (event.token && aiNotesEnabledRef.current) {
+                } else if (event.token) {
                   setInsights(prev => ({
                     ...prev,
                     [candidateId]: { 
                       ...prev[candidateId], 
-                      text: prev[candidateId].text + event.token 
+                      text: (prev[candidateId]?.text || '') + event.token 
                     }
                   }));
                 }
@@ -236,26 +243,22 @@ function CandidateList() {
           }
         }
       }
-      if (aiNotesEnabledRef.current) {
+      setInsights(prev => ({
+        ...prev,
+        [candidateId]: { ...prev[candidateId], status: 'done' }
+      }));
+    } catch (err) {
+      if (err.name === 'AbortError') {
         setInsights(prev => ({
           ...prev,
-          [candidateId]: { ...prev[candidateId], status: 'done' }
+          [candidateId]: { ...prev[candidateId], status: 'cancelled' }
         }));
-      }
-    } catch (err) {
-      if (aiNotesEnabledRef.current) {
-        if (err.name === 'AbortError') {
-          setInsights(prev => ({
-            ...prev,
-            [candidateId]: { ...prev[candidateId], status: 'cancelled' }
-          }));
-        } else {
-          console.error('Insight generation failed:', err);
-          setInsights(prev => ({
-            ...prev,
-            [candidateId]: { ...prev[candidateId], status: 'error' }
-          }));
-        }
+      } else {
+        console.error('Insight generation failed:', err);
+        setInsights(prev => ({
+          ...prev,
+          [candidateId]: { ...prev[candidateId], status: 'error' }
+        }));
       }
     } finally {
       const current = insightControllersRef.current.get(candidateId);
@@ -263,6 +266,25 @@ function CandidateList() {
         insightControllersRef.current.delete(candidateId);
       }
     }
+  };
+
+  const isAnySelectedGenerating = selectedIds.some(id => insights[id]?.status === 'loading');
+
+  const handleBatchGenerateInsights = () => {
+    if (!selectedIds.length) return;
+    const params = activeSearchParams || lastSearchParamsRef.current || { query, city, title, minYoe };
+    selectedIds.forEach((id) => {
+      generateInsight(id, params);
+    });
+  };
+
+  const handleBatchCancelInsights = () => {
+    selectedIds.forEach((id) => {
+      const controller = insightControllersRef.current.get(id);
+      if (controller) {
+        controller.abort();
+      }
+    });
   };
 
   const handleBatchDownloadResumes = async () => {
@@ -1054,7 +1076,7 @@ function CandidateList() {
               </div>
               
               {/* AI Insight Box */}
-              {Boolean(activeSearchParams?.query?.trim()) && aiNotesEnabled && (
+              {Boolean(activeSearchParams?.query?.trim()) && (
                 <div className="mt-4 border-t border-neutral-800 pt-4" onClick={e => e.stopPropagation()}>
                   {insights[candidate.id] && insights[candidate.id].status !== 'cancelled' ? (
                     <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-3 text-sm">
@@ -1408,6 +1430,25 @@ function CandidateList() {
       {selectedIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-bar bg-neutral-900/90 border border-emerald-500/40 backdrop-blur-xl px-6 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-6 animate-in slide-in-from-bottom-6 duration-300 whitespace-nowrap max-w-fit">
           <div className="flex items-center gap-3 shrink-0">
+            {Boolean(activeSearchParams?.query?.trim()) && (
+              isAnySelectedGenerating ? (
+                <button
+                  onClick={handleBatchCancelInsights}
+                  className="bg-red-600/90 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-red-950/30 border border-red-500/30 whitespace-nowrap shrink-0"
+                  title="Cancel AI notes generation for selected candidates"
+                >
+                  <X size={16} className="shrink-0" /> Cancel AI Notes
+                </button>
+              ) : (
+                <button
+                  onClick={handleBatchGenerateInsights}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/30 border border-emerald-400/30 whitespace-nowrap shrink-0"
+                  title="Generate AI notes for selected candidates"
+                >
+                  <Sparkle size={16} className="shrink-0" /> Generate AI Notes
+                </button>
+              )
+            )}
             <button
               onClick={handleBatchReprocess}
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors shadow-lg shadow-emerald-900/30 border border-emerald-400/30 whitespace-nowrap shrink-0"
