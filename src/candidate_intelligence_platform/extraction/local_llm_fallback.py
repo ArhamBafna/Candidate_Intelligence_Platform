@@ -158,6 +158,11 @@ def extract_inferences(text: str, model_name: str | None = None, timeout_seconds
     Extract AI inferences from text using a local LLM via Ollama or remote via OpenRouter.
     Defaults to configured Settings model (llama3.2 or stealth/ox-alpha).
     Includes validation, anomaly logging, and self-healing for LLM schema deviations.
+
+    Architectural Decision: When extraction fails over from OpenRouter to Ollama,
+    subsequent recovery attempts (Pass 2 repair, Pass 3 re-run) intentionally continue
+    with serving_provider (Ollama), as OpenRouter has already failed or is unavailable.
+    No provider re-toggles occur during the recovery loop.
     """
     settings = get_settings()
     provider = get_llm_provider()
