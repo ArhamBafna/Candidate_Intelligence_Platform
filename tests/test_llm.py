@@ -330,14 +330,15 @@ def test_extract_inferences(monkeypatch):
     assert facts[0]['source_type'] == 'AI_INFERENCE'
 
 def test_extract_inferences_malformed_json(monkeypatch):
+    from candidate_intelligence_platform.extraction.local_llm_fallback import LLMExtractionFatalError
     class MockMessage:
         content = '{"claims": [broken json'
     class MockResponse:
         message = MockMessage()
     import ollama
     monkeypatch.setattr(ollama, "chat", lambda *args, **kwargs: MockResponse())
-    facts = extract_inferences("Text")
-    assert len(facts) == 0
+    with pytest.raises(LLMExtractionFatalError):
+        extract_inferences("Text")
 
 def test_extract_inferences_exception(monkeypatch):
     import ollama
