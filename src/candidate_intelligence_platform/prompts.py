@@ -228,5 +228,8 @@ Malformed JSON:
 Error:
 {error_msg}
 """
+
+
 def build_json_repair_prompt(malformed_json: str, error_msg: str) -> str:
     return _JSON_REPAIR_TEMPLATE.format(malformed_json=malformed_json, error_msg=error_msg)
+
