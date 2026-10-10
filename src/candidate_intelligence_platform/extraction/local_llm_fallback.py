@@ -321,21 +321,7 @@ def classify_document_llm(text: str, model_name: str | None = None, timeout_seco
     prompt = build_document_classification_prompt(text)
 
     try:
-        content = None
-        serving_provider = provider
-        if provider == "openrouter":
-            try:
-                response_data = _call_openrouter(prompt, selected_model, timeout_seconds)
-                if response_data is not None:
-                    content = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            except Exception as openrouter_error:
-                content = None
-                serving_provider = "ollama"
-
-        if serving_provider == "ollama":
-            response = _call_ollama(prompt, settings.llm_model if provider == "openrouter" else selected_model, timeout_seconds)
-            content = response.message.content if response else None
-
+        content, _, _ = _execute_prompt(prompt, provider, settings, selected_model, timeout_seconds)
         if not content:
             return False
 

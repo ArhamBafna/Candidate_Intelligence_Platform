@@ -108,3 +108,43 @@ def test_execute_prompt_openrouter_none_falls_back_to_ollama(monkeypatch):
     assert active_provider == "ollama"
 
 
+def test_classify_document_llm_ollama(monkeypatch):
+    from candidate_intelligence_platform.extraction.local_llm_fallback import classify_document_llm
+    import candidate_intelligence_platform.extraction.local_llm_fallback as fallback_mod
+
+    monkeypatch.setattr(fallback_mod, "get_llm_provider", lambda: "ollama")
+
+    class MockMessage:
+        content = '{"is_resume": true, "category": "RESUME", "confidence": 0.95}'
+
+    class MockResponse:
+        message = MockMessage()
+
+    monkeypatch.setattr(fallback_mod, "_call_ollama", lambda *args, **kwargs: MockResponse())
+    assert classify_document_llm("Jane Doe Resume") is True
+
+
+def test_classify_document_llm_openrouter(monkeypatch):
+    from candidate_intelligence_platform.extraction.local_llm_fallback import classify_document_llm
+    import candidate_intelligence_platform.extraction.local_llm_fallback as fallback_mod
+    from config.settings import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "openrouter_api_key", "sk-fake-key")
+    monkeypatch.setattr(settings, "openrouter_model", "test/free-model")
+    monkeypatch.setattr(fallback_mod, "get_llm_provider", lambda: "openrouter")
+
+    mock_resp = {
+        "choices": [
+            {
+                "message": {
+                    "content": '{"is_resume": false, "category": "BILL", "confidence": 0.88}'
+                }
+            }
+        ]
+    }
+    monkeypatch.setattr(fallback_mod, "_call_openrouter", lambda *args, **kwargs: mock_resp)
+    assert classify_document_llm("Utility bill for electricity") is False
+
+
+
