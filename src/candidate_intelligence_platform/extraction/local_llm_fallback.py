@@ -308,21 +308,28 @@ def batched_extract_inferences(texts: list[str], model_name: str | None = None, 
     if len(texts) > 5:
         # Batch size is strictly bounded to 5 per requirements
         logger.warning("batched_extract_inferences_exceeded_limit", count=len(texts))
-        
-    results = [[] for _ in texts]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_idx = {
-            executor.submit(extract_inferences, text, model_name, timeout_seconds): i
-            for i, text in enumerate(texts)
-        }
-        for future in concurrent.futures.as_completed(future_to_idx):
-            idx = future_to_idx[future]
-            try:
-                results[idx] = future.result()
-            except Exception as e:
-                logger.error("batched_extract_inferences_item_failed", index=idx, error=str(e))
-                results[idx] = []
-    return results
+
+    chunk_size = 5
+    all_results: list[list[dict]] = []
+
+    for chunk_start in range(0, len(texts), chunk_size):
+        chunk = texts[chunk_start : chunk_start + chunk_size]
+        chunk_results: list[list[dict]] = [[] for _ in chunk]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(chunk))) as executor:
+            future_to_idx = {
+                executor.submit(extract_inferences, text, model_name, timeout_seconds): i
+                for i, text in enumerate(chunk)
+            }
+            for future in concurrent.futures.as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                try:
+                    chunk_results[idx] = future.result()
+                except Exception as e:
+                    logger.error("batched_extract_inferences_item_failed", index=chunk_start + idx, error=str(e))
+                    chunk_results[idx] = []
+        all_results.extend(chunk_results)
+
+    return all_results
 
 
 def classify_document_llm(text: str, model_name: str | None = None, timeout_seconds: float = 15.0) -> bool:

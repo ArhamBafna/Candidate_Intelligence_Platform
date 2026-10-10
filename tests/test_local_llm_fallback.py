@@ -80,6 +80,25 @@ def test_batched_extract_inferences_empty():
     assert batched_extract_inferences([]) == []
 
 
+def test_batched_extract_inferences_chunking_large_inputs(monkeypatch):
+    from candidate_intelligence_platform.extraction.local_llm_fallback import batched_extract_inferences
+
+    def mock_extract(text, model_name=None, timeout_seconds=60.0):
+        return [{"claim_key": text, "claim_value": text}]
+
+    import candidate_intelligence_platform.extraction.local_llm_fallback as fallback_mod
+    monkeypatch.setattr(fallback_mod, "extract_inferences", mock_extract)
+
+    texts = [f"Resume item {i}" for i in range(12)]
+    results = batched_extract_inferences(texts)
+
+    assert len(results) == 12
+    for i in range(12):
+        assert len(results[i]) == 1
+        assert results[i][0]["claim_key"] == f"Resume item {i}"
+
+
+
 def test_execute_prompt_invalid_provider_raises_value_error():
     from candidate_intelligence_platform.extraction.local_llm_fallback import _execute_prompt
     from config.settings import get_settings
