@@ -704,17 +704,21 @@ def test_execute_vector_search_missing_table(monkeypatch):
     results = execute_vector_search("test query", {"cand_1"}, MockVectorDB())
     assert results == {}
 
-def test_execute_vector_search_end_to_end(tmp_path):
+def test_execute_vector_search_end_to_end(tmp_path, monkeypatch):
     import lancedb
     from storage.vector_store import CandidateSectionVector
     from candidate_intelligence_platform.search.hybrid_searcher import execute_vector_search
-    from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings
+
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.search.hybrid_searcher.generate_single_embedding",
+        lambda text: [0.1] * 384,
+    )
 
     db_path = str(tmp_path / "lancedb_search")
     db = lancedb.connect(db_path)
     tbl = db.create_table("candidate_vectors", schema=CandidateSectionVector)
 
-    emb = generate_embeddings(["Senior Python Engineer in New York"])[0]
+    emb = [0.1] * 384
     tbl.add([{
         "chunk_id": "c1",
         "candidate_id": "cand_1",
@@ -794,3 +798,191 @@ def test_search_candidates_passes_rerank_pool_size_as_fts_cap(monkeypatch):
 
     assert len(captured_fts_pool) == 1
     assert captured_fts_pool[0] == 7
+
+
+# ---------------------------------------------------------------------------
+# AST Parser Comprehensive Queries
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("query,sql_fragments,expected_params,expected_clean", [
+    (
+        "python java developer",
+        ["candidate_fts MATCH :fts_query"],
+        {"fts_query": "python java developer"},
+        "python java developer",
+    ),
+    (
+        "location:'San Francisco'",
+        ["current_city", "LIKE"],
+        {"location": "San Francisco"},
+        "San Francisco",
+    ),
+    (
+        "title:'Backend Engineer' python",
+        ["candidate_fts MATCH :fts_query"],
+        {"title": "Backend Engineer", "fts_query": "python"},
+        "Backend Engineer python",
+    ),
+    (
+        "title_exact:'Backend Engineer'",
+        ["LOWER(candidates.current_title) = LOWER(:title)"],
+        {"title": "Backend Engineer", "title_exact": True},
+        "Backend Engineer",
+    ),
+    (
+        "title:'Dev' yoe >= 5 python",
+        ["candidate_fts MATCH :fts_query"],
+        {"title": "Dev", "yoe": 5.0, "fts_query": "python"},
+        "Dev python",
+    ),
+    (
+        "location:'NYC' title:'Senior' yoe >= 3 python docker",
+        ["current_city", "candidate_fts MATCH :fts_query"],
+        {"location": "NYC", "title": "Senior", "yoe": 3.0, "fts_query": "python docker"},
+        "NYC Senior python docker",
+    ),
+    (
+        "python AND java AND docker",
+        ["candidate_fts MATCH :fts_query"],
+        {"fts_query": "python java docker"},
+        "python java docker",
+    ),
+    (
+        "SANDPAPER python",
+        ["candidate_fts MATCH :fts_query"],
+        {"fts_query": "SANDPAPER python"},
+        "SANDPAPER python",
+    ),
+])
+def test_parse_query_to_sql_comprehensive(query, sql_fragments, expected_params, expected_clean):
+    sql, params, clean = parse_query_to_sql(query)
+    for frag in sql_fragments:
+        assert frag in sql
+    for key, val in expected_params.items():
+        assert params.get(key) == val
+    assert clean == expected_clean
+
+
+# ---------------------------------------------------------------------------
+# Match Explainer & Rationale Scoring
+# ---------------------------------------------------------------------------
+
+from candidate_intelligence_platform.intelligence.explainer import MatchParameters, build_match_rationale
+
+def _explainer_params(**overrides) -> MatchParameters:
+    defaults = dict(candidate_id="c1", rank=1, rrf_score=0.0, rerank_score=None)
+    defaults.update(overrides)
+    return MatchParameters(**defaults)
+
+def test_missing_rerank_score_derives_percentage_from_rrf():
+    params = _explainer_params(rrf_score=(2.0 / 61.0))
+    rationale = build_match_rationale(params)
+    assert rationale["rerank_score"] is None
+    assert rationale["match_percentage"] == pytest.approx(100.0)
+
+def test_missing_rerank_score_never_fabricates_50_percent():
+    for rrf in (0.001, 0.01, 0.02, 0.03):
+        rationale = build_match_rationale(_explainer_params(rrf_score=rrf))
+        assert rationale["match_percentage"] != 50.0
+
+def test_zero_scores_yield_zero_percentage():
+    rationale = build_match_rationale(_explainer_params())
+    assert rationale["match_percentage"] == 0.0
+
+def test_extreme_rerank_score_does_not_crash_or_default_to_50():
+    huge = build_match_rationale(_explainer_params(rerank_score=1e9))
+    tiny = build_match_rationale(_explainer_params(rerank_score=-1e9))
+    assert huge["match_percentage"] == pytest.approx(100.0)
+    assert tiny["match_percentage"] == pytest.approx(0.0)
+    assert tiny["match_percentage"] != 50.0
+
+
+# ---------------------------------------------------------------------------
+# Intelligence & Embedding Generation
+# ---------------------------------------------------------------------------
+
+from candidate_intelligence_platform.intelligence.embeddings import generate_embeddings, generate_single_embedding
+
+def test_generate_embeddings_basic():
+    texts = ["Hello world", "Machine learning engineer with 5 years experience"]
+    embeddings = generate_embeddings(texts)
+    assert len(embeddings) == 2
+    assert len(embeddings[0]) == 384
+    assert len(embeddings[1]) == 384
+    assert isinstance(embeddings[0][0], float)
+
+def test_generate_single_embedding():
+    emb = generate_single_embedding("Python developer")
+    assert isinstance(emb, list)
+    assert len(emb) == 384
+    assert isinstance(emb[0], float)
+
+def test_embedding_semantic_similarity():
+    import numpy as np
+    texts = [
+        "Senior Python Backend Developer with FastAPI experience",
+        "Python software engineer specializing in backend REST APIs",
+        "Executive Pastry Chef specializing in French baking",
+    ]
+    embeddings = generate_embeddings(texts)
+    vec1 = np.array(embeddings[0])
+    vec2 = np.array(embeddings[1])
+    vec3 = np.array(embeddings[2])
+    def cosine_sim(a, b):
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    sim_tech = cosine_sim(vec1, vec2)
+    sim_diff = cosine_sim(vec1, vec3)
+    assert sim_tech > sim_diff
+    assert sim_tech > 0.6
+
+
+# ---------------------------------------------------------------------------
+# Search AI Availability Warnings
+# ---------------------------------------------------------------------------
+
+from api.routes.search import AI_EXPLANATION_UNAVAILABLE_WARNING
+
+def test_search_response_carries_ai_unavailable_warning(client, db_session, monkeypatch):
+    import uuid
+    from storage.db_models import Candidate
+    cid = str(uuid.uuid4())
+    db_session.add(Candidate(id=cid, first_name="AI", last_name="Check", availability_status="ACTIVE"))
+    db_session.commit()
+
+    def mock_gen(*args, **kwargs):
+        yield ("COMPLETE", 100, "Search complete", ([{"candidate_id": cid, "rank": 1, "rrf_score": 0.03, "match_scorecard": {}}], []))
+
+    monkeypatch.setattr("api.routes.search.search_candidates", mock_gen)
+    monkeypatch.setattr("api.routes.search.resolve_chat_model", lambda force_refresh=False: None)
+
+    response = client.post("/search", json={"query_text": "python"})
+    assert response.status_code == 200
+    data = response.json()
+    assert any(AI_EXPLANATION_UNAVAILABLE_WARNING in w for w in data["warnings"])
+
+def test_search_response_clean_when_chat_model_available(client, db_session, monkeypatch):
+    import uuid
+    from storage.db_models import Candidate
+    cid = str(uuid.uuid4())
+    db_session.add(Candidate(id=cid, first_name="AI", last_name="Check", availability_status="ACTIVE"))
+    db_session.commit()
+
+    def mock_gen(*args, **kwargs):
+        yield ("COMPLETE", 100, "Search complete", ([{"candidate_id": cid, "rank": 1, "rrf_score": 0.03, "match_scorecard": {}}], []))
+
+    monkeypatch.setattr("api.routes.search.search_candidates", mock_gen)
+    monkeypatch.setattr("api.routes.search.resolve_chat_model", lambda force_refresh=False: "llama3.2")
+
+    response = client.post("/search", json={"query_text": "python"})
+    assert response.status_code == 200
+    data = response.json()
+    assert not any(AI_EXPLANATION_UNAVAILABLE_WARNING in w for w in data.get("warnings", []))
+
+
+# ---------------------------------------------------------------------------
+# Golden-Set Accuracy Evaluation (Opt-in)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.evaluation
+def test_golden_dataset_metrics():
+    pass

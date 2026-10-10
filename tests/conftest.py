@@ -96,7 +96,7 @@ def mock_vector_db() -> MockVectorStore:
 
 @pytest.fixture
 def mock_heavy_models(monkeypatch):
-    """Mock spaCy NER facts and embedding generation for API-level tests."""
+    """Mock spaCy NER facts, embedding generation, and cross-encoder reranking for API-level tests."""
     monkeypatch.setattr(
         "candidate_intelligence_platform.extraction.deterministic_ner.extract_facts",
         lambda text: [{
@@ -110,7 +110,15 @@ def mock_heavy_models(monkeypatch):
     )
     monkeypatch.setattr(
         "candidate_intelligence_platform.intelligence.embeddings.generate_embeddings",
-        lambda texts: [[0.0] * 4 for _ in texts],
+        lambda texts: [[0.0] * 384 for _ in texts],
+    )
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.intelligence.embeddings.generate_single_embedding",
+        lambda text: [0.0] * 384,
+    )
+    monkeypatch.setattr(
+        "candidate_intelligence_platform.search.reranker.rerank_candidates",
+        lambda query, documents: [1.0 for _ in documents],
     )
 
 @pytest.fixture
