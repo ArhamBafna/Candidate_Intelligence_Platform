@@ -203,19 +203,26 @@ _BATCHED_EXTRACTION_TEMPLATE = """
 You are an expert fact-extraction engine for resumes. Extract all candidate facts into structured JSON.
 Return a list of results for each provided resume.
 Return ONLY valid JSON matching this schema:
-{
+{{
   "results": [
-    {
+    {{
       "claims": [
         ...
       ]
-    }
+    }}
   ]
-}
+}}
+
+Resumes:
+{resumes_block}
 """
 
+
 def build_batched_extraction_prompt(resumes: list[str]) -> str:
-    return _BATCHED_EXTRACTION_TEMPLATE
+    formatted_resumes = [f"Resume {i + 1}:\n{text}" for i, text in enumerate(resumes)]
+    resumes_block = "\n\n".join(formatted_resumes)
+    return _BATCHED_EXTRACTION_TEMPLATE.format(resumes_block=resumes_block)
+
 
 _JSON_REPAIR_TEMPLATE = """
 You are a JSON repair engine.

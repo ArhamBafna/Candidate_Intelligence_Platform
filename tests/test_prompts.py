@@ -161,8 +161,19 @@ Return ONLY valid JSON matching this schema:
     }
   ]
 }
+
+Resumes:
+Resume 1:
+Resume 1
 """
     assert rendered == expected
+
+
+def test_batched_extraction_prompt_multiple_resumes() -> None:
+    rendered = build_batched_extraction_prompt(["Alice Doe\nPython Dev", "Bob Smith\nJava Dev"])
+    assert "Resume 1:\nAlice Doe\nPython Dev" in rendered
+    assert "Resume 2:\nBob Smith\nJava Dev" in rendered
+
 
 
 def test_json_repair_prompt_is_byte_identical() -> None:
