@@ -38,13 +38,24 @@ def _clean_and_parse_json(content: str) -> dict | list | None:
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
-        # Fallback: extract the outermost JSON object or list
-        match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", cleaned)
-        if match:
+        # Fallback: parse candidate JSON object or list without greedy capture across multiple blocks
+        decoder = json.JSONDecoder()
+        for i, ch in enumerate(cleaned):
+            if ch in ("{", "["):
+                try:
+                    obj, _ = decoder.raw_decode(cleaned, i)
+                    if isinstance(obj, (dict, list)):
+                        return obj
+                except json.JSONDecodeError:
+                    continue
+
+        for match in re.finditer(r"(\{[\s\S]*?\}|\[[\s\S]*?\])", cleaned):
             try:
-                return json.loads(match.group(0))
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, (dict, list)):
+                    return parsed
             except json.JSONDecodeError:
-                pass
+                continue
     return None
 
 

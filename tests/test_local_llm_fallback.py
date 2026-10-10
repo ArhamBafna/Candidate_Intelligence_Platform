@@ -147,4 +147,17 @@ def test_classify_document_llm_openrouter(monkeypatch):
     assert classify_document_llm("Utility bill for electricity") is False
 
 
+def test_clean_and_parse_json_multiple_json_objects():
+    from candidate_intelligence_platform.extraction.local_llm_fallback import _clean_and_parse_json
+
+    text = 'Here is result: {"a": 1} and another {"b": 2}'
+    parsed = _clean_and_parse_json(text)
+    assert parsed == {"a": 1}
+
+    list_text = 'Commentary before [{"skill": "Python"}] and commentary after [{"ignored": true}]'
+    parsed_list = _clean_and_parse_json(list_text)
+    assert parsed_list == [{"skill": "Python"}]
+
+
+
 
