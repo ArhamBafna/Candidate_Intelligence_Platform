@@ -78,3 +78,13 @@ def test_batched_extract_inferences(monkeypatch):
 def test_batched_extract_inferences_empty():
     from candidate_intelligence_platform.extraction.local_llm_fallback import batched_extract_inferences
     assert batched_extract_inferences([]) == []
+
+
+def test_execute_prompt_invalid_provider_raises_value_error():
+    from candidate_intelligence_platform.extraction.local_llm_fallback import _execute_prompt
+    from config.settings import get_settings
+
+    settings = get_settings()
+    with pytest.raises(ValueError, match="Unsupported LLM provider: invalid_provider"):
+        _execute_prompt("test prompt", "invalid_provider", settings, None, 10.0)
+

@@ -3,7 +3,7 @@ import json
 import re
 import time
 import structlog
-from config.settings import get_settings
+from config.settings import get_settings, Settings
 from candidate_intelligence_platform.intelligence.chat_model import get_llm_provider
 from candidate_intelligence_platform.prompts import (
     build_fact_extraction_prompt, 
@@ -110,8 +110,11 @@ def _call_ollama(prompt: str, model_name: str, timeout_seconds: float):
     )
 
 
-def _execute_prompt(prompt: str, provider: str, settings, model_name: str, timeout_seconds: float) -> tuple[str | None, str, str]:
+def _execute_prompt(prompt: str, provider: str, settings: Settings, model_name: str | None, timeout_seconds: float) -> tuple[str | None, str, str]:
     """Execute prompt with provider failover. Returns (content, active_provider, active_model)."""
+    if provider not in ("openrouter", "ollama"):
+        raise ValueError(f"Unsupported LLM provider: {provider}")
+
     selected_model = model_name or (settings.openrouter_model if provider == "openrouter" else settings.llm_model)
     
     if provider == "openrouter":
@@ -136,7 +139,8 @@ def _execute_prompt(prompt: str, provider: str, settings, model_name: str, timeo
         content = response.message.content if response else None
         return content, "ollama", selected_model
         
-    return None, provider, selected_model
+    raise ValueError(f"Unsupported LLM provider: {provider}")
+
 
 
 def extract_inferences(text: str, model_name: str | None = None, timeout_seconds: float = 30.0) -> list[dict]:
